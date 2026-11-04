@@ -1,3 +1,4 @@
+import { requireAdminRequest } from '@/app/lib/admin-auth';
 export const dynamic = 'force-dynamic';
 
 import { getEspnId } from '@/app/lib/espn-player-season';
@@ -36,6 +37,9 @@ async function probe(url: string, espnId: string | null) {
 }
 
 export async function GET(request: Request) {
+  const denied = await requireAdminRequest(request);
+  if (denied) return denied;
+
   const { searchParams } = new URL(request.url);
   const name = searchParams.get('name') ?? 'Jordan Spieth';
   const season = getActiveSeason();

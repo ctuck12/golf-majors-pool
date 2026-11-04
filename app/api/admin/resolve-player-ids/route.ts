@@ -1,3 +1,4 @@
+import { requireAdminRequest } from '@/app/lib/admin-auth';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
@@ -35,7 +36,10 @@ async function fetchDirectory(): Promise<{ players: Array<{ id: string; displayN
   } catch (e) { return { players: [], error: String(e).slice(0, 150) }; }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const denied = await requireAdminRequest(request);
+  if (denied) return denied;
+
   const unresolved = PLAYER_POOL_WITH_PGA_IDS.filter((p) => (p.pgaTourId as number) === 0);
   if (unresolved.length === 0) return Response.json({ message: 'All players have pgaTourId resolved.' });
 

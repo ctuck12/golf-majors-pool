@@ -5012,6 +5012,8 @@ export default function Page() {
                               const data = await res.json();
                               if (data.exists) {
                                 setForgotEmailExists(true);
+                              } else if (data.error) {
+                                setForgotMessage(data.error);
                               } else {
                                 setForgotMessage('No account found with that email address.');
                               }

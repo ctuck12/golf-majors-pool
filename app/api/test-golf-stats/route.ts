@@ -1,3 +1,4 @@
+import { requireAdminRequest } from '@/app/lib/admin-auth';
 export const dynamic = 'force-dynamic';
 
 import redis from '@/app/lib/redis';
@@ -52,7 +53,10 @@ async function tryEspn(label: string, url: string) {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const denied = await requireAdminRequest(request);
+  if (denied) return denied;
+
   const results = await Promise.allSettled([
 
     // ── ESPN Core: direct competition stats (no recency window) ───────────────

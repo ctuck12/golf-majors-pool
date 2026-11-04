@@ -1,3 +1,4 @@
+import { requireAdminRequest } from '@/app/lib/admin-auth';
 export const dynamic = 'force-dynamic';
 
 import { getEspnId } from '@/app/lib/espn-player-season';
@@ -8,6 +9,9 @@ const PGA_GQL = 'https://orchestrator.pgatour.com/graphql';
 const PGA_API_KEY = 'da2-gsrx5bibzbb4njvhl7t37pzxpq';
 
 export async function GET(request: Request) {
+  const denied = await requireAdminRequest(request);
+  if (denied) return denied;
+
   const { searchParams } = new URL(request.url);
   const name = searchParams.get('name') ?? '';
   const pgaTourId = searchParams.get('pgaTourId') ?? '';

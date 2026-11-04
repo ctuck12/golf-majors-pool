@@ -1,3 +1,4 @@
+import { requireAdminRequest } from '@/app/lib/admin-auth';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 min — iterates the full active pool through /api/player-bio
 
@@ -11,6 +12,9 @@ type Field = (typeof FIELDS)[number];
 const BATCH_SIZE = 8;
 
 export async function GET(request: Request) {
+  const denied = await requireAdminRequest(request);
+  if (denied) return denied;
+
   const origin = new URL(request.url).origin;
   // Cover the whole database — active pool AND archived players (both can open a bio popup).
   const players = [...PLAYER_POOL_WITH_PGA_IDS, ...PLAYER_ARCHIVE];

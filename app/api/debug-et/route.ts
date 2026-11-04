@@ -1,3 +1,4 @@
+import { requireAdminRequest } from '@/app/lib/admin-auth';
 export const dynamic = 'force-dynamic';
 
 const PGA_GQL = 'https://orchestrator.pgatour.com/graphql';
@@ -27,7 +28,10 @@ async function gqlQuery(query: string): Promise<{ url: string; status: number; p
   });
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const denied = await requireAdminRequest(request);
+  if (denied) return denied;
+
   const results = await Promise.all([
     // Try Sky Sports / TNT Sports with realistic headers
     probe('https://www.skysports.com/golf/european-tour/race-to-dubai', {
