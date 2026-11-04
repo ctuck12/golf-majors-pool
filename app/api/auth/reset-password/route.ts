@@ -1,26 +1,11 @@
 import { NextResponse } from 'next/server';
-import { checkEmailExists, resetUserPassword } from '../../../lib/pool-store';
 
-export async function POST(request: Request) {
-  try {
-    const body = (await request.json()) as { email?: string; newPassword?: string };
-    const email = body.email?.trim() ?? '';
-
-    if (!email) {
-      return NextResponse.json({ error: 'Email is required.' }, { status: 400 });
-    }
-
-    if (body.newPassword !== undefined) {
-      await resetUserPassword(email, body.newPassword);
-      return NextResponse.json({ success: true });
-    }
-
-    const exists = await checkEmailExists(email);
-    return NextResponse.json({ exists });
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Something went wrong.' },
-      { status: 400 },
-    );
-  }
+// Self-service reset used to set a new password for any email with no proof of ownership, which let
+// anyone take over any account. Until emailed reset links land (Supabase Auth, Phase 2), resets go
+// through the commissioner, who can already set a member's password from the members tool.
+export async function POST() {
+  return NextResponse.json(
+    { error: 'Password resets are handled by your commissioner for now. Ask them to set a new password for you.' },
+    { status: 403 },
+  );
 }

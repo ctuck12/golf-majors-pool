@@ -1,3 +1,4 @@
+import { requireAdminRequest } from '@/app/lib/admin-auth';
 export const dynamic = 'force-dynamic';
 
 import { getDynamicPlayers } from '@/app/lib/dynamic-pool-store';
@@ -10,7 +11,10 @@ import { applyNameAlias } from '@/app/lib/name-aliases';
 // to a static pool player (directly or via alias) are skipped — they're duplicates.
 // GET /api/admin/dynamic-dump
 
-export async function GET() {
+export async function GET(request: Request) {
+  const denied = await requireAdminRequest(request);
+  if (denied) return denied;
+
   const dyn = await getDynamicPlayers();
   const staticCanon = new Set(PLAYER_POOL_WITH_PGA_IDS.map((p) => canonicalNameKey(p.name)));
   const fresh = dyn.filter((p) => !staticCanon.has(canonicalNameKey(applyNameAlias(p.name))));

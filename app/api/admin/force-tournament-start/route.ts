@@ -1,3 +1,4 @@
+import { requireAdminRequest } from '@/app/lib/admin-auth';
 export const dynamic = 'force-dynamic';
 
 import { TOURNAMENT_META } from '@/app/lib/tournament-config';
@@ -8,6 +9,9 @@ import redis from '@/app/lib/redis';
 // Hit /api/admin/force-tournament-start?tournamentId=pga when ESPN is live but the
 // cron is still waiting out its 30-min notStarted TTL.
 export async function GET(request: Request) {
+  const denied = await requireAdminRequest(request);
+  if (denied) return denied;
+
   const { searchParams } = new URL(request.url);
   const tournamentId = searchParams.get('tournamentId') ?? '';
 

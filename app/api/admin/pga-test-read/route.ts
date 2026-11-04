@@ -1,8 +1,12 @@
+import { requireAdminRequest } from '@/app/lib/admin-auth';
 export const dynamic = 'force-dynamic';
 
 import redis from '@/app/lib/redis';
 
-export async function GET() {
+export async function GET(request: Request) {
+  const denied = await requireAdminRequest(request);
+  if (denied) return denied;
+
   try {
     const cached = await redis.get('golf-stats-test-results');
     if (!cached) {

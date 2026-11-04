@@ -439,7 +439,14 @@ async function refreshTournament(tournamentId: string): Promise<string> {
 
 // ── Handler ───────────────────────────────────────────────────────────────
 
-export async function GET() {
+export async function GET(request: Request) {
+  // Same rule as warm-stat-caches: Vercel cron sends `Authorization: Bearer <CRON_SECRET>` when
+  // CRON_SECRET is set in the project env, so only enforce it when configured.
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret && request.headers.get('authorization') !== `Bearer ${cronSecret}`) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+
   const results: Record<string, string> = {};
 
   await Promise.allSettled(

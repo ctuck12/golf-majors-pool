@@ -1,3 +1,4 @@
+import { requireAdminRequest } from '@/app/lib/admin-auth';
 // Debug endpoint for diagnosing missing years in the player-popup career results.
 // Usage (in browser or curl):
 //   /api/admin/career-debug?name=Hideki%20Matsuyama&years=2013,2017,2018,2021
@@ -27,6 +28,9 @@ async function getEspnId(name: string): Promise<string | null> {
 }
 
 export async function GET(request: Request) {
+  const denied = await requireAdminRequest(request);
+  if (denied) return denied;
+
   const { searchParams } = new URL(request.url);
   const name = searchParams.get('name') ?? '';
   const years = (searchParams.get('years') ?? '')

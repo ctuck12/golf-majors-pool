@@ -1,3 +1,4 @@
+import { requireAdminRequest } from '@/app/lib/admin-auth';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 min — 147 players × ESPN calls needs time
 
@@ -9,6 +10,9 @@ const CACHE_TTL = 432000; // 120 hours
 const BATCH_SIZE = 5;
 
 export async function GET(request: Request) {
+  const denied = await requireAdminRequest(request);
+  if (denied) return denied;
+
   const { searchParams } = new URL(request.url);
   const force = searchParams.get('force') === 'true';
 
