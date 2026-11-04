@@ -1,4 +1,4 @@
-import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { PLAYER_POOL_WITH_PGA_IDS } from './player-pool';
 import redis from './redis';
 
@@ -475,27 +475,73 @@ export async function saveTieBreakForUser(userId: string, tournamentId: Tourname
   await writeDatabase(database);
 }
 
-export async function resetUserPassword(email: string, newPassword: string) {
+const PASSWORD_RESET_TTL_SECONDS = 60 * 60;
+const PASSWORD_RESET_THROTTLE_SECONDS = 60;
+
+// Only the token's hash is stored, so someone reading Redis can't turn a key into a working link.
+function passwordResetKey(token: string) {
+  return `password-reset:${createHash('sha256').update(token).digest('hex')}`;
+}
+
+// Issues a one-time reset token for the account using this email. Returns null when no account
+// matches, or when a link was already sent to this email in the last minute (stops email floods).
+export async function createPasswordResetToken(email: string) {
+  const normalized = normalizeEmail(email);
   const database = await readDatabase();
-  const user = database.users.find((item) => item.email === email.toLowerCase().trim());
+  const user = database.users.find((item) => item.email === normalized);
 
   if (!user) {
-    throw new Error('No account found with that email address.');
+    return null;
   }
 
+  const firstRequest = await redis.set(
+    `password-reset-throttle:${normalized}`,
+    '1',
+    'EX',
+    PASSWORD_RESET_THROTTLE_SECONDS,
+    'NX',
+  );
+  if (firstRequest !== 'OK') {
+    return null;
+  }
+
+  const token = randomBytes(32).toString('hex');
+  await redis.setex(passwordResetKey(token), PASSWORD_RESET_TTL_SECONDS, user.id);
+  return { token, email: user.email, displayName: user.displayName };
+}
+
+// Lets the next request through right away, e.g. after the reset email failed to send.
+export async function clearPasswordResetThrottle(email: string) {
+  await redis.del(`password-reset-throttle:${normalizeEmail(email)}`);
+}
+
+// Uses up a reset token and sets the new password. Signs the account out everywhere else.
+export async function resetPasswordWithToken(token: string, newPassword: string) {
   if (newPassword.length < 8) {
     throw new Error('Password must be at least 8 characters.');
+  }
+
+  const key = passwordResetKey(token);
+  const results = await redis.multi().get(key).del(key).exec();
+  const userId = results?.[0]?.[1];
+
+  if (typeof userId !== 'string') {
+    throw new Error('This reset link is invalid or has expired. Request a new one.');
+  }
+
+  const database = await readDatabase();
+  const user = database.users.find((item) => item.id === userId);
+
+  if (!user) {
+    throw new Error('User account was not found.');
   }
 
   const passwordSalt = randomBytes(16).toString('hex');
   user.passwordSalt = passwordSalt;
   user.passwordHash = hashPassword(newPassword, passwordSalt);
+  database.sessions = database.sessions.filter((session) => session.userId !== user.id);
   await writeDatabase(database);
-}
-
-export async function checkEmailExists(email: string) {
-  const database = await readDatabase();
-  return database.users.some((item) => item.email === email.toLowerCase().trim());
+  return toPublicUser(user);
 }
 
 export async function updateUserAccount(
