@@ -12,7 +12,7 @@ export const LEAGUE_TIERS: { tier: LeagueTier; plan: string; label: string; pric
   { tier: 12, plan: 'small', label: 'Up to 12 members', priceUsd: 24.99 },
   { tier: 25, plan: 'standard', label: 'Up to 25 members', priceUsd: 49.99 },
   { tier: 50, plan: 'large', label: 'Up to 50 members', priceUsd: 79.99 },
-  { tier: 100, plan: 'xl', label: 'Up to 100 members', priceUsd: 129.99 },
+  { tier: 100, plan: 'xl', label: 'Up to 100 members', priceUsd: 99.99 },
 ];
 
 export function seasonPassProductId(tier: LeagueTier) {
