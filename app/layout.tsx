@@ -25,9 +25,12 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  // The iPhone app build draws behind the notch; globals.css pads .native-app back into the safe
-  // area. The website keeps the default.
-  ...(process.env.BUILD_TARGET === 'mobile' ? { viewportFit: 'cover' as const } : {}),
+  // The iPhone app build draws behind the notch (globals.css pads .native-app back into the safe
+  // area) and keeps a fixed zoom, so tapping a text box never zooms the screen like a web page.
+  // The website keeps the defaults.
+  ...(process.env.BUILD_TARGET === 'mobile'
+    ? { viewportFit: 'cover' as const, maximumScale: 1, userScalable: false }
+    : {}),
 };
 
 export default function RootLayout({

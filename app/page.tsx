@@ -1554,6 +1554,12 @@ function resetViewAfterMainTabChange() {
   document.documentElement.scrollTop = 0;
   document.body.scrollTop = 0;
 
+  // The app's zoom is fixed, so there's nothing to reset; rewriting the viewport tag there would
+  // also briefly drop the notch spacing and make the layout jump.
+  if (isNativeApp) {
+    return;
+  }
+
   let viewport = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
   const createdViewport = !viewport;
   if (!viewport) {
@@ -2229,7 +2235,8 @@ export default function Page() {
       setIsSmallMobile(w < 415);
       // Scale down the desktop layout on landscape phones so everything fits proportionally.
       // Target effective content width: 1050px. Clamp zoom to [0.72, 1].
-      const isLandscapePhone = h < 500 && w < 1100 && navigator.maxTouchPoints > 0;
+      // The iPhone app is portrait-only (iPads aren't phones), so this website scaling never applies there.
+      const isLandscapePhone = !isNativeApp && h < 500 && w < 1100 && navigator.maxTouchPoints > 0;
       setIsLandscapePhone(isLandscapePhone);
       setLandscapeZoom(isLandscapePhone ? Math.max(0.72, Math.min(1, w / 1100)) : 1);
     };
