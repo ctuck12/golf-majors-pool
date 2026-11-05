@@ -1,5 +1,8 @@
 'use client';
 
+// Inside the iPhone app, sends this page's /api calls to the live site (no-op on the web).
+import '../native-bridge';
+
 import { useEffect, useRef, useState } from 'react';
 import { parseSpreadsheetFile, rowsToText } from '@/app/lib/spreadsheet-client';
 import { getHeaderTournament, KNOCKOUT_TAB_LOGOS } from '@/app/lib/tournament-logo';
