@@ -1,7 +1,7 @@
 'use client';
 
 // Inside the iPhone app, sends this page's /api calls to the live site (no-op on the web).
-import { isNativeApp } from './native-bridge';
+import { isNativeApp, settleViewAfterKeyboard } from './native-bridge';
 
 import { Fragment, startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { LeagueGate, LeagueModal, type LeagueSummary } from './league-panel';
@@ -2739,6 +2739,7 @@ export default function Page() {
 
       upsertStoredAccount(payload, registerForm.password);
       applySession(payload);
+      settleViewAfterKeyboard();
       setRegisterForm({ displayName: '', email: '', password: '', joinCode: '' });
       setPendingJoinCode('');
     } catch (err) {
@@ -2761,6 +2762,7 @@ export default function Page() {
 
       upsertStoredAccount(payload, loginForm.password);
       applySession(payload);
+      settleViewAfterKeyboard();
       setLoginForm({ email: '', password: '' });
     } catch (err) {
       const fallbackAccount = findStoredAccount(loginForm.email, loginForm.password);
@@ -2770,6 +2772,7 @@ export default function Page() {
           const restored = await restoreServerSessionFromStoredAccount(fallbackAccount);
           upsertStoredAccount(restored, fallbackAccount.password);
           applySession(restored);
+          settleViewAfterKeyboard();
           setLoginForm({ email: '', password: '' });
         } catch {
           setAuthError(err instanceof Error ? err.message : 'Unable to sign in.');
@@ -5255,7 +5258,7 @@ export default function Page() {
             displayName={sessionUser.displayName}
             canCreateLeague={sessionFlags.canCreateLeague}
             initialJoinCode={pendingJoinCode}
-            onSession={(payload) => { applySession(payload); setPendingJoinCode(''); }}
+            onSession={(payload) => { applySession(payload); setPendingJoinCode(''); settleViewAfterKeyboard(); }}
             onSignOut={() => void handleLogout()}
           />
         ) : null}
