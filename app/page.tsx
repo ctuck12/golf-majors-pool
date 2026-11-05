@@ -1,5 +1,8 @@
 'use client';
 
+// Inside the iPhone app, sends this page's /api calls to the live site (no-op on the web).
+import './native-bridge';
+
 import { Fragment, startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { LeagueGate, LeagueModal, type LeagueSummary } from './league-panel';
 import { PLAYER_POOL_WITH_PGA_IDS } from '@/app/lib/player-pool';

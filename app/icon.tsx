@@ -2,6 +2,8 @@ import { ImageResponse } from 'next/og'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 
+// The icon never changes, so it's built once (also required for the iPhone app's static build).
+export const dynamic = 'force-static'
 export const size = { width: 32, height: 32 }
 export const contentType = 'image/png'
 

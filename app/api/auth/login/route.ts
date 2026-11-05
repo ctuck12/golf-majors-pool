@@ -26,7 +26,9 @@ export async function POST(request: Request) {
     });
 
     const session = await getSessionContext(token);
-    return NextResponse.json(session);
+    // The iPhone app can't read the cookie, so it gets the token in the body (it asks with this header).
+    const sessionToken = request.headers.get('x-client-platform') === 'native' ? token : undefined;
+    return NextResponse.json({ ...session, sessionToken });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unable to sign in.' },
