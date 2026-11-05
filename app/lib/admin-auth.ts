@@ -1,11 +1,8 @@
 import { cookies } from 'next/headers';
-import { getSessionContext, SESSION_COOKIE_NAME } from './pool-store';
-
-const COMMISSIONER_EMAIL = 'ctuck12@gmail.com';
-const COMMISSIONER_DISPLAY_NAME = 'Clayton Tucker';
+import { getSessionContext, isAppAdmin, SESSION_COOKIE_NAME } from './pool-store';
 
 // Gate for the admin / debug / probe endpoints. Allowed when the caller presents
-// `Authorization: Bearer <CRON_SECRET>` (scripts, curl) or is signed in as the commissioner
+// `Authorization: Bearer <CRON_SECRET>` (scripts, curl) or is signed in as the app admin
 // (hitting the URL in a browser). Returns a 401 response to send back, or null when allowed.
 export async function requireAdminRequest(request: Request): Promise<Response | null> {
   const cronSecret = process.env.CRON_SECRET;
@@ -14,12 +11,9 @@ export async function requireAdminRequest(request: Request): Promise<Response | 
   }
 
   const cookieStore = await cookies();
-  const session = await getSessionContext(cookieStore.get(SESSION_COOKIE_NAME)?.value);
-  if (
-    session.user &&
-    session.user.email.trim().toLowerCase() === COMMISSIONER_EMAIL &&
-    session.user.displayName.trim() === COMMISSIONER_DISPLAY_NAME
-  ) {
+  // A session lookup that fails (e.g. user-data tables not created yet) just means "not signed in".
+  const session = await getSessionContext(cookieStore.get(SESSION_COOKIE_NAME)?.value).catch(() => null);
+  if (isAppAdmin(session?.user)) {
     return null;
   }
 
