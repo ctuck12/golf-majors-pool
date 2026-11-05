@@ -11,6 +11,29 @@ const TOKEN_KEY = 'gmp-native-session-token';
 
 export const isNativeApp = typeof window !== 'undefined' && Capacitor.isNativePlatform();
 
+// iOS slides the page up to keep a focused text box above the keyboard, and inside an app it
+// doesn't always slide it back when the keyboard closes: the page is left shifted up (header
+// under the status bar). Call after a form is done (e.g. signed in): closes the keyboard, then
+// returns to the top once the keyboard has finished animating away.
+export function settleViewAfterKeyboard() {
+  if (!isNativeApp) return;
+  const active = document.activeElement;
+  if (active instanceof HTMLElement) active.blur();
+  window.setTimeout(() => window.scrollTo({ top: 0, left: 0, behavior: 'auto' }), 350);
+}
+
+// Whenever the keyboard closes anywhere (focus leaves all text boxes), nudge the page so iOS
+// re-settles it in place instead of leaving it shifted.
+function installKeyboardSettle() {
+  document.addEventListener('focusout', () => {
+    window.setTimeout(() => {
+      const active = document.activeElement;
+      const typing = active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement || active instanceof HTMLSelectElement;
+      if (!typing) window.scrollTo({ top: window.scrollY, left: 0, behavior: 'auto' });
+    }, 350);
+  });
+}
+
 function readToken() {
   try {
     return window.localStorage.getItem(TOKEN_KEY);
@@ -59,6 +82,7 @@ function installApiBridge() {
 
 if (isNativeApp) {
   installApiBridge();
+  installKeyboardSettle();
   // Room for the notch and home bar (see .native-app in globals.css).
   document.documentElement.classList.add('native-app');
   // Tell Capgo this build started fine, so a live update that breaks the app gets rolled back.
