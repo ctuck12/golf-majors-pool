@@ -5,6 +5,7 @@ import { isNativeApp, settleViewAfterKeyboard } from './native-bridge';
 
 import { Fragment, startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { LeagueGate, LeagueModal, type LeagueSummary } from './league-panel';
+import { PaywallModal, type PaywallMode } from './paywall';
 import { PLAYER_POOL_WITH_PGA_IDS } from '@/app/lib/player-pool';
 import { PLAYER_ESPN_IDS } from '@/app/lib/player-espn-ids';
 import { TOURNAMENT_META } from '@/app/lib/tournament-config';
@@ -919,6 +920,9 @@ type PoolInfo = {
   role?: 'member' | 'commissioner';
   plan?: string;
   memberLimit?: number | null;
+  paidSeason?: number | null;
+  seasonExpired?: boolean;
+  memberCount?: number;
   commissioners?: { id: string; name: string; email: string }[];
 };
 
@@ -1913,6 +1917,7 @@ export default function Page() {
   const [pool, setPool] = useState<PoolInfo | null>(null);
   const [sessionFlags, setSessionFlags] = useState<SessionFlags>(NO_SESSION_FLAGS);
   const [leagueModalOpen, setLeagueModalOpen] = useState(false);
+  const [paywallMode, setPaywallMode] = useState<PaywallMode | null>(null);
   // A league code from an invite link (/?join=CODE), kept until the user joins or dismisses it.
   const [pendingJoinCode, setPendingJoinCode] = useState('');
   const [poolEntries, setPoolEntries] = useState<PoolEntry[]>([]);
@@ -5260,8 +5265,18 @@ export default function Page() {
             initialJoinCode={pendingJoinCode}
             onSession={(payload) => { applySession(payload); setPendingJoinCode(''); settleViewAfterKeyboard(); }}
             onSignOut={() => void handleLogout()}
+            onOpenPaywall={setPaywallMode}
           />
         ) : null}
+
+        <PaywallModal<SessionPayload>
+          key={paywallMode ? JSON.stringify(paywallMode) : 'closed'}
+          open={paywallMode !== null && !!sessionUser}
+          mode={paywallMode}
+          userId={sessionUser?.id ?? ''}
+          onClose={() => setPaywallMode(null)}
+          onSession={(payload) => { applySession(payload); setPendingJoinCode(''); setMainTab('Standings'); }}
+        />
 
         <LeagueModal<SessionPayload>
           open={leagueModalOpen && !!sessionUser}
@@ -5273,6 +5288,16 @@ export default function Page() {
           canCreateLeague={sessionFlags.canCreateLeague}
           initialJoinCode={pendingJoinCode}
           onSession={(payload) => { applySession(payload); setPendingJoinCode(''); setMainTab('Standings'); }}
+          activePlan={pool ? {
+            id: pool.id,
+            name: pool.name,
+            plan: pool.plan ?? 'founder',
+            memberLimit: pool.memberLimit ?? null,
+            memberCount: pool.memberCount ?? poolEntries.length,
+            paidSeason: pool.paidSeason ?? null,
+            seasonExpired: pool.seasonExpired ?? false,
+          } : null}
+          onOpenPaywall={setPaywallMode}
           onAccountDeleted={() => {
             setSessionUser(null);
             setPool(null);
@@ -5286,6 +5311,22 @@ export default function Page() {
 
         {sessionUser && pool ? (
         <>
+        {/* A league whose season pass lapsed: members can't join or make picks until it's renewed. */}
+        {pool.seasonExpired ? (
+          <div style={{ marginTop: isMobile ? 10 : 16, borderRadius: 16, border: '1px solid #e7a3a3', background: '#fbf1f1', padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ fontSize: 14, color: '#a61b1b', fontWeight: 700, lineHeight: 1.4 }}>
+              {pool.name}&apos;s season pass has expired. {canManagePool ? 'Renew it to reopen picks and joining.' : 'Your commissioner can renew it in the app.'}
+            </div>
+            {canManagePool ? (
+              <button
+                onClick={() => setPaywallMode({ kind: 'renew', leagueId: pool.id, leagueName: pool.name, memberCount: pool.memberCount ?? poolEntries.length })}
+                style={{ border: 'none', borderRadius: 12, padding: '9px 14px', background: '#173b63', color: '#fff', fontWeight: 800, cursor: 'pointer' }}
+              >
+                Renew
+              </button>
+            ) : null}
+          </div>
+        ) : null}
         {/* Which league you're looking at, once there's more than one to tell apart. */}
         {sessionFlags.leagues.length > 1 || !isFounderPool ? (
           <div style={{ marginTop: isMobile ? 10 : 16, display: 'flex', justifyContent: 'center' }}>

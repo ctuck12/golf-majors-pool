@@ -52,6 +52,12 @@ export async function POST(request: Request) {
     // Server-side lock: the commissioner's manual toggle, or the pool lock time
     // (manual override or the built-in schedule) having passed.
     const tournamentId = body.tournamentId;
+    if (session.pool?.seasonExpired) {
+      return NextResponse.json(
+        { error: "This league's season pass has expired. Your commissioner can renew it in the app." },
+        { status: 403 },
+      );
+    }
     if (session.pool?.lineupLocks?.[tournamentId] === true) {
       return NextResponse.json({ error: 'Picks are locked for this tournament.' }, { status: 403 });
     }

@@ -53,6 +53,10 @@ export type SessionPool = Omit<PublicPool, 'winnerScores'> & {
   role: LeagueRole;
   plan: string;
   memberLimit: number | null;
+  // Season the league is paid through (null for founder leagues) and whether that has lapsed.
+  paidSeason: number | null;
+  seasonExpired: boolean;
+  memberCount: number;
   commissioners: LeagueContact[];
 };
 
@@ -89,16 +93,6 @@ export type MemberUpdates = {
   rosters?: Partial<Record<TournamentId, unknown>>;
   tieBreaks?: Partial<Record<TournamentId, number | null>>;
 };
-
-// Season pass per league, priced by member count (leagues.plan / leagues.member_limit).
-// 'founder' leagues (the ones that existed before paid plans) are free with no cap.
-export const LEAGUE_PLANS = [
-  { id: 'six', memberLimit: 6, priceUsd: 8.99 },
-  { id: 'small', memberLimit: 12, priceUsd: 24.99 },
-  { id: 'standard', memberLimit: 25, priceUsd: 49.99 },
-  { id: 'large', memberLimit: 50, priceUsd: 79.99 },
-  { id: 'xl', memberLimit: 100, priceUsd: 129.99 },
-] as const;
 
 export const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const MAX_PLAYER_ID = Math.max(...PLAYER_POOL_WITH_PGA_IDS.map((player) => player.id));
