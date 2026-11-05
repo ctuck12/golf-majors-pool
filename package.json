@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "build:mobile": "node scripts/build-mobile.mjs"
+    "build:mobile": "node scripts/build-mobile.mjs",
+    "update:app": "node scripts/update-app.mjs"
   },
   "dependencies": {
     "@capacitor/core": "^8.6.0",
@@ -22,6 +23,7 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^8.6.0",
+    "@capgo/cli": "^8.99.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
