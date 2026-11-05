@@ -1,8 +1,9 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { db, type Sql, type TxSql } from './db';
 import {
-  DEFAULT_POOL_ID,
+  canCreateLeagues,
   EMPTY_SESSION,
+  isAppAdmin,
   hashPassword,
   maskRostersFor,
   normalizeEmail,
@@ -12,6 +13,7 @@ import {
   SESSION_TTL_MS,
   TOURNAMENT_IDS,
   type LeagueRole,
+  type LeagueSummary,
   type MemberUpdates,
   type PublicPool,
   type PublicPoolEntry,
@@ -41,9 +43,12 @@ type LeagueRow = {
   id: string;
   name: string;
   join_code: string;
+  plan: string;
   member_limit: number | null;
   role: LeagueRole;
 };
+
+type MemberRow = UserRow & { role: LeagueRole };
 
 type RosterData = {
   rosters: Partial<Record<TournamentId, number[]>>;
@@ -85,7 +90,7 @@ function toPublicUser(user: UserRow, poolIds: string[], data: RosterData): Publi
 
 async function findActiveLeague(sql: AnySql, userId: string): Promise<LeagueRow | null> {
   const [league] = await sql<LeagueRow[]>`
-    select l.id, l.name, l.join_code, l.member_limit, m.role
+    select l.id, l.name, l.join_code, l.plan, l.member_limit, m.role
     from league_members m
     join leagues l on l.id = m.league_id
     join users u on u.id = m.user_id
@@ -192,8 +197,8 @@ async function loadPoolIds(sql: AnySql, userIds: string[]) {
 }
 
 async function loadLeagueMembers(sql: AnySql, leagueId: string) {
-  return sql<UserRow[]>`
-    select u.id, u.email, u.display_name, u.password_hash, u.password_salt, u.created_at
+  return sql<MemberRow[]>`
+    select u.id, u.email, u.display_name, u.password_hash, u.password_salt, u.created_at, m.role
     from league_members m
     join users u on u.id = m.user_id
     where m.league_id = ${leagueId}
@@ -255,26 +260,32 @@ export async function registerUser(input: {
         throw new Error('An account with that email already exists.');
       }
 
+      // A league code is optional: without one the account starts in no league, and the app asks
+      // them to join one with a code or invite link (or create one, where allowed).
       const [league] = joinCode
         ? await sql<LeagueRow[]>`select id, name, join_code, member_limit from leagues where join_code = ${joinCode}`
-        : await sql<LeagueRow[]>`select id, name, join_code, member_limit from leagues where id = ${DEFAULT_POOL_ID}`;
+        : [];
 
-      if (!league) {
-        throw new Error(joinCode ? 'That pool join code was not recognized.' : 'Default pool was not found.');
+      if (joinCode && !league) {
+        throw new Error('That pool join code was not recognized.');
       }
 
-      await assertLeagueHasRoom(sql, league);
+      if (league) {
+        await assertLeagueHasRoom(sql, league);
+      }
 
       const id = randomBytes(12).toString('hex');
       const { password_hash, password_salt } = setPasswordFields(password);
       const [user] = await sql<UserRow[]>`
         insert into users (id, email, display_name, password_hash, password_salt, active_league_id)
-        values (${id}, ${email}, ${displayName}, ${password_hash}, ${password_salt}, ${league.id})
+        values (${id}, ${email}, ${displayName}, ${password_hash}, ${password_salt}, ${league?.id ?? null})
         returning id, email, display_name, password_hash, password_salt, created_at
       `;
-      await sql`insert into league_members (league_id, user_id) values (${league.id}, ${id})`;
+      if (league) {
+        await sql`insert into league_members (league_id, user_id) values (${league.id}, ${id})`;
+      }
 
-      return toPublicUser(user, [league.id], emptyRosterData());
+      return toPublicUser(user, league ? [league.id] : [], emptyRosterData());
     });
   } catch (error) {
     if ((error as { code?: string }).code === PG_UNIQUE_VIOLATION) {
@@ -340,10 +351,15 @@ export async function getSessionContext(token: string | undefined): Promise<Sess
     return EMPTY_SESSION;
   }
 
-  const league = await findActiveLeague(sql, user.id);
+  const [league, leagues] = await Promise.all([findActiveLeague(sql, user.id), loadLeagueSummaries(sql, user.id)]);
+  const userFlags = {
+    leagues,
+    isAppAdmin: isAppAdmin({ email: user.email, displayName: user.display_name }),
+    canCreateLeague: canCreateLeagues({ email: user.email, displayName: user.display_name }),
+  };
 
   if (!league) {
-    return { user: await publicUserInLeague(sql, user, null), pool: null, entries: [] };
+    return { user: await publicUserInLeague(sql, user, null), pool: null, entries: [], ...userFlags };
   }
 
   const [pool, members] = await Promise.all([loadPool(sql, league), loadLeagueMembers(sql, league.id)]);
@@ -380,9 +396,24 @@ export async function getSessionContext(token: string | undefined): Promise<Sess
       picksOpen: pool.picksOpen,
       payouts: pool.payouts,
       role: league.role,
+      plan: league.plan,
+      memberLimit: league.member_limit,
+      commissioners: members
+        .filter((member) => member.role === 'commissioner')
+        .map((member) => ({ id: member.id, name: member.display_name, email: member.email })),
     },
     entries,
+    ...userFlags,
   };
+}
+
+async function loadLeagueSummaries(sql: AnySql, userId: string): Promise<LeagueSummary[]> {
+  return sql<LeagueSummary[]>`
+    select l.id, l.name, m.role
+    from league_members m join leagues l on l.id = m.league_id
+    where m.user_id = ${userId}
+    order by m.joined_at asc, l.id asc
+  `;
 }
 
 export async function joinPoolForUser(userId: string, joinCode: string) {
@@ -648,6 +679,15 @@ export async function deletePoolMember(requestingUserId: string, memberId: strin
       throw new Error('Pool member was not found.');
     }
 
+    const [{ commissioners, memberIsCommissioner }] = await sql<{ commissioners: number; memberIsCommissioner: boolean }[]>`
+      select
+        (select count(*)::int from league_members where league_id = ${league.id} and role = 'commissioner') as commissioners,
+        exists (select 1 from league_members where league_id = ${league.id} and user_id = ${memberId} and role = 'commissioner') as "memberIsCommissioner"
+    `;
+    if (memberIsCommissioner && commissioners <= 1) {
+      throw new Error('A league needs at least one commissioner. Make someone else commissioner first.');
+    }
+
     await sql`delete from league_members where league_id = ${league.id} and user_id = ${memberId}`;
     await sql`
       delete from users where id = ${memberId}
@@ -725,4 +765,131 @@ export async function updatePoolWinnerScore(requestingUserId: string, tournament
     update league_tournaments set winner_score = ${score}
     where league_id = ${leagueId} and tournament_id = ${tournamentId}
   `);
+}
+
+// League join codes: 6 characters with no look-alikes (0/O, 1/I/L), so they're easy to read out.
+const JOIN_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+
+function randomJoinCode() {
+  const bytes = randomBytes(6);
+  return Array.from(bytes, (byte) => JOIN_CODE_ALPHABET[byte % JOIN_CODE_ALPHABET.length]).join('');
+}
+
+// Creates a league with the user as its commissioner and makes it their active league.
+export async function createLeague(
+  userId: string,
+  input: { name: string; plan: string; memberLimit: number | null },
+) {
+  const name = input.name.trim();
+  if (name.length < 3 || name.length > 60) {
+    throw new Error('League name must be 3 to 60 characters.');
+  }
+
+  return db().begin(async (sql) => {
+    const [user] = await sql`select id from users where id = ${userId}`;
+    if (!user) {
+      throw new Error('User account was not found.');
+    }
+
+    let joinCode = randomJoinCode();
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const [taken] = await sql`select 1 from leagues where join_code = ${joinCode}`;
+      if (!taken) break;
+      joinCode = randomJoinCode();
+    }
+
+    const id = randomBytes(12).toString('hex');
+    await sql`
+      insert into leagues (id, name, join_code, plan, member_limit, created_by)
+      values (${id}, ${name}, ${joinCode}, ${input.plan}, ${input.memberLimit}, ${userId})
+    `;
+    await sql`insert into league_members (league_id, user_id, role) values (${id}, ${userId}, 'commissioner')`;
+    await sql`update users set active_league_id = ${id} where id = ${userId}`;
+    return { id, name, joinCode };
+  });
+}
+
+export async function switchActiveLeague(userId: string, leagueId: string) {
+  const sql = db();
+  const [membership] = await sql`
+    select 1 from league_members where league_id = ${leagueId} and user_id = ${userId}
+  `;
+  if (!membership) {
+    throw new Error('You are not a member of that league.');
+  }
+  await sql`update users set active_league_id = ${leagueId} where id = ${userId}`;
+}
+
+// Promotes or demotes a member of the requester's active league. A league always keeps at
+// least one commissioner.
+export async function setMemberRole(requestingUserId: string, memberId: string, role: LeagueRole) {
+  if (role !== 'member' && role !== 'commissioner') {
+    throw new Error('Unknown role.');
+  }
+
+  await db().begin(async (sql) => {
+    const league = await requireActiveLeague(sql, requestingUserId);
+    const [membership] = await sql<{ role: LeagueRole }[]>`
+      select role from league_members where league_id = ${league.id} and user_id = ${memberId} for update
+    `;
+    if (!membership) {
+      throw new Error('Pool member was not found.');
+    }
+
+    if (role === 'member' && membership.role === 'commissioner') {
+      const [{ count }] = await sql<{ count: number }[]>`
+        select count(*)::int as count from league_members
+        where league_id = ${league.id} and role = 'commissioner'
+      `;
+      if (count <= 1) {
+        throw new Error('A league needs at least one commissioner. Make someone else commissioner first.');
+      }
+    }
+
+    await sql`update league_members set role = ${role} where league_id = ${league.id} and user_id = ${memberId}`;
+  });
+}
+
+// Deletes the user's account (Apple requires this in-app). A league they solely run is deleted
+// with them when they're its only member; otherwise they must hand it to another commissioner first.
+export async function deleteOwnAccount(userId: string) {
+  await db().begin(async (sql) => {
+    const soleLeagues = await sql<{ id: string; name: string; members: number }[]>`
+      select l.id, l.name,
+        (select count(*)::int from league_members x where x.league_id = l.id) as members
+      from league_members m
+      join leagues l on l.id = m.league_id
+      where m.user_id = ${userId} and m.role = 'commissioner'
+        and not exists (
+          select 1 from league_members o
+          where o.league_id = l.id and o.role = 'commissioner' and o.user_id <> ${userId}
+        )
+    `;
+
+    const blocking = soleLeagues.find((league) => league.members > 1);
+    if (blocking) {
+      throw new Error(`You're the only commissioner of ${blocking.name}. Make another member commissioner first.`);
+    }
+
+    for (const league of soleLeagues) {
+      await sql`delete from leagues where id = ${league.id}`;
+    }
+    await sql`delete from users where id = ${userId}`;
+  });
+}
+
+// Gives the requester's active league a fresh join code. The old code and any invite links built
+// from it stop working; people already in the league are unaffected.
+export async function regenerateJoinCode(requestingUserId: string) {
+  return db().begin(async (sql) => {
+    const league = await requireActiveLeague(sql, requestingUserId);
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const joinCode = randomJoinCode();
+      const [taken] = await sql`select 1 from leagues where join_code = ${joinCode}`;
+      if (taken) continue;
+      await sql`update leagues set join_code = ${joinCode} where id = ${league.id}`;
+      return joinCode;
+    }
+    throw new Error('Could not generate a new code. Please try again.');
+  });
 }

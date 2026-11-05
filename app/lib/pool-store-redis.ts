@@ -310,6 +310,12 @@ export async function getSessionContext(token: string | undefined): Promise<Sess
         }))
     : [];
 
+  const commissioners = activePool
+    ? database.users
+        .filter((item) => activePool.memberUserIds.includes(item.id) && isAppAdmin(item))
+        .map((item) => ({ id: item.id, name: item.displayName, email: item.email }))
+    : [];
+
   return {
     user: toPublicUser(user),
     pool: activePool
@@ -321,10 +327,37 @@ export async function getSessionContext(token: string | undefined): Promise<Sess
           picksOpen: activePool.picksOpen,
           payouts: activePool.payouts,
           role: isCommissioner ? 'commissioner' : 'member',
+          plan: 'founder',
+          memberLimit: null,
+          commissioners,
         }
       : null,
     entries,
+    leagues: database.pools
+      .filter((pool) => user.poolIds.includes(pool.id))
+      .map((pool) => ({ id: pool.id, name: pool.name, role: isCommissioner ? 'commissioner' as const : 'member' as const })),
+    isAppAdmin: isCommissioner,
+    // Creating and managing multiple leagues needs the Postgres backend.
+    canCreateLeague: false,
   };
+}
+
+const NEEDS_POSTGRES = 'Leagues need the Postgres backend (USER_DATA_BACKEND=postgres).';
+
+export async function createLeague(): Promise<never> {
+  throw new Error(NEEDS_POSTGRES);
+}
+
+export async function switchActiveLeague(): Promise<never> {
+  throw new Error(NEEDS_POSTGRES);
+}
+
+export async function setMemberRole(): Promise<never> {
+  throw new Error(NEEDS_POSTGRES);
+}
+
+export async function deleteOwnAccount(): Promise<never> {
+  throw new Error(NEEDS_POSTGRES);
 }
 
 export async function joinPoolForUser(userId: string, joinCode: string) {
@@ -646,4 +679,8 @@ export async function updatePoolWinnerScore(requestingUserId: string, tournament
   activePool.winnerScores[tournamentId] = score;
   await writeDatabase(database);
   return toPublicPool(activePool);
+}
+
+export async function regenerateJoinCode(): Promise<never> {
+  throw new Error(NEEDS_POSTGRES);
 }

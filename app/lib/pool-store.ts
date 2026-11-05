@@ -1,16 +1,19 @@
 import { createHash, randomBytes } from 'node:crypto';
 import * as postgresStore from './pool-store-postgres';
 import * as redisStore from './pool-store-redis';
-import { normalizeEmail, type MemberUpdates, type TournamentId, type TournamentPayouts } from './pool-store-shared';
+import { normalizeEmail, type LeagueRole, type MemberUpdates, type TournamentId, type TournamentPayouts } from './pool-store-shared';
 import redis from './redis';
 
 export {
+  canCreateLeagues,
   DEFAULT_POOL_ID,
   DEFAULT_POOL_JOIN_CODE,
   isAppAdmin,
   SESSION_COOKIE_NAME,
   TOURNAMENT_IDS,
+  type LeagueContact,
   type LeagueRole,
+  type LeagueSummary,
   type PublicPool,
   type PublicPoolEntry,
   type PublicUser,
@@ -57,6 +60,18 @@ export const getSelectedPlayerIdsForTournament = (tournamentId: TournamentId) =>
   store().getSelectedPlayerIdsForTournament(tournamentId);
 export const updatePoolPayouts = (requestingUserId: string, tournamentId: TournamentId, payouts: TournamentPayouts) =>
   store().updatePoolPayouts(requestingUserId, tournamentId, payouts);
+export const createLeague = (userId: string, input: { name: string; plan: string; memberLimit: number | null }) =>
+  userDataBackend() === 'postgres' ? postgresStore.createLeague(userId, input) : redisStore.createLeague();
+export const switchActiveLeague = (userId: string, leagueId: string) =>
+  userDataBackend() === 'postgres' ? postgresStore.switchActiveLeague(userId, leagueId) : redisStore.switchActiveLeague();
+export const setMemberRole = (requestingUserId: string, memberId: string, role: LeagueRole) =>
+  userDataBackend() === 'postgres'
+    ? postgresStore.setMemberRole(requestingUserId, memberId, role)
+    : redisStore.setMemberRole();
+export const deleteOwnAccount = (userId: string) =>
+  userDataBackend() === 'postgres' ? postgresStore.deleteOwnAccount(userId) : redisStore.deleteOwnAccount();
+export const regenerateJoinCode = (requestingUserId: string) =>
+  userDataBackend() === 'postgres' ? postgresStore.regenerateJoinCode(requestingUserId) : redisStore.regenerateJoinCode();
 export const updatePoolWinnerScore = (requestingUserId: string, tournamentId: TournamentId, score: number) =>
   store().updatePoolWinnerScore(requestingUserId, tournamentId, score);
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { Fragment, startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { LeagueGate, LeagueModal, type LeagueSummary } from './league-panel';
 import { PLAYER_POOL_WITH_PGA_IDS } from '@/app/lib/player-pool';
 import { PLAYER_ESPN_IDS } from '@/app/lib/player-espn-ids';
 import { TOURNAMENT_META } from '@/app/lib/tournament-config';
@@ -63,7 +64,10 @@ const DEFAULT_JOIN_CODE = 'MAJORS2026';
 const COMMISSIONER_EMAIL = 'ctuck12@gmail.com';
 const COMMISSIONER_DISPLAY_NAME = 'Clayton Tucker';
 // Set to true to re-enable the self-serve registration option on the login screen
-const REGISTRATION_OPEN = false;
+const REGISTRATION_OPEN = true;
+// The original pool: free for life, and home to a few pool-specific touches (contact card, The
+// Players history) that other leagues don't get.
+const FOUNDER_POOL_ID = 'golf-majors-pool';
 
 const TOURNAMENTS = [
   {
@@ -909,6 +913,10 @@ type PoolInfo = {
   picksOpen: Partial<Record<TournamentId, boolean>>;
   payouts: Partial<Record<TournamentId, { first: number; second: number; third: number }>>;
   winnerScores: Partial<Record<TournamentId, number>>;
+  role?: 'member' | 'commissioner';
+  plan?: string;
+  memberLimit?: number | null;
+  commissioners?: { id: string; name: string; email: string }[];
 };
 
 type PoolEntry = {
@@ -955,8 +963,14 @@ type SessionPayload = {
   user: AuthUser | null;
   pool: PoolInfo | null;
   entries: PoolEntry[];
+  leagues?: LeagueSummary[];
+  isAppAdmin?: boolean;
+  canCreateLeague?: boolean;
   error?: string;
 };
+
+type SessionFlags = { leagues: LeagueSummary[]; isAppAdmin: boolean; canCreateLeague: boolean };
+const NO_SESSION_FLAGS: SessionFlags = { leagues: [], isAppAdmin: false, canCreateLeague: false };
 
 type LocalStoredAccount = {
   email: string;
@@ -1888,6 +1902,10 @@ export default function Page() {
   };
   const [sessionUser, setSessionUser] = useState<AuthUser | null>(null);
   const [pool, setPool] = useState<PoolInfo | null>(null);
+  const [sessionFlags, setSessionFlags] = useState<SessionFlags>(NO_SESSION_FLAGS);
+  const [leagueModalOpen, setLeagueModalOpen] = useState(false);
+  // A league code from an invite link (/?join=CODE), kept until the user joins or dismisses it.
+  const [pendingJoinCode, setPendingJoinCode] = useState('');
   const [poolEntries, setPoolEntries] = useState<PoolEntry[]>([]);
   const [sessionLoading, setSessionLoading] = useState(true);
   const [authBusy, setAuthBusy] = useState(false);
@@ -1922,7 +1940,23 @@ export default function Page() {
     displayName: '',
     email: '',
     password: '',
+    joinCode: '',
   });
+
+  // Invite links look like /?join=CODE: signed out, it opens sign-up with the code filled in;
+  // signed in, it opens the Leagues panel ready to join. The code is dropped from the address bar.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const code = url.searchParams.get('join');
+    if (!code) return;
+    url.searchParams.delete('join');
+    window.history.replaceState(null, '', url.pathname + url.search + url.hash);
+    const normalized = code.trim().toUpperCase();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPendingJoinCode(normalized);
+    setRegisterForm((form) => ({ ...form, joinCode: normalized }));
+    setAuthMode('register');
+  }, []);
   const [commissionerMembers, setCommissionerMembers] = useState<CommissionerMember[]>([]);
   // Member id whose submitted roster is shown in the commissioner-hub roster popup.
   const [submittedRosterMemberId, setSubmittedRosterMemberId] = useState<string | null>(null);
@@ -2058,7 +2092,18 @@ export default function Page() {
   });
 
   const tournament = TOURNAMENTS.find((item) => item.id === selectedTournament) ?? TOURNAMENTS[0];
-  const canManagePool = canAccessCommissionerConsole(sessionUser);
+  // The app admin runs the app-wide tools for every league; a league's commissioners run its league
+  // tools (members, picks open/lock, payouts, tiebreak).
+  const isAppAdmin = sessionFlags.isAppAdmin || canAccessCommissionerConsole(sessionUser);
+  const canManagePool = isAppAdmin || pool?.role === 'commissioner';
+  const isFounderPool = pool?.id === FOUNDER_POOL_ID;
+
+  useEffect(() => {
+    if (sessionUser && pool && pendingJoinCode) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLeagueModalOpen(true);
+    }
+  }, [sessionUser, pool, pendingJoinCode]);
   const tournamentCardStatuses = getTournamentCardStatuses(new Date(nowTick));
   // Reports privacy gate: another member's picks for a tournament are only revealed once that
   // tournament has actually started (its status is IN PROGRESS) or concluded (LOCKED). While it's
@@ -2400,7 +2445,7 @@ export default function Page() {
     let isCommish = false;
     try {
       const snap = readStoredSession();
-      isCommish = !!snap?.user && canAccessCommissionerConsole(snap.user);
+      isCommish = !!snap?.user && (canAccessCommissionerConsole(snap.user) || snap.pool?.role === 'commissioner');
     } catch { isCommish = false; }
     if (!isCommish) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -2622,6 +2667,14 @@ export default function Page() {
     setSessionUser(payload.user);
     setPool(payload.pool);
     setPoolEntries(payload.entries);
+    // Older stored sessions predate these fields; the next server refresh fills them in.
+    if (payload.leagues) {
+      setSessionFlags({
+        leagues: payload.leagues,
+        isAppAdmin: payload.isAppAdmin ?? false,
+        canCreateLeague: payload.canCreateLeague ?? false,
+      });
+    }
     if (payload.user) {
       writeStoredSession(payload);
       upsertStoredAccount(payload);
@@ -2666,7 +2719,8 @@ export default function Page() {
 
       upsertStoredAccount(payload, registerForm.password);
       applySession(payload);
-      setRegisterForm({ displayName: '', email: '', password: '' });
+      setRegisterForm({ displayName: '', email: '', password: '', joinCode: '' });
+      setPendingJoinCode('');
     } catch (err) {
       setAuthError(err instanceof Error ? err.message : 'Unable to create account.');
     } finally {
@@ -2717,6 +2771,8 @@ export default function Page() {
       setSessionUser(null);
       setPool(null);
       setPoolEntries([]);
+      setSessionFlags(NO_SESSION_FLAGS);
+      setLeagueModalOpen(false);
       setCommissionerMembers([]);
       setSelectedCommissionerMemberId(null);
       setAccountMenuOpen(false);
@@ -3084,6 +3140,29 @@ export default function Page() {
       setCommissionerSuccess('Member deleted.');
     } catch (err) {
       setCommissionerError(err instanceof Error ? err.message : 'Unable to delete member.');
+    } finally {
+      setCommissionerBusy(false);
+    }
+  };
+
+  // Promote a member to commissioner, or hand the role back. Refreshes the session so the
+  // league's commissioner list (and your own access, if you demoted yourself) stays current.
+  const handleToggleCommissionerRole = async (memberId: string, makeCommissioner: boolean) => {
+    setCommissionerBusy(true);
+    setCommissionerError('');
+    setCommissionerSuccess('');
+
+    try {
+      await readJson<{ member: AuthUser }>(`/api/commissioner/members/${memberId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: makeCommissioner ? 'commissioner' : 'member' }),
+      });
+      await refreshCurrentSession();
+      setCommissionerMemberModalOpen(false);
+      setCommissionerSuccess(makeCommissioner ? 'Member is now a commissioner.' : 'Commissioner role removed.');
+    } catch (err) {
+      setCommissionerError(err instanceof Error ? err.message : 'Unable to change the role.');
     } finally {
       setCommissionerBusy(false);
     }
@@ -3798,8 +3877,9 @@ export default function Page() {
 
   const standings: StandingEntry[] = liveStandingEntries
     .map((entry) => {
-      const isPlayersTab = selectedTournament === 'players';
-      const isCommissioner = entry.name === COMMISSIONER_DISPLAY_NAME;
+      // Founder-pool history: on The Players only the commissioner's entry counted that season.
+      const isPlayersTab = isFounderPool && selectedTournament === 'players';
+      const isCommissioner = isFounderPool && entry.name === COMMISSIONER_DISPLAY_NAME;
 
       // For The Players tab: zero out everyone except Clayton Tucker
       if (isPlayersTab && !isCommissioner) {
@@ -4507,7 +4587,8 @@ export default function Page() {
             />
           </div>
 
-          {sessionUser ? (
+          {/* No tabs until the user is in a league (the join gate is all there is to do). */}
+          {sessionUser && (pool || sessionLoading) ? (
             <div
               style={{
                 marginTop: 0,
@@ -4701,6 +4782,27 @@ export default function Page() {
                     </div>
                   ) : null}
                   <div style={{ marginTop: isMobile ? 10 : 14, display: 'flex', gap: 8 }}>
+                    {accountPreferencesView === 'root' ? (
+                      <button
+                        onClick={() => {
+                          setAccountMenuOpen(false);
+                          setLeagueModalOpen(true);
+                        }}
+                        style={{
+                          flex: 1,
+                          minWidth: 0,
+                          border: '1px solid #d7e0e8',
+                          borderRadius: 12,
+                          padding: '12px 14px',
+                          background: '#fff',
+                          color: '#0f1720',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Leagues
+                      </button>
+                    ) : null}
                     {accountPreferencesView === 'root' ? (
                       <button
                         onClick={() => {
@@ -4910,6 +5012,19 @@ export default function Page() {
                     {showAuthPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
+                {authMode === 'register' ? (
+                  <label style={{ display: 'grid', gap: 6 }}>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: '#5b6b79' }}>League code (from your commissioner&apos;s invite)</span>
+                  <input
+                    value={registerForm.joinCode}
+                    onChange={(event) => setRegisterForm({ ...registerForm, joinCode: event.target.value.toUpperCase() })}
+                    placeholder="League code (optional)"
+                    autoCapitalize="characters"
+                    autoComplete="off"
+                    style={fieldStyle()}
+                  />
+                  </label>
+                ) : null}
                 <button
                   type="submit"
                   style={{
@@ -5115,8 +5230,50 @@ export default function Page() {
           </div>
         ) : null}
 
-        {sessionUser ? (
+        {sessionUser && !pool && !sessionLoading ? (
+          <LeagueGate<SessionPayload>
+            displayName={sessionUser.displayName}
+            canCreateLeague={sessionFlags.canCreateLeague}
+            initialJoinCode={pendingJoinCode}
+            onSession={(payload) => { applySession(payload); setPendingJoinCode(''); }}
+            onSignOut={() => void handleLogout()}
+          />
+        ) : null}
+
+        <LeagueModal<SessionPayload>
+          open={leagueModalOpen && !!sessionUser}
+          onClose={() => { setLeagueModalOpen(false); setPendingJoinCode(''); }}
+          leagues={sessionFlags.leagues}
+          activeLeagueId={pool?.id ?? null}
+          activeJoinCode={pool?.joinCode ?? null}
+          isCommissioner={canManagePool}
+          canCreateLeague={sessionFlags.canCreateLeague}
+          initialJoinCode={pendingJoinCode}
+          onSession={(payload) => { applySession(payload); setPendingJoinCode(''); setMainTab('Standings'); }}
+          onAccountDeleted={() => {
+            setSessionUser(null);
+            setPool(null);
+            setPoolEntries([]);
+            setSessionFlags(NO_SESSION_FLAGS);
+            clearStoredSession();
+            clearStoredMainTab();
+            setMainTab('Standings');
+          }}
+        />
+
+        {sessionUser && pool ? (
         <>
+        {/* Which league you're looking at, once there's more than one to tell apart. */}
+        {sessionFlags.leagues.length > 1 || !isFounderPool ? (
+          <div style={{ marginTop: isMobile ? 10 : 16, display: 'flex', justifyContent: 'center' }}>
+            <button
+              onClick={() => setLeagueModalOpen(true)}
+              style={{ border: '1px solid #d7e0e8', borderRadius: 999, background: '#fff', padding: '6px 14px', fontSize: 13, fontWeight: 800, color: '#173b63', cursor: 'pointer', boxShadow: '0 4px 12px rgba(9,34,51,0.06)' }}
+            >
+              {pool.name}{sessionFlags.leagues.length > 1 ? ' · Switch' : ''}
+            </button>
+          </div>
+        ) : null}
         {mainTab === 'Standings' ? (
           <section
             style={{
@@ -7252,6 +7409,7 @@ export default function Page() {
                   <div style={{ padding: isMobile ? '12px 14px 0' : '16px 22px 0' }}>
                     <div style={{ fontSize: isMobile ? 11 : 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: headerSolid, marginBottom: isMobile ? 10 : 14 }}>Join the Pool</div>
                   </div>
+                  {isFounderPool ? (
                   <div style={{ padding: isMobile ? '0 14px 14px' : '0 22px 22px', display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: isMobile ? 6 : 10 }}>
                     <div style={{ border: selectedTournament === 'open' ? '1.5px solid #000000' : '1px solid #dce8f5', borderRadius: isMobile ? 10 : 12, padding: isMobile ? '8px 8px' : '10px 14px', background: selectedTournament === 'open' ? '#F4BC41' : '#f0f6ff' }}>
                       <div style={{ fontSize: 9, textTransform: 'uppercase', fontWeight: 800, color: selectedTournament === 'open' ? headerSolid : '#5b6b79', letterSpacing: '0.07em' }}>Entry Fee</div>
@@ -7271,6 +7429,19 @@ export default function Page() {
                       </div>
                     </div>
                   </div>
+                  ) : (
+                  <div style={{ padding: isMobile ? '0 14px 14px' : '0 22px 22px' }}>
+                    <div style={{ border: '1px solid #dce8f5', borderRadius: isMobile ? 10 : 12, padding: isMobile ? '8px 10px' : '10px 14px', background: '#fff' }}>
+                      <div style={{ fontSize: 9, textTransform: 'uppercase', fontWeight: 800, color: '#5b6b79', letterSpacing: '0.07em' }}>Questions? Ask your commissioner</div>
+                      {(pool?.commissioners ?? []).map((c) => (
+                        <div key={c.id} style={{ marginTop: 6 }}>
+                          <div style={{ fontSize: isMobile ? 13 : 15, fontWeight: 800, color: '#173b63' }}>{c.name}</div>
+                          <a href={`mailto:${c.email}`} style={{ fontSize: isMobile ? 12 : 13, color: '#3d95ce', textDecoration: 'none', fontWeight: 600 }}>{c.email}</a>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  )}
                 </section>
 
               </div>{/* end left column */}
@@ -7982,6 +8153,23 @@ export default function Page() {
                     <img src={TOURNAMENT_TAB_LOGOS[tournament.id]} alt={tournament.name} style={{ height: isMobile ? (tournament.id === 'players' ? 58 : 40) : (tournament.id === 'players' ? 76 : 56), maxWidth: isMobile ? (tournament.id === 'players' ? 220 : 150) : (tournament.id === 'players' ? 300 : 220), objectFit: 'contain' }} />
                   )}
                 </div>
+                <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                <button
+                  onClick={() => setLeagueModalOpen(true)}
+                  style={{
+                    padding: isMobile ? '7px 15px' : '9px 18px',
+                    fontSize: isMobile ? 13 : 14,
+                    fontWeight: 800,
+                    borderRadius: 9,
+                    border: '1px solid #e2e8ef',
+                    background: '#fff',
+                    color: '#173b63',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                  }}
+                >
+                  Leagues
+                </button>
                 <button
                   onClick={() => void handleLogout()}
                   disabled={authBusy}
@@ -8000,6 +8188,7 @@ export default function Page() {
                 >
                   Sign Out
                 </button>
+                </div>
               </div>
               <div
                 style={{
@@ -8074,6 +8263,8 @@ export default function Page() {
                 </button>
               </div>
 
+              {isAppAdmin ? (
+              <>
               {/* Standings view — an independent pre-tournament / results toggle for EACH tournament,
                   since these aren't tied to the tab you're viewing. */}
               <div style={{ marginTop: isMobile ? 14 : 20 }}>
@@ -8117,6 +8308,8 @@ export default function Page() {
                   })()}
                 </div>
               </div>
+              </>
+              ) : null}
 
             </section>
 
@@ -8131,6 +8324,7 @@ export default function Page() {
             >
               <div style={{ fontSize: 13, fontWeight: 800, textTransform: 'uppercase', color: '#5b6b79', marginBottom: 14 }}>Pool Data Tools</div>
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))', gap: isMobile ? 8 : 12 }}>
+                {isAppAdmin ? (
                 <a
                   href="/commissioner-salary"
                   style={{ textDecoration: 'none', border: '1px solid #cdd9e1', borderRadius: 12, padding: isMobile ? '12px 14px' : '14px 16px', background: '#fff', color: '#0f1720', display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 12 }}
@@ -8149,6 +8343,8 @@ export default function Page() {
                     <div style={{ marginTop: 2, fontSize: isMobile ? 11 : 12, color: '#5b6b79' }}>Upload full field + salaries + OWGRs</div>
                   </div>
                 </a>
+                ) : null}
+                {isAppAdmin ? (
                 <a
                   href="/commissioner-dpworld"
                   style={{ textDecoration: 'none', border: '1px solid #cdd9e1', borderRadius: 12, padding: isMobile ? '12px 14px' : '14px 16px', background: '#fff', color: '#0f1720', display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 12 }}
@@ -8167,6 +8363,7 @@ export default function Page() {
                     <div style={{ marginTop: 2, fontSize: isMobile ? 11 : 12, color: '#5b6b79' }}>Update Race to Dubai list</div>
                   </div>
                 </a>
+                ) : null}
                 <button
                   onClick={() => { setCommissionerRosterMemberId(null); setCommissionerMemberSearch(''); setShowAddMemberForm(false); setCommissionerConsoleView('members'); }}
                   style={{ textAlign: 'left', border: '1px solid #cdd9e1', borderRadius: 12, padding: isMobile ? '12px 14px' : '14px 16px', background: '#fff', color: '#0f1720', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 12 }}
@@ -8179,6 +8376,7 @@ export default function Page() {
                     <div style={{ marginTop: 2, fontSize: isMobile ? 11 : 12, color: '#5b6b79' }}>Full member listing &amp; participation</div>
                   </div>
                 </button>
+                {isAppAdmin ? (
                 <button
                   onClick={() => {
                     const current = lockTimeOverrides[entriesTournamentId] ?? TOURNAMENT_META[entriesTournamentId]?.lockAtUtc;
@@ -8196,6 +8394,7 @@ export default function Page() {
                     <div style={{ marginTop: 2, fontSize: isMobile ? 11 : 12, color: '#5b6b79' }}>Set Round 1 first tee time</div>
                   </div>
                 </button>
+                ) : null}
               </div>
             </section>
 
@@ -8289,7 +8488,7 @@ export default function Page() {
                   { key: 'markStatus' as const, title: 'Mark WD / DQ / MDF', sub: "Override a player's status", Icon: AlertCircle },
                   { key: 'roundLeader' as const, title: 'Round Leader Tools', sub: 'Clear a mis-captured round leader', Icon: RefreshCw },
                   { key: 'tiebreak' as const, title: 'Tiebreak Score', sub: 'Enter / override total strokes', Icon: Save },
-                ].map((t) => {
+                ].filter((t) => isAppAdmin || t.key === 'payouts' || t.key === 'tiebreak').map((t) => {
                   const Icon = t.Icon;
                   return (
                   <button
@@ -8965,7 +9164,7 @@ export default function Page() {
                     >
                       <div style={{ fontSize: isMobile ? 12 : 16, fontWeight: 800, color: '#0f1720', display: 'flex', alignItems: 'center', gap: 6, ...(isMobile ? { position: 'sticky', left: 0, background: '#fff', zIndex: 1, paddingRight: 4 } : {}) }}>
                         {member.displayName}
-                        {member.email.trim().toLowerCase() === COMMISSIONER_EMAIL && (
+                        {(pool?.commissioners ?? []).some((c) => c.id === member.id) && (
                           <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: '#2d5e94', color: '#fff', borderRadius: 4, width: isMobile ? 16 : 20, height: isMobile ? 16 : 20, fontSize: isMobile ? 10 : 12, fontWeight: 900, flexShrink: 0 }}>C</span>
                         )}
                       </div>
@@ -9381,6 +9580,8 @@ export default function Page() {
                   >
                     Edit Display Name
                   </button>
+                  {/* A member's sign-in email is theirs; only the app admin can change it here. */}
+                  {isAppAdmin ? (
                   <button
                     onClick={() => setCommissionerMemberModalView('email')}
                     style={{
@@ -9395,6 +9596,27 @@ export default function Page() {
                   >
                     Edit Email
                   </button>
+                  ) : null}
+                  {(() => {
+                    const memberIsCommissioner = (pool?.commissioners ?? []).some((c) => c.id === selectedCommissionerMember.id);
+                    return (
+                      <button
+                        onClick={() => void handleToggleCommissionerRole(selectedCommissionerMember.id, !memberIsCommissioner)}
+                        disabled={commissionerBusy}
+                        style={{
+                          border: '1px solid #d7e0e8',
+                          borderRadius: 16,
+                          background: '#fff',
+                          padding: '16px 18px',
+                          textAlign: 'left',
+                          fontWeight: 800,
+                          cursor: commissionerBusy ? 'wait' : 'pointer',
+                        }}
+                      >
+                        {memberIsCommissioner ? 'Remove Commissioner Role' : 'Make Commissioner'}
+                      </button>
+                    );
+                  })()}
                   <button
                     onClick={() => openCommissionerMemberPicks(selectedCommissionerMember.id)}
                     style={{
