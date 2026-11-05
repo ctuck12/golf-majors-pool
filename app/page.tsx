@@ -1,7 +1,7 @@
 'use client';
 
 // Inside the iPhone app, sends this page's /api calls to the live site (no-op on the web).
-import './native-bridge';
+import { isNativeApp } from './native-bridge';
 
 import { Fragment, startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { LeagueGate, LeagueModal, type LeagueSummary } from './league-panel';
@@ -2220,7 +2220,10 @@ export default function Page() {
 
   useEffect(() => {
     const checkMobile = () => {
-      const w = window.innerWidth;
+      // Inside the iPhone app, WebKit can report a desktop-sized width (980) while the page first
+      // loads and never sends a resize afterwards, which left phones on the desktop layout. The
+      // app is portrait-only on iPhone, so the screen width is a safe cap there. The website is unchanged.
+      const w = isNativeApp ? Math.min(window.innerWidth, window.screen.width || window.innerWidth) : window.innerWidth;
       const h = window.innerHeight;
       setIsMobile(w < 640);
       setIsSmallMobile(w < 415);
@@ -2233,9 +2236,16 @@ export default function Page() {
     checkMobile();
     window.addEventListener('resize', checkMobile);
     window.addEventListener('orientationchange', checkMobile);
+    // Re-check once the page has settled, and whenever the visible area changes size.
+    window.addEventListener('load', checkMobile);
+    const settle = window.setTimeout(checkMobile, 300);
+    window.visualViewport?.addEventListener('resize', checkMobile);
     return () => {
       window.removeEventListener('resize', checkMobile);
       window.removeEventListener('orientationchange', checkMobile);
+      window.removeEventListener('load', checkMobile);
+      window.clearTimeout(settle);
+      window.visualViewport?.removeEventListener('resize', checkMobile);
     };
   }, []);
 
