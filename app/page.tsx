@@ -2037,10 +2037,6 @@ export default function Page() {
   const [landscapeZoom, setLandscapeZoom] = useState(1);
   const [isLandscapePhone, setIsLandscapePhone] = useState(false);
 
-  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
-  const [installDone, setInstallDone] = useState(false);
-  const [deferredInstallEvent, setDeferredInstallEvent] = useState<Event | null>(null);
-
   useLayoutEffect(() => {
     const right = leaderboardColRef.current;
     if (!right) return;
@@ -2606,7 +2602,7 @@ export default function Page() {
   }, [mainTab, commissionerConsoleView]);
 
   useEffect(() => {
-    const anyOpen = !!activeStandingEntryId || !!activeStandingGolferId || !!scorecardGolferName || showBonusPoints || showInstallPrompt;
+    const anyOpen = !!activeStandingEntryId || !!activeStandingGolferId || !!scorecardGolferName || showBonusPoints;
     if (!anyOpen) return;
     const scrollY = window.scrollY;
     document.body.style.position = 'fixed';
@@ -2620,26 +2616,7 @@ export default function Page() {
       document.body.style.overflow = '';
       window.scrollTo(0, scrollY);
     };
-  }, [activeStandingEntryId, activeStandingGolferId, scorecardGolferName, showBonusPoints, showInstallPrompt]);
-
-  // Capture Android "Add to Home Screen" deferred prompt
-  useEffect(() => {
-    const handler = (e: Event) => { e.preventDefault(); setDeferredInstallEvent(e); };
-    window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, []);
-
-  // Show install guide on mobile browsers when not already installed
-  useEffect(() => {
-    const isStandalone =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      (window.navigator as { standalone?: boolean }).standalone === true;
-    const dismissed = localStorage.getItem('gmp_install_dismissed');
-    const isMobileUA = /iPhone|iPad|iPod|Android/.test(navigator.userAgent);
-    if (!isStandalone && !dismissed && isMobileUA) {
-      setShowInstallPrompt(true);
-    }
-  }, []);
+  }, [activeStandingEntryId, activeStandingGolferId, scorecardGolferName, showBonusPoints]);
 
   const applySession = (payload: SessionPayload) => {
     setSessionUser(payload.user);
@@ -11874,126 +11851,6 @@ export default function Page() {
 
         </>
         ) : null}
-
-        {showInstallPrompt && (() => {
-          const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
-          const isAndroid = /Android/.test(ua);
-          const isIOS = /iPhone|iPad|iPod/.test(ua);
-          const isChromeIOS = /CriOS/.test(ua);
-          const isOtherBrowserIOS = isIOS && !isChromeIOS && /FxiOS|EdgiOS|OPiOS|GSA/.test(ua);
-          const iosVerMatch = ua.match(/OS (\d+)[_\.]/);
-          const iosVer = iosVerMatch ? parseInt(iosVerMatch[1]) : 0;
-
-          const dismiss = () => {
-            localStorage.setItem('gmp_install_dismissed', '1');
-            setShowInstallPrompt(false);
-            setInstallDone(false);
-          };
-
-          const handleAndroidInstall = async () => {
-            if (deferredInstallEvent) {
-              (deferredInstallEvent as unknown as { prompt: () => void; userChoice: Promise<{ outcome: string }> }).prompt();
-              const { outcome } = await (deferredInstallEvent as unknown as { prompt: () => void; userChoice: Promise<{ outcome: string }> }).userChoice;
-              if (outcome === 'accepted') { setInstallDone(true); dismiss(); }
-            }
-          };
-
-          type Step = { num: number; text: React.ReactNode };
-          let steps: Step[] = [];
-          let title = 'Get the Best Experience';
-          let subtitle = 'Add this app to your Home Screen for a full-screen experience with no browser bar.';
-          let showDirectBtn = false;
-
-          if (isAndroid && deferredInstallEvent) {
-            showDirectBtn = true;
-          } else if (isAndroid) {
-            steps = [
-              { num: 1, text: <>Tap the <strong>⋮</strong> menu in the top-right corner of your browser</> },
-              { num: 2, text: <>Tap <strong>"Add to Home Screen"</strong> or <strong>"Install App"</strong></> },
-              { num: 3, text: <>Tap <strong>"Add"</strong> to confirm</> },
-            ];
-          } else if (isOtherBrowserIOS) {
-            title = 'Open in Safari to Install';
-            subtitle = 'Copy the URL, open Safari, and paste it there — then follow the steps below to add Golf Majors Pool to your Home Screen.';
-            steps = [
-              { num: 1, text: <>In Safari, tap the <strong>Share ⬆</strong> button</> },
-              { num: 2, text: <>Tap <strong>"Add to Home Screen"</strong></> },
-              { num: 3, text: <>Tap <strong>"Add"</strong> to confirm</> },
-            ];
-          } else if (isIOS && isChromeIOS) {
-            steps = [
-              { num: 1, text: <>Tap the <strong>Share ⬆</strong> button in the top URL bar</> },
-              { num: 2, text: <>Tap <strong>"More" ↓</strong> to expand all options</> },
-              { num: 3, text: <>Scroll down and tap <strong>"Add to Home Screen"</strong> then <strong>"Add"</strong></> },
-            ];
-          } else if (isIOS && iosVer >= 17) {
-            steps = [
-              { num: 1, text: <>Tap the <strong>···</strong> button in the bottom-right corner of Safari</> },
-              { num: 2, text: <>Tap the <strong>Share ⬆</strong> button</> },
-              { num: 3, text: <>Tap <strong>"Add to Home Screen"</strong> then <strong>"Add"</strong></> },
-            ];
-          } else if (isIOS) {
-            steps = [
-              { num: 1, text: <>Tap the <strong>Share ⬆</strong> button at the bottom of Safari</> },
-              { num: 2, text: <>Scroll down and tap <strong>"Add to Home Screen"</strong></> },
-              { num: 3, text: <>Tap <strong>"Add"</strong> in the top-right corner</> },
-            ];
-          }
-
-          const navy = '#173b63';
-          const stepBubbleColor = selectedTournament === 'masters' ? '#2c6449' : navy;
-
-          return (
-            <div
-              style={{ position: 'fixed', inset: 0, zIndex: 200, backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', background: 'rgba(10,20,35,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
-            >
-              {installDone ? (
-                <div style={{ background: '#fff', borderRadius: 24, padding: '8px 28px 12px', width: 'min(360px, 100%)', textAlign: 'center', boxShadow: '0 24px 60px rgba(0,0,0,0.4)', border: `3px solid ${headerSolid}`, maxHeight: 'calc(100svh - 48px)', overflowY: 'auto' }}>
-                  <img src="/gmp-logo.jpeg" alt="Golf Majors Pool" style={{ width: 'min(240px, calc(100vw - 96px))', height: 'min(196px, calc(100vw - 140px))', objectFit: 'cover', objectPosition: 'top', display: 'block', margin: '0 auto 4px' }} />
-                  <div style={{ fontSize: 28, marginBottom: 4 }}>🎉</div>
-                  <div style={{ fontSize: 22, fontWeight: 900, color: '#0f1720', marginBottom: 4 }}>You're All Set!</div>
-                  <div style={{ fontSize: 15, color: '#5b6b79', lineHeight: 1.6, marginBottom: 10 }}>
-                    Close your browser and open the <strong style={{ color: navy }}>Golf Majors Pool</strong> app from your Home Screen for the full experience.
-                  </div>
-                  <button onClick={dismiss} style={{ background: 'none', border: 'none', color: '#9aa8b4', fontSize: 15, fontWeight: 600, cursor: 'pointer', padding: '6px 0' }}>
-                    Continue in Browser Anyway
-                  </button>
-                </div>
-              ) : (
-                <div style={{ background: '#fff', borderRadius: 24, padding: '6px 24px 13px', width: 'min(360px, 100%)', textAlign: 'center', boxShadow: '0 24px 60px rgba(0,0,0,0.4)', maxHeight: 'calc(100svh - 48px)', overflowY: 'auto', border: `3px solid ${headerSolid}` }}>
-                  <img src="/gmp-logo.jpeg" alt="Golf Majors Pool" style={{ width: 'min(240px, calc(100vw - 88px))', height: 'min(196px, calc(100vw - 132px))', objectFit: 'cover', objectPosition: 'top', display: 'block', margin: '0 auto 4px' }} />
-                  <div style={{ fontSize: 21, fontWeight: 900, color: '#0f1720', marginBottom: 2 }}>{title}</div>
-                  <div style={{ fontSize: 14, color: '#5b6b79', lineHeight: 1.6, marginBottom: 8 }}>{subtitle}</div>
-
-                  {steps.length > 0 && (
-                    <div style={{ background: '#f4f7fa', borderRadius: 16, padding: '10px 18px', textAlign: 'left', marginBottom: 8 }}>
-                      {steps.map(({ num, text }) => (
-                        <div key={num} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: num < steps.length ? 11 : 0 }}>
-                          <span style={{ minWidth: 22, height: 22, borderRadius: '50%', background: stepBubbleColor, color: '#fff', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>{num}</span>
-                          <span style={{ fontSize: 14, color: '#2d3748', lineHeight: 1.5 }}>{text}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {showDirectBtn ? (
-                    <button onClick={handleAndroidInstall} style={{ width: '100%', border: 'none', borderRadius: 14, padding: '10px 20px', background: headerSolid, color: '#fff', fontSize: 16, fontWeight: 900, cursor: 'pointer', marginBottom: 6 }}>
-                      Add to Home Screen
-                    </button>
-                  ) : (
-                    <button onClick={() => setInstallDone(true)} style={{ width: '100%', border: 'none', borderRadius: 14, padding: '10px 20px', background: headerSolid, color: '#fff', fontSize: 16, fontWeight: 900, cursor: 'pointer', marginBottom: 6 }}>
-                      I Added It
-                    </button>
-                  )}
-
-                  <button onClick={dismiss} style={{ background: 'none', border: 'none', color: '#9aa8b4', fontSize: 14, fontWeight: 600, cursor: 'pointer', padding: '6px 0', width: '100%' }}>
-                    Continue in Browser Instead
-                  </button>
-                </div>
-              )}
-            </div>
-          );
-        })()}
 
       </div>
     </div>
