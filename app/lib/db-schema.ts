@@ -73,10 +73,31 @@ create table if not exists rosters (
 );
 create index if not exists rosters_tournament_idx on rosters(tournament_id);
 
+-- Season the league is paid through (null for founder leagues, which never expire).
+alter table leagues add column if not exists paid_season integer;
+
+-- League season passes bought in the app (RevenueCat purchase id = id). Each one is spent once:
+-- league_id / action are set when it's used to create, upgrade or renew a league.
+create table if not exists league_purchases (
+  id text primary key,
+  user_id text not null references users(id) on delete cascade,
+  product_id text not null,
+  store text,
+  is_sandbox boolean not null default false,
+  purchased_at timestamptz,
+  recorded_at timestamptz not null default now(),
+  league_id text references leagues(id) on delete set null,
+  action text,
+  season integer,
+  redeemed_at timestamptz
+);
+create index if not exists league_purchases_user_idx on league_purchases(user_id);
+
 alter table users enable row level security;
 alter table sessions enable row level security;
 alter table leagues enable row level security;
 alter table league_members enable row level security;
 alter table league_tournaments enable row level security;
 alter table rosters enable row level security;
+alter table league_purchases enable row level security;
 `;

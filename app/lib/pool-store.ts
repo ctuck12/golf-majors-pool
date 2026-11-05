@@ -1,4 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
+import { ensureSchema } from './db';
+import type { PassAction } from './league-passes';
 import * as postgresStore from './pool-store-postgres';
 import * as redisStore from './pool-store-redis';
 import { normalizeEmail, type LeagueRole, type MemberUpdates, type TournamentId, type TournamentPayouts } from './pool-store-shared';
@@ -29,51 +31,73 @@ export function userDataBackend(): 'postgres' | 'redis' {
   return process.env.USER_DATA_BACKEND === 'postgres' ? 'postgres' : 'redis';
 }
 
-function store() {
-  return userDataBackend() === 'postgres' ? postgresStore : redisStore;
+async function store() {
+  if (userDataBackend() !== 'postgres') return redisStore;
+  await ensureSchema();
+  return postgresStore;
 }
 
-export const registerUser = (input: { displayName: string; email: string; password: string; joinCode?: string }) =>
-  store().registerUser(input);
-export const loginUser = (input: { email: string; password: string }) => store().loginUser(input);
-export const createSession = (userId: string) => store().createSession(userId);
-export const removeSession = (token: string) => store().removeSession(token);
-export const getSessionContext = (token: string | undefined) => store().getSessionContext(token);
-export const joinPoolForUser = (userId: string, joinCode: string) => store().joinPoolForUser(userId, joinCode);
-export const saveRosterForUser = (userId: string, tournamentId: TournamentId, roster: unknown) =>
-  store().saveRosterForUser(userId, tournamentId, roster);
-export const saveTieBreakForUser = (userId: string, tournamentId: TournamentId, tieBreak: number) =>
-  store().saveTieBreakForUser(userId, tournamentId, tieBreak);
-export const updateUserAccount = (userId: string, updates: { password?: string; displayName?: string }) =>
-  store().updateUserAccount(userId, updates);
-export const listPoolMembers = (userId: string) => store().listPoolMembers(userId);
-export const updatePoolMember = (requestingUserId: string, memberId: string, updates: MemberUpdates) =>
-  store().updatePoolMember(requestingUserId, memberId, updates);
-export const deletePoolMember = (requestingUserId: string, memberId: string) =>
-  store().deletePoolMember(requestingUserId, memberId);
-export const updatePoolLineupLock = (requestingUserId: string, tournamentId: TournamentId, locked: boolean) =>
-  store().updatePoolLineupLock(requestingUserId, tournamentId, locked);
-export const updatePoolPicksOpen = (requestingUserId: string, tournamentId: TournamentId, open: boolean) =>
-  store().updatePoolPicksOpen(requestingUserId, tournamentId, open);
-export const autoLockPoolLineup = (tournamentId: TournamentId) => store().autoLockPoolLineup(tournamentId);
-export const getSelectedPlayerIdsForTournament = (tournamentId: TournamentId) =>
-  store().getSelectedPlayerIdsForTournament(tournamentId);
-export const updatePoolPayouts = (requestingUserId: string, tournamentId: TournamentId, payouts: TournamentPayouts) =>
-  store().updatePoolPayouts(requestingUserId, tournamentId, payouts);
-export const createLeague = (userId: string, input: { name: string; plan: string; memberLimit: number | null }) =>
-  userDataBackend() === 'postgres' ? postgresStore.createLeague(userId, input) : redisStore.createLeague();
-export const switchActiveLeague = (userId: string, leagueId: string) =>
-  userDataBackend() === 'postgres' ? postgresStore.switchActiveLeague(userId, leagueId) : redisStore.switchActiveLeague();
-export const setMemberRole = (requestingUserId: string, memberId: string, role: LeagueRole) =>
-  userDataBackend() === 'postgres'
-    ? postgresStore.setMemberRole(requestingUserId, memberId, role)
-    : redisStore.setMemberRole();
-export const deleteOwnAccount = (userId: string) =>
-  userDataBackend() === 'postgres' ? postgresStore.deleteOwnAccount(userId) : redisStore.deleteOwnAccount();
-export const regenerateJoinCode = (requestingUserId: string) =>
-  userDataBackend() === 'postgres' ? postgresStore.regenerateJoinCode(requestingUserId) : redisStore.regenerateJoinCode();
-export const updatePoolWinnerScore = (requestingUserId: string, tournamentId: TournamentId, score: number) =>
-  store().updatePoolWinnerScore(requestingUserId, tournamentId, score);
+export const registerUser = async (input: { displayName: string; email: string; password: string; joinCode?: string }) =>
+  (await store()).registerUser(input);
+export const loginUser = async (input: { email: string; password: string }) =>
+  (await store()).loginUser(input);
+export const createSession = async (userId: string) =>
+  (await store()).createSession(userId);
+export const removeSession = async (token: string) =>
+  (await store()).removeSession(token);
+export const getSessionContext = async (token: string | undefined) =>
+  (await store()).getSessionContext(token);
+export const joinPoolForUser = async (userId: string, joinCode: string) =>
+  (await store()).joinPoolForUser(userId, joinCode);
+export const saveRosterForUser = async (userId: string, tournamentId: TournamentId, roster: unknown) =>
+  (await store()).saveRosterForUser(userId, tournamentId, roster);
+export const saveTieBreakForUser = async (userId: string, tournamentId: TournamentId, tieBreak: number) =>
+  (await store()).saveTieBreakForUser(userId, tournamentId, tieBreak);
+export const updateUserAccount = async (userId: string, updates: { password?: string; displayName?: string }) =>
+  (await store()).updateUserAccount(userId, updates);
+export const listPoolMembers = async (userId: string) =>
+  (await store()).listPoolMembers(userId);
+export const updatePoolMember = async (requestingUserId: string, memberId: string, updates: MemberUpdates) =>
+  (await store()).updatePoolMember(requestingUserId, memberId, updates);
+export const deletePoolMember = async (requestingUserId: string, memberId: string) =>
+  (await store()).deletePoolMember(requestingUserId, memberId);
+export const updatePoolLineupLock = async (requestingUserId: string, tournamentId: TournamentId, locked: boolean) =>
+  (await store()).updatePoolLineupLock(requestingUserId, tournamentId, locked);
+export const updatePoolPicksOpen = async (requestingUserId: string, tournamentId: TournamentId, open: boolean) =>
+  (await store()).updatePoolPicksOpen(requestingUserId, tournamentId, open);
+export const autoLockPoolLineup = async (tournamentId: TournamentId) =>
+  (await store()).autoLockPoolLineup(tournamentId);
+export const getSelectedPlayerIdsForTournament = async (tournamentId: TournamentId) =>
+  (await store()).getSelectedPlayerIdsForTournament(tournamentId);
+export const updatePoolPayouts = async (requestingUserId: string, tournamentId: TournamentId, payouts: TournamentPayouts) =>
+  (await store()).updatePoolPayouts(requestingUserId, tournamentId, payouts);
+// Multiple leagues, roles and passes exist only in Postgres.
+async function postgresOnly() {
+  if (userDataBackend() !== 'postgres') {
+    throw new Error('Leagues need the Postgres backend (USER_DATA_BACKEND=postgres).');
+  }
+  await ensureSchema();
+  return postgresStore;
+}
+
+export const createLeague = async (userId: string, input: { name: string; plan: string; memberLimit: number | null }) =>
+  (await postgresOnly()).createLeague(userId, input);
+export const switchActiveLeague = async (userId: string, leagueId: string) =>
+  (await postgresOnly()).switchActiveLeague(userId, leagueId);
+export const setMemberRole = async (requestingUserId: string, memberId: string, role: LeagueRole) =>
+  (await postgresOnly()).setMemberRole(requestingUserId, memberId, role);
+export const deleteOwnAccount = async (userId: string) =>
+  (await postgresOnly()).deleteOwnAccount(userId);
+export const checkPassAction = async (userId: string, productId: string, action: PassAction) =>
+  (await postgresOnly()).checkPassAction(userId, productId, action);
+export const listUnusedPasses = async (userId: string) =>
+  (await postgresOnly()).listUnusedPasses(userId);
+export const redeemPass = async (userId: string, productId: string, action: PassAction) =>
+  (await postgresOnly()).redeemPass(userId, productId, action);
+export const regenerateJoinCode = async (requestingUserId: string) =>
+  (await postgresOnly()).regenerateJoinCode(requestingUserId);
+export const updatePoolWinnerScore = async (requestingUserId: string, tournamentId: TournamentId, score: number) =>
+  (await store()).updatePoolWinnerScore(requestingUserId, tournamentId, score);
 
 // ── Password reset tokens (Redis, whichever backend holds the accounts) ─────
 
@@ -89,7 +113,7 @@ function passwordResetKey(token: string) {
 // matches, or when a link was already sent to this email in the last minute (stops email floods).
 export async function createPasswordResetToken(email: string) {
   const normalized = normalizeEmail(email);
-  const user = await store().findUserByEmail(normalized);
+  const user = await (await store()).findUserByEmail(normalized);
 
   if (!user) {
     return null;
@@ -130,7 +154,7 @@ export async function resetPasswordWithToken(token: string, newPassword: string)
     throw new Error('This reset link is invalid or has expired. Request a new one.');
   }
 
-  return store().setPasswordAndEndSessions(userId, newPassword);
+  return (await store()).setPasswordAndEndSessions(userId, newPassword);
 }
 
 // ── Stat overrides (persistent Redis key for manual final-stat corrections) ─

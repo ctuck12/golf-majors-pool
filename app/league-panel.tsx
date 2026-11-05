@@ -2,6 +2,8 @@
 
 import { useState, type CSSProperties } from 'react';
 import { Check, Copy, LogOut, Plus, RefreshCw, Trash2, Users, X } from 'lucide-react';
+import { tierForLimit, type LeagueTier } from './lib/league-passes';
+import type { PaywallMode } from './paywall';
 
 // League screens: the gate shown to a signed-in user who isn't in a league yet, and the
 // "Leagues" panel (switch, join, create, invite, delete account). Both talk to the API and hand
@@ -239,6 +241,42 @@ function InviteBox<T extends SessionLike>({ joinCode, onSession }: { joinCode: s
   );
 }
 
+// The current league's plan (commissioners of paid leagues): size, members used, season paid.
+function PlanBox({
+  plan,
+  onOpenPaywall,
+}: {
+  plan: { id: string; name: string; memberLimit: number | null; memberCount: number; paidSeason: number | null; seasonExpired: boolean };
+  onOpenPaywall: (mode: PaywallMode) => void;
+}) {
+  const tier = tierForLimit(plan.memberLimit);
+  const full = plan.memberLimit !== null && plan.memberCount >= plan.memberLimit;
+  return (
+    <div>
+      <div style={sectionLabel}>This league&apos;s plan</div>
+      <div style={{ border: `1.5px solid ${plan.seasonExpired ? '#e7a3a3' : '#d1dae3'}`, borderRadius: 14, padding: 14, background: plan.seasonExpired ? '#fbf1f1' : '#f4f7fa', display: 'grid', gap: 10 }}>
+        <div style={{ fontSize: 15, fontWeight: 800, color: '#0f1720' }}>
+          {plan.memberLimit ? `Up to ${plan.memberLimit} members` : 'No member limit'} · {plan.memberCount} joined
+        </div>
+        <div style={{ fontSize: 13, color: plan.seasonExpired ? '#a61b1b' : '#5b6b79' }}>
+          {plan.seasonExpired
+            ? `Season pass expired${plan.paidSeason ? ` (was ${plan.paidSeason})` : ''}. Members can't join or make picks until it's renewed.`
+            : `Paid for the ${plan.paidSeason} season.${full ? ' The league is full.' : ''}`}
+        </div>
+        {plan.seasonExpired ? (
+          <button type="button" onClick={() => onOpenPaywall({ kind: 'renew', leagueId: plan.id, leagueName: plan.name, memberCount: plan.memberCount })} style={primaryButton(false)}>
+            Renew for this season
+          </button>
+        ) : tier && tier < 100 ? (
+          <button type="button" onClick={() => onOpenPaywall({ kind: 'upgrade', leagueId: plan.id, leagueName: plan.name, currentTier: tier as LeagueTier, memberCount: plan.memberCount })} style={full ? primaryButton(false) : secondaryButton}>
+            Upgrade member limit
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 // Signed in, but not in any league yet.
 export function LeagueGate<T extends SessionLike>({
   displayName,
@@ -246,12 +284,14 @@ export function LeagueGate<T extends SessionLike>({
   initialJoinCode,
   onSession,
   onSignOut,
+  onOpenPaywall,
 }: {
   displayName: string;
   canCreateLeague: boolean;
   initialJoinCode?: string;
   onSession: (payload: T) => void;
   onSignOut: () => void;
+  onOpenPaywall: (mode: PaywallMode) => void;
 }) {
   return (
     <section style={{ marginTop: 24, display: 'flex', justifyContent: 'center' }}>
@@ -268,12 +308,16 @@ export function LeagueGate<T extends SessionLike>({
 
         <JoinForm<T> initialCode={initialJoinCode} onSession={onSession} />
 
-        {canCreateLeague ? (
-          <div style={{ borderTop: '1px solid #e2e8ef', paddingTop: 16 }}>
-            <div style={sectionLabel}>Or start your own</div>
+        <div style={{ borderTop: '1px solid #e2e8ef', paddingTop: 16 }}>
+          <div style={sectionLabel}>Or start your own</div>
+          {canCreateLeague ? (
             <CreateForm<T> onSession={onSession} />
-          </div>
-        ) : null}
+          ) : (
+            <button type="button" onClick={() => onOpenPaywall({ kind: 'create' })} style={{ ...secondaryButton, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <Plus size={16} /> Create a league
+            </button>
+          )}
+        </div>
 
         <button type="button" onClick={onSignOut} style={{ ...secondaryButton, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
           <LogOut size={16} /> Sign out
@@ -295,6 +339,8 @@ export function LeagueModal<T extends SessionLike>({
   initialJoinCode,
   onSession,
   onAccountDeleted,
+  activePlan,
+  onOpenPaywall,
 }: {
   open: boolean;
   onClose: () => void;
@@ -306,6 +352,17 @@ export function LeagueModal<T extends SessionLike>({
   initialJoinCode?: string;
   onSession: (payload: T) => void;
   onAccountDeleted: () => void;
+  // The league being viewed: its plan, for the commissioner's upgrade / renew options.
+  activePlan: {
+    id: string;
+    name: string;
+    plan: string;
+    memberLimit: number | null;
+    memberCount: number;
+    paidSeason: number | null;
+    seasonExpired: boolean;
+  } | null;
+  onOpenPaywall: (mode: PaywallMode) => void;
 }) {
   const [switching, setSwitching] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -390,6 +447,10 @@ export function LeagueModal<T extends SessionLike>({
             </div>
           ) : null}
 
+          {isCommissioner && activePlan && activePlan.plan !== 'founder' ? (
+            <PlanBox plan={activePlan} onOpenPaywall={(mode) => { onClose(); onOpenPaywall(mode); }} />
+          ) : null}
+
           {isCommissioner && activeJoinCode ? (
             <div>
               <div style={sectionLabel}>Invite people to this league</div>
@@ -402,14 +463,18 @@ export function LeagueModal<T extends SessionLike>({
             <JoinForm<T> initialCode={initialJoinCode} onSession={handleSession} />
           </div>
 
-          {canCreateLeague ? (
-            <div>
-              <div style={sectionLabel}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Plus size={12} /> Create a league</span>
-              </div>
-              <CreateForm<T> onSession={handleSession} />
+          <div>
+            <div style={sectionLabel}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Plus size={12} /> Create a league</span>
             </div>
-          ) : null}
+            {canCreateLeague ? (
+              <CreateForm<T> onSession={handleSession} />
+            ) : (
+              <button type="button" onClick={() => { onClose(); onOpenPaywall({ kind: 'create' }); }} style={{ ...secondaryButton, width: '100%' }}>
+                Create a league
+              </button>
+            )}
+          </div>
 
           <div style={{ borderTop: '1px solid #e2e8ef', paddingTop: 16 }}>
             {!deleteOpen ? (

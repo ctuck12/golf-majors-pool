@@ -329,6 +329,9 @@ export async function getSessionContext(token: string | undefined): Promise<Sess
           role: isCommissioner ? 'commissioner' : 'member',
           plan: 'founder',
           memberLimit: null,
+          paidSeason: null,
+          seasonExpired: false,
+          memberCount: entries.length,
           commissioners,
         }
       : null,
@@ -340,24 +343,6 @@ export async function getSessionContext(token: string | undefined): Promise<Sess
     // Creating and managing multiple leagues needs the Postgres backend.
     canCreateLeague: false,
   };
-}
-
-const NEEDS_POSTGRES = 'Leagues need the Postgres backend (USER_DATA_BACKEND=postgres).';
-
-export async function createLeague(): Promise<never> {
-  throw new Error(NEEDS_POSTGRES);
-}
-
-export async function switchActiveLeague(): Promise<never> {
-  throw new Error(NEEDS_POSTGRES);
-}
-
-export async function setMemberRole(): Promise<never> {
-  throw new Error(NEEDS_POSTGRES);
-}
-
-export async function deleteOwnAccount(): Promise<never> {
-  throw new Error(NEEDS_POSTGRES);
 }
 
 export async function joinPoolForUser(userId: string, joinCode: string) {
@@ -681,6 +666,3 @@ export async function updatePoolWinnerScore(requestingUserId: string, tournament
   return toPublicPool(activePool);
 }
 
-export async function regenerateJoinCode(): Promise<never> {
-  throw new Error(NEEDS_POSTGRES);
-}
