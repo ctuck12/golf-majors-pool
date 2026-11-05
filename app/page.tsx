@@ -1901,6 +1901,23 @@ export default function Page() {
   const [showForgotNewPassword, setShowForgotNewPassword] = useState(false);
   const [forgotBusy, setForgotBusy] = useState(false);
   const [forgotMessage, setForgotMessage] = useState('');
+  const [forgotSent, setForgotSent] = useState(false);
+  const [resetToken, setResetToken] = useState<string | null>(null);
+
+  // A password reset email links to /?reset=<token>: open the reset popup straight to the
+  // new-password step, and drop the token from the address bar so it isn't left in history.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const token = url.searchParams.get('reset');
+    if (!token) return;
+    url.searchParams.delete('reset');
+    window.history.replaceState(null, '', url.pathname + url.search + url.hash);
+    setResetToken(token);
+    setForgotOpen(true);
+    setForgotEmailExists(true);
+    setForgotNewPassword('');
+    setForgotMessage('');
+  }, []);
   const [registerForm, setRegisterForm] = useState({
     displayName: '',
     email: '',
@@ -4953,6 +4970,8 @@ export default function Page() {
                       setForgotEmailExists(false);
                       setForgotNewPassword('');
                       setForgotMessage('');
+                      setForgotSent(false);
+                      setResetToken(null);
                       setShowForgotNewPassword(false);
                     }}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#2f5f96', fontSize: 13, fontWeight: 700, textDecoration: 'underline' }}
@@ -4995,7 +5014,7 @@ export default function Page() {
                           style={{ ...fieldStyle(), width: '100%', boxSizing: 'border-box' }}
                         />
                         {forgotMessage && (
-                          <div style={{ marginTop: 10, fontSize: 13, color: '#a61b1b' }}>{forgotMessage}</div>
+                          <div style={{ marginTop: 10, fontSize: 13, color: forgotSent ? '#1f8d4e' : '#a61b1b' }}>{forgotMessage}</div>
                         )}
                         <button
                           type="button"
@@ -5003,6 +5022,7 @@ export default function Page() {
                           onClick={async () => {
                             setForgotBusy(true);
                             setForgotMessage('');
+                            setForgotSent(false);
                             try {
                               const res = await fetch('/api/auth/reset-password', {
                                 method: 'POST',
@@ -5010,12 +5030,11 @@ export default function Page() {
                                 body: JSON.stringify({ email: forgotEmail }),
                               });
                               const data = await res.json();
-                              if (data.exists) {
-                                setForgotEmailExists(true);
-                              } else if (data.error) {
-                                setForgotMessage(data.error);
+                              if (data.sent) {
+                                setForgotSent(true);
+                                setForgotMessage(data.message);
                               } else {
-                                setForgotMessage('No account found with that email address.');
+                                setForgotMessage(data.error ?? 'Something went wrong. Please try again.');
                               }
                             } catch {
                               setForgotMessage('Something went wrong. Please try again.');
@@ -5031,7 +5050,7 @@ export default function Page() {
                     ) : (
                       <>
                         <div style={{ fontSize: 14, color: '#5b6b79', marginBottom: 12 }}>
-                          Account found for <strong>{forgotEmail}</strong>. Enter your new password below.
+                          Enter your new password below.
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', borderRadius: 14, border: '1px solid #d7e0e8', background: '#fff' }}>
                           <input
@@ -5062,12 +5081,13 @@ export default function Page() {
                               const res = await fetch('/api/auth/reset-password', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ email: forgotEmail, newPassword: forgotNewPassword }),
+                                body: JSON.stringify({ token: resetToken, newPassword: forgotNewPassword }),
                               });
                               const data = await res.json();
                               if (res.ok) {
                                 setForgotMessage('Password updated successfully.');
-                                setTimeout(() => setForgotOpen(false), 1500);
+                                // The reset signed them in; reload so the app picks up the new session.
+                                setTimeout(() => window.location.replace('/'), 1500);
                               } else {
                                 setForgotMessage(data.error ?? 'Something went wrong.');
                               }
