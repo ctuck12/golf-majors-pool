@@ -9,9 +9,6 @@ import {
   updatePoolMember,
 } from '../../../../lib/pool-store';
 
-const COMMISSIONER_EMAIL = 'ctuck12@gmail.com';
-const COMMISSIONER_DISPLAY_NAME = 'Clayton Tucker';
-
 function parseTieBreaks(input: unknown) {
   if (!input || typeof input !== 'object') {
     return undefined;
@@ -54,10 +51,8 @@ export async function PATCH(request: Request, context: { params: Promise<{ membe
     return NextResponse.json({ error: 'Sign in to manage pool members.' }, { status: 401 });
   }
 
-  if (
-    session.user.email.trim().toLowerCase() !== COMMISSIONER_EMAIL ||
-    session.user.displayName.trim() !== COMMISSIONER_DISPLAY_NAME
-  ) {
+  // League tools: only a commissioner of the user's current league.
+  if (session.pool?.role !== 'commissioner') {
     return NextResponse.json({ error: 'You do not have access to commissioner tools.' }, { status: 403 });
   }
 
@@ -97,10 +92,8 @@ export async function DELETE(_request: Request, context: { params: Promise<{ mem
     return NextResponse.json({ error: 'Sign in to manage pool members.' }, { status: 401 });
   }
 
-  if (
-    session.user.email.trim().toLowerCase() !== COMMISSIONER_EMAIL ||
-    session.user.displayName.trim() !== COMMISSIONER_DISPLAY_NAME
-  ) {
+  // League tools: only a commissioner of the user's current league.
+  if (session.pool?.role !== 'commissioner') {
     return NextResponse.json({ error: 'You do not have access to commissioner tools.' }, { status: 403 });
   }
 

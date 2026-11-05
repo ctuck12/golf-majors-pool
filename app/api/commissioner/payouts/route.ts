@@ -8,9 +8,6 @@ import {
   updatePoolPayouts,
 } from '../../../lib/pool-store';
 
-const COMMISSIONER_EMAIL = 'ctuck12@gmail.com';
-const COMMISSIONER_DISPLAY_NAME = 'Clayton Tucker';
-
 function isTournamentId(value: string): value is TournamentId {
   return TOURNAMENT_IDS.includes(value as TournamentId);
 }
@@ -24,10 +21,8 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'Sign in to manage payouts.' }, { status: 401 });
   }
 
-  if (
-    session.user.email.trim().toLowerCase() !== COMMISSIONER_EMAIL ||
-    session.user.displayName.trim() !== COMMISSIONER_DISPLAY_NAME
-  ) {
+  // League tools: only a commissioner of the user's current league.
+  if (session.pool?.role !== 'commissioner') {
     return NextResponse.json({ error: 'You do not have access to commissioner tools.' }, { status: 403 });
   }
 
