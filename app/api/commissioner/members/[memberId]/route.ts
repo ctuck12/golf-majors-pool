@@ -3,7 +3,10 @@ import { NextResponse } from 'next/server';
 import {
   deletePoolMember,
   getSessionContext,
+  isAppAdmin,
+  type LeagueRole,
   SESSION_COOKIE_NAME,
+  setMemberRole,
   TOURNAMENT_IDS,
   type TournamentId,
   updatePoolMember,
@@ -64,12 +67,20 @@ export async function PATCH(request: Request, context: { params: Promise<{ membe
       password?: string;
       rosters?: unknown;
       tieBreaks?: unknown;
+      role?: LeagueRole;
     };
 
+    if (body.role !== undefined) {
+      await setMemberRole(session.user.id, memberId, body.role);
+    }
+
+    // A member's sign-in details belong to them: only the app admin can change another person's
+    // email or password (everyone else uses the emailed reset link).
+    const adminOnly = isAppAdmin(session.user);
     const member = await updatePoolMember(session.user.id, memberId, {
       displayName: body.displayName,
-      email: body.email,
-      password: body.password,
+      email: adminOnly ? body.email : undefined,
+      password: adminOnly ? body.password : undefined,
       rosters: parseRosters(body.rosters),
       tieBreaks: parseTieBreaks(body.tieBreaks),
     });

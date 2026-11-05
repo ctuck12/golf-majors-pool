@@ -45,16 +45,42 @@ export type PublicPool = {
   winnerScores: Partial<Record<TournamentId, number>>;
 };
 
-// The pool as the signed-in user sees it: no winner scores, plus their role in it.
-export type SessionPool = Omit<PublicPool, 'winnerScores'> & { role: LeagueRole };
+export type LeagueContact = { id: string; name: string; email: string };
+
+// The pool as the signed-in user sees it: no winner scores, plus their role in it, its plan,
+// and who runs it (shown to members as the league's contact).
+export type SessionPool = Omit<PublicPool, 'winnerScores'> & {
+  role: LeagueRole;
+  plan: string;
+  memberLimit: number | null;
+  commissioners: LeagueContact[];
+};
+
+export type LeagueSummary = { id: string; name: string; role: LeagueRole };
 
 export type SessionContext = {
   user: PublicUser | null;
   pool: SessionPool | null;
   entries: PublicPoolEntry[];
+  // Every league the user belongs to (for the league switcher).
+  leagues: LeagueSummary[];
+  isAppAdmin: boolean;
+  canCreateLeague: boolean;
 };
 
-export const EMPTY_SESSION: SessionContext = { user: null, pool: null, entries: [] };
+export const EMPTY_SESSION: SessionContext = {
+  user: null,
+  pool: null,
+  entries: [],
+  leagues: [],
+  isAppAdmin: false,
+  canCreateLeague: false,
+};
+
+// Until payments ship, only the app admin can create leagues; LEAGUE_CREATION_OPEN=true opens it up.
+export function canCreateLeagues(user: { email: string; displayName: string } | null | undefined) {
+  return isAppAdmin(user) || process.env.LEAGUE_CREATION_OPEN === 'true';
+}
 
 export type MemberUpdates = {
   displayName?: string;
