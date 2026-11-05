@@ -48,6 +48,9 @@ export async function sendPasswordResetEmail(input: { to: string; displayName: s
     ].join('\n'),
     html: `
       <div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#0f1720">
+        <div style="background:#0a1628;border-radius:16px;padding:12px 16px;margin:0 0 24px;text-align:center">
+          <img src="${appBaseUrl()}/email/logo-header.jpg" width="400" height="171" alt="Golf Majors Pool" style="display:block;width:100%;max-width:400px;height:auto;margin:0 auto;border:0">
+        </div>
         <h2 style="margin:0 0 16px">Reset your password</h2>
         <p>Hi ${name},</p>
         <p>Tap the button below to set a new password for Golf Majors Pool.</p>
