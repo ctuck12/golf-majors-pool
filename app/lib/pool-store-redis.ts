@@ -680,3 +680,7 @@ export async function updatePoolWinnerScore(requestingUserId: string, tournament
   await writeDatabase(database);
   return toPublicPool(activePool);
 }
+
+export async function regenerateJoinCode(): Promise<never> {
+  throw new Error(NEEDS_POSTGRES);
+}

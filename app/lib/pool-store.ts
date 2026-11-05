@@ -70,6 +70,8 @@ export const setMemberRole = (requestingUserId: string, memberId: string, role: 
     : redisStore.setMemberRole();
 export const deleteOwnAccount = (userId: string) =>
   userDataBackend() === 'postgres' ? postgresStore.deleteOwnAccount(userId) : redisStore.deleteOwnAccount();
+export const regenerateJoinCode = (requestingUserId: string) =>
+  userDataBackend() === 'postgres' ? postgresStore.regenerateJoinCode(requestingUserId) : redisStore.regenerateJoinCode();
 export const updatePoolWinnerScore = (requestingUserId: string, tournamentId: TournamentId, score: number) =>
   store().updatePoolWinnerScore(requestingUserId, tournamentId, score);
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, type CSSProperties } from 'react';
-import { Check, Copy, LogOut, Plus, Trash2, Users, X } from 'lucide-react';
+import { Check, Copy, LogOut, Plus, RefreshCw, Trash2, Users, X } from 'lucide-react';
 
 // League screens: the gate shown to a signed-in user who isn't in a league yet, and the
 // "Leagues" panel (switch, join, create, invite, delete account). Both talk to the API and hand
@@ -157,8 +157,12 @@ function CreateForm<T extends SessionLike>({ onSession }: { onSession: (payload:
   );
 }
 
-function InviteBox({ joinCode }: { joinCode: string }) {
+function InviteBox<T extends SessionLike>({ joinCode, onSession }: { joinCode: string; onSession: (payload: T) => void }) {
   const [copied, setCopied] = useState<'code' | 'link' | null>(null);
+  const [confirmNew, setConfirmNew] = useState(false);
+  const [newBusy, setNewBusy] = useState(false);
+  const [newError, setNewError] = useState('');
+  const [newDone, setNewDone] = useState(false);
   const copy = async (what: 'code' | 'link') => {
     try {
       await navigator.clipboard.writeText(what === 'code' ? joinCode : inviteLinkFor(joinCode));
@@ -187,6 +191,50 @@ function InviteBox({ joinCode }: { joinCode: string }) {
       <div style={{ fontSize: 12, color: '#5b6b79', lineHeight: 1.5 }}>
         Friends open the link (or enter the code after signing up) to join your league.
       </div>
+      {newDone ? (
+        <div style={{ fontSize: 12, fontWeight: 700, color: '#1f8d4e' }}>New code is live. Share the new link; the old one no longer works.</div>
+      ) : null}
+      {!confirmNew ? (
+        <button
+          type="button"
+          onClick={() => { setConfirmNew(true); setNewError(''); setNewDone(false); }}
+          style={{ ...secondaryButton, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+        >
+          <RefreshCw size={16} /> New code
+        </button>
+      ) : (
+        <div style={{ display: 'grid', gap: 8, border: '1px solid #fcd9a0', background: '#fff8ee', borderRadius: 12, padding: 12 }}>
+          <div style={{ fontSize: 13, color: '#0f1720', lineHeight: 1.5 }}>
+            Make a new code? <b>{joinCode}</b> and every invite link already sent will stop working. Current members stay in the league.
+          </div>
+          {newError ? <div style={{ fontSize: 13, color: '#a61b1b' }}>{newError}</div> : null}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button type="button" onClick={() => setConfirmNew(false)} style={{ ...secondaryButton, flex: 1 }}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={newBusy}
+              onClick={async () => {
+                setNewBusy(true);
+                setNewError('');
+                try {
+                  onSession(await postJson<T>('/api/commissioner/join-code', {}));
+                  setConfirmNew(false);
+                  setNewDone(true);
+                } catch (err) {
+                  setNewError(err instanceof Error ? err.message : 'Unable to change the code.');
+                } finally {
+                  setNewBusy(false);
+                }
+              }}
+              style={{ ...primaryButton(newBusy), flex: 1 }}
+            >
+              {newBusy ? 'Changing…' : 'Make new code'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -345,7 +393,7 @@ export function LeagueModal<T extends SessionLike>({
           {isCommissioner && activeJoinCode ? (
             <div>
               <div style={sectionLabel}>Invite people to this league</div>
-              <InviteBox joinCode={activeJoinCode} />
+              <InviteBox<T> joinCode={activeJoinCode} onSession={onSession} />
             </div>
           ) : null}
 

@@ -877,3 +877,19 @@ export async function deleteOwnAccount(userId: string) {
     await sql`delete from users where id = ${userId}`;
   });
 }
+
+// Gives the requester's active league a fresh join code. The old code and any invite links built
+// from it stop working; people already in the league are unaffected.
+export async function regenerateJoinCode(requestingUserId: string) {
+  return db().begin(async (sql) => {
+    const league = await requireActiveLeague(sql, requestingUserId);
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const joinCode = randomJoinCode();
+      const [taken] = await sql`select 1 from leagues where join_code = ${joinCode}`;
+      if (taken) continue;
+      await sql`update leagues set join_code = ${joinCode} where id = ${league.id}`;
+      return joinCode;
+    }
+    throw new Error('Could not generate a new code. Please try again.');
+  });
+}
