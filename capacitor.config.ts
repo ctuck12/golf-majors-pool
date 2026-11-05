@@ -6,7 +6,7 @@ const config: CapacitorConfig = {
   appId: 'com.golfmajorspool.app',
   appName: 'Golf Majors Pool',
   webDir: 'out',
-  backgroundColor: '#edf3fb',
+  backgroundColor: '#e8edf3',
   ios: {
     contentInset: 'never',
   },
