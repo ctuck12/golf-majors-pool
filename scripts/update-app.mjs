@@ -19,7 +19,9 @@ const comment = commentIndex > -1 ? process.argv[commentIndex + 1] : undefined;
 
 execSync('node scripts/build-mobile.mjs --no-sync', { stdio: 'inherit' });
 
-const args = ['capgo', 'bundle', 'upload', '--channel', 'production', '--bundle', bundle];
+// --delta: phones download only the files that changed since their current version, not the whole
+// ~50 MB bundle (most of it is images that rarely change).
+const args = ['capgo', 'bundle', 'upload', '--channel', 'production', '--bundle', bundle, '--delta'];
 if (comment) args.push('--comment', comment);
 console.log(`\nUploading ${bundle} to Capgo (channel: production)…`);
 execFileSync('npx', args, { stdio: 'inherit' });
