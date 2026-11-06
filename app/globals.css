@@ -165,6 +165,26 @@ body {
   padding-right: env(safe-area-inset-right);
 }
 
+/* Pop-ups in the app: keep every pop-up below the Dynamic Island. Pop-up backdrops are inline-styled
+   full-screen layers (position: fixed; inset: 0), so this matches them by their style. Their cards cap
+   their height with var(--safe-y) so a tall card can't grow back up under the island or the home bar. */
+:root {
+  --safe-y: 0px;
+}
+.native-app {
+  --safe-y: calc(env(safe-area-inset-top) + env(safe-area-inset-bottom));
+}
+.native-app [style*='position: fixed'][style*='inset: 0'],
+.native-app [style*='position: fixed'][style*='top: 0px'][style*='bottom: 0px'] {
+  padding-top: calc(env(safe-area-inset-top) + 12px) !important;
+}
+
+/* When the app scrolls something into view (e.g. the top entry for a tapped leaderboard golfer),
+   stop it comfortably below the Dynamic Island instead of right underneath it. */
+.native-app * {
+  scroll-margin-top: calc(env(safe-area-inset-top) + 16px);
+}
+
 /* App feel inside the iPhone app: no grey flash when tapping, and no copy / look-up menu when
    long-pressing buttons, tabs and menus (text boxes still select and paste normally). */
 .native-app {

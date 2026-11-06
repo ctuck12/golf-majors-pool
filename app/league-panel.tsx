@@ -385,7 +385,7 @@ export function LeagueModal<T extends SessionLike>({
     >
       <div
         onClick={(event) => event.stopPropagation()}
-        style={{ width: 'min(440px, calc(100vw - 32px))', maxHeight: 'calc(100svh - 32px)', overflowY: 'auto', background: '#fff', borderRadius: 20, boxShadow: '0 24px 60px rgba(9,34,51,0.3)' }}
+        style={{ width: 'min(440px, calc(100vw - 32px))', maxHeight: 'calc(100svh - 32px - var(--safe-y))', overflowY: 'auto', background: '#fff', borderRadius: 20, boxShadow: '0 24px 60px rgba(9,34,51,0.3)' }}
       >
         <div style={{ background: navy, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ color: '#fff', fontSize: 17, fontWeight: 900 }}>Leagues</div>
