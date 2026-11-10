@@ -515,6 +515,9 @@ export function LeagueModal<T extends SessionLike>({
                 </div>
               </div>
             )}
+            <a href="https://golfmajorspool.com/privacy.html" target="_blank" rel="noreferrer" style={{ display: 'block', marginTop: 12, textAlign: 'center', fontSize: 13, color: '#5a6876' }}>
+              Privacy Policy
+            </a>
           </div>
         </div>
       </div>
