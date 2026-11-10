@@ -348,6 +348,19 @@ export async function removeSession(token: string) {
   await db()`delete from sessions where token_hash = ${hashSessionToken(token)}`;
 }
 
+// A session in use renews itself: once a week of its 30 days has gone, opening the app pushes the
+// expiry back out to 30 days. So someone who plays stays signed in, and only a session left unused
+// for a month ends. Returns whether it renewed (the caller re-sets the cookie when it did).
+export async function renewSession(token: string): Promise<boolean> {
+  const renewAfter = new Date(Date.now() + SESSION_TTL_MS - 7 * 24 * 60 * 60 * 1000);
+  const rows = await db()`
+    update sessions set expires_at = ${new Date(Date.now() + SESSION_TTL_MS)}
+    where token_hash = ${hashSessionToken(token)} and expires_at > now() and expires_at < ${renewAfter}
+    returning 1
+  `;
+  return rows.length > 0;
+}
+
 export async function getSessionContext(token: string | undefined): Promise<SessionContext> {
   if (!token) {
     return EMPTY_SESSION;
