@@ -97,16 +97,25 @@ export type MemberUpdates = {
 export const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const MAX_PLAYER_ID = Math.max(...PLAYER_POOL_WITH_PGA_IDS.map((player) => player.id));
 
-// The app admin runs the app-wide tools (golfer salaries, fields, lock times, ...) for every league.
-const APP_ADMIN_EMAIL = 'ctuck12@gmail.com';
-const APP_ADMIN_DISPLAY_NAME = 'Clayton Tucker';
+// The app admin runs the app-wide tools (golfer salaries, fields, lock times, ...) for every
+// league — the pool's operator, above every league's own commissioner. Who that is comes from
+// APP_ADMIN_EMAILS (comma-separated) on the server, defaulting to the founder's account.
+//
+// Sign-ups don't verify the address, so an email must already belong to your own account
+// BEFORE it goes in APP_ADMIN_EMAILS — otherwise whoever registers it first becomes admin.
+// (Emails are unique, so an address that already has an account can't be claimed.)
+const DEFAULT_APP_ADMIN_EMAILS = ['ctuck12@gmail.com'];
 
-export function isAppAdmin(user: { email: string; displayName: string } | null | undefined) {
-  return Boolean(
-    user &&
-      user.email.trim().toLowerCase() === APP_ADMIN_EMAIL &&
-      (user.displayName ?? '').trim() === APP_ADMIN_DISPLAY_NAME,
-  );
+export function appAdminEmails(): string[] {
+  const fromEnv = (process.env.APP_ADMIN_EMAILS ?? '')
+    .split(',')
+    .map((e) => normalizeEmail(e))
+    .filter(Boolean);
+  return fromEnv.length ? fromEnv : DEFAULT_APP_ADMIN_EMAILS;
+}
+
+export function isAppAdmin(user: { email: string; displayName?: string } | null | undefined) {
+  return Boolean(user && appAdminEmails().includes(normalizeEmail(user.email ?? '')));
 }
 
 // The Open 2026 rosters submitted before rosterSubmittedAt existed, in their actual
