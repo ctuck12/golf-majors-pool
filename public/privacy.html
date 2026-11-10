@@ -33,7 +33,7 @@
     <li>your display name, which the other members of your leagues see on the standings;</li>
     <li>your email address, used to sign you in and to send a password reset link when you ask for one;</li>
     <li>your password, stored only as a salted hash, never as the password itself;</li>
-    <li>the sign-in sessions on your devices (they expire after 30 days), and which league you last had open.</li>
+    <li>the sign-in sessions on your devices (each ends after 30 days unused), and which league you last had open.</li>
   </ul>
 
   <h2>Your leagues and picks</h2>
@@ -44,8 +44,7 @@
 
   <h2>What stays on your device</h2>
   <ul>
-    <li>Your signed-in session, so you don't have to sign in every time you open the app.</li>
-    <li>The accounts you have signed in to on that device, so you can switch between them. This includes the email address and the password you entered, kept in the app's own storage on that device and sent nowhere except to our server to sign you back in. Signing out ends the session but leaves the remembered account on the device; deleting the app, or clearing this site's data in your browser, removes everything stored there.</li>
+    <li>Your sign-in: a random token kept by the app (a cookie on the website). Your password is never stored on the device. The token renews itself while you use the app, so you stay signed in, and it ends after 30 days unused or when you sign out.</li>
     <li>Recent tournament data, so the leaderboard opens quickly.</li>
   </ul>
 

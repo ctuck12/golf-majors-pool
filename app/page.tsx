@@ -980,12 +980,6 @@ type SessionPayload = {
 type SessionFlags = { leagues: LeagueSummary[]; isAppAdmin: boolean; canCreateLeague: boolean };
 const NO_SESSION_FLAGS: SessionFlags = { leagues: [], isAppAdmin: false, canCreateLeague: false };
 
-type LocalStoredAccount = {
-  email: string;
-  password: string;
-  session: SessionPayload;
-};
-
 function buildPricedPlayers(
   playerPool: ReadonlyArray<{
     id: number;
@@ -1112,67 +1106,20 @@ function clearStoredSession() {
   window.localStorage.removeItem(`${STORAGE_PREFIX}:session`);
 }
 
-function readStoredAccounts() {
+// This device used to keep a list of every account signed in on it — with each password, in plain
+// text — to sign itself back in when a session lapsed. The session itself now renews on use
+// (/api/auth/session), so nothing needs a password after sign-in. Remove any list an older version
+// left behind, passwords and all.
+function purgeStoredAccounts() {
   if (typeof window === 'undefined') {
-    return [] as LocalStoredAccount[];
+    return;
   }
 
   try {
-    const raw = window.localStorage.getItem(`${STORAGE_PREFIX}:accounts`);
-    if (!raw) {
-      return [];
-    }
-
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as LocalStoredAccount[]) : [];
+    window.localStorage.removeItem(`${STORAGE_PREFIX}:accounts`);
   } catch {
-    return [];
+    // Storage unavailable (private mode): there is nothing stored to remove.
   }
-}
-
-function writeStoredAccounts(accounts: LocalStoredAccount[]) {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  window.localStorage.setItem(`${STORAGE_PREFIX}:accounts`, JSON.stringify(accounts));
-}
-
-function upsertStoredAccount(session: SessionPayload, password?: string) {
-  if (!session.user) {
-    return;
-  }
-
-  const accounts = readStoredAccounts();
-  const normalizedEmail = session.user.email.trim().toLowerCase();
-  const existing = accounts.find((account) => account.email.trim().toLowerCase() === normalizedEmail);
-
-  if (existing) {
-    existing.session = session;
-    if (password) {
-      existing.password = password;
-    }
-  } else if (password) {
-    accounts.push({
-      email: session.user.email,
-      password,
-      session,
-    });
-  }
-
-  writeStoredAccounts(accounts);
-}
-
-function findStoredAccount(email: string, password: string) {
-  const normalizedEmail = email.trim().toLowerCase();
-  return readStoredAccounts().find(
-    (account) => account.email.trim().toLowerCase() === normalizedEmail && account.password === password,
-  ) ?? null;
-}
-
-function findStoredAccountByEmail(email: string) {
-  const normalizedEmail = email.trim().toLowerCase();
-  return readStoredAccounts().find((account) => account.email.trim().toLowerCase() === normalizedEmail) ?? null;
 }
 
 function readRoster(tournamentId: TournamentId) {
@@ -2177,51 +2124,6 @@ export default function Page() {
             : 'Royal Birkdale Golf Club';
   const entriesTournamentPar = TOURNAMENT_PARS[entriesTournamentId];
 
-  const restoreServerSessionFromStoredAccount = async (storedAccount: LocalStoredAccount) => {
-    try {
-      return await readJson<SessionPayload>('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: storedAccount.email,
-          password: storedAccount.password,
-        }),
-      });
-    } catch (loginError) {
-      const fallbackUser = storedAccount.session.user;
-
-      if (!fallbackUser) {
-        throw loginError;
-      }
-
-      const registered = await readJson<SessionPayload>('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          displayName: fallbackUser.displayName,
-          email: storedAccount.email,
-          password: storedAccount.password,
-        }),
-      });
-
-      let latestSession = registered;
-
-      for (const tournamentId of TOURNAMENTS.map((item) => item.id)) {
-        const roster = fallbackUser.rosters[tournamentId] ?? [];
-
-        if (roster.length > 0) {
-          latestSession = await readJson<SessionPayload & { roster: number[] }>('/api/roster', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tournamentId, roster }),
-          });
-        }
-      }
-
-      return latestSession;
-    }
-  };
-
   useEffect(() => {
     const checkMobile = () => {
       // Inside the iPhone app, WebKit can report a desktop-sized width (980) while the page first
@@ -2295,6 +2197,7 @@ export default function Page() {
   useEffect(() => {
     const loadSession = async () => {
       setSessionLoading(true);
+      purgeStoredAccounts();
       const storedSnapshot = readStoredSession();
 
       if (storedSnapshot?.user) {
@@ -2310,44 +2213,18 @@ export default function Page() {
           setPool(payload.pool);
           setPoolEntries(payload.entries);
           writeStoredSession(payload);
-          upsertStoredAccount(payload);
         } else {
-          const stored = readStoredSession();
-          const storedAccount = stored?.user ? findStoredAccountByEmail(stored.user.email) : null;
-
-          if (storedAccount) {
-            const restored = await restoreServerSessionFromStoredAccount(storedAccount);
-            setSessionUser(restored.user);
-            setPool(restored.pool);
-            setPoolEntries(restored.entries);
-            writeStoredSession(restored);
-            upsertStoredAccount(restored, storedAccount.password);
-          } else {
-            setSessionUser(null);
-            setPool(null);
-            setPoolEntries([]);
-            clearStoredSession();
-          }
+          // The server says this device is signed out (the session ended, was signed out
+          // elsewhere, or the account is gone): show the sign-in screen.
+          setSessionUser(null);
+          setPool(null);
+          setPoolEntries([]);
+          clearStoredSession();
         }
       } catch {
-        const stored = readStoredSession();
-        const storedAccount = stored?.user ? findStoredAccountByEmail(stored.user.email) : null;
-
-        if (storedAccount) {
-          try {
-            const restored = await restoreServerSessionFromStoredAccount(storedAccount);
-            setSessionUser(restored.user);
-            setPool(restored.pool);
-            setPoolEntries(restored.entries);
-            writeStoredSession(restored);
-            upsertStoredAccount(restored, storedAccount.password);
-          } catch {
-            setSessionUser(null);
-            setPool(null);
-            setPoolEntries([]);
-            clearStoredSession();
-          }
-        } else {
+        // No answer (offline, a dead zone on the course): keep showing what this device last
+        // knew, if anything. The next refresh will settle it.
+        if (!storedSnapshot?.user) {
           setSessionUser(null);
           setPool(null);
           setPoolEntries([]);
@@ -2695,7 +2572,6 @@ export default function Page() {
     }
     if (payload.user) {
       writeStoredSession(payload);
-      upsertStoredAccount(payload);
     } else {
       clearStoredSession();
     }
@@ -2708,16 +2584,6 @@ export default function Page() {
 
       if (payload.user) {
         applySession(payload);
-        return;
-      }
-
-      const stored = readStoredSession();
-      const storedAccount = stored?.user ? findStoredAccountByEmail(stored.user.email) : null;
-
-      if (storedAccount) {
-        const restored = await restoreServerSessionFromStoredAccount(storedAccount);
-        upsertStoredAccount(restored, storedAccount.password);
-        applySession(restored);
       }
     } catch {
       // Keep the current UI in place if a soft refresh misses the network.
@@ -2735,7 +2601,6 @@ export default function Page() {
         body: JSON.stringify(registerForm),
       });
 
-      upsertStoredAccount(payload, registerForm.password);
       applySession(payload);
       settleViewAfterKeyboard();
       setRegisterForm({ displayName: '', email: '', password: '', joinCode: '' });
@@ -2758,26 +2623,11 @@ export default function Page() {
         body: JSON.stringify(loginForm),
       });
 
-      upsertStoredAccount(payload, loginForm.password);
       applySession(payload);
       settleViewAfterKeyboard();
       setLoginForm({ email: '', password: '' });
     } catch (err) {
-      const fallbackAccount = findStoredAccount(loginForm.email, loginForm.password);
-
-      if (fallbackAccount) {
-        try {
-          const restored = await restoreServerSessionFromStoredAccount(fallbackAccount);
-          upsertStoredAccount(restored, fallbackAccount.password);
-          applySession(restored);
-          settleViewAfterKeyboard();
-          setLoginForm({ email: '', password: '' });
-        } catch {
-          setAuthError(err instanceof Error ? err.message : 'Unable to sign in.');
-        }
-      } else {
-        setAuthError(err instanceof Error ? err.message : 'Unable to sign in.');
-      }
+      setAuthError(err instanceof Error ? err.message : 'Unable to sign in.');
     } finally {
       setAuthBusy(false);
     }
@@ -2823,14 +2673,6 @@ export default function Page() {
         body: JSON.stringify({ password: accountPassword }),
       });
 
-      upsertStoredAccount(
-        {
-          user: payload.user,
-          pool,
-          entries: poolEntries,
-        },
-        accountPassword,
-      );
       setSessionUser(payload.user);
       setAccountPassword('');
       setAccountMessage('Password updated.');
@@ -2858,13 +2700,6 @@ export default function Page() {
           entry.id === payload.user.id ? { ...entry, name: payload.user.displayName, rosters: payload.user.rosters } : entry,
         ),
       );
-      upsertStoredAccount({
-        user: payload.user,
-        pool,
-        entries: poolEntries.map((entry) =>
-          entry.id === payload.user.id ? { ...entry, name: payload.user.displayName, rosters: payload.user.rosters } : entry,
-        ),
-      });
       setAccountMessage('Display name updated.');
       setMyEntriesDetailView('none');
     } catch (err) {

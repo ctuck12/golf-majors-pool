@@ -47,6 +47,8 @@ export const removeSession = async (token: string) =>
   (await store()).removeSession(token);
 export const getSessionContext = async (token: string | undefined) =>
   (await store()).getSessionContext(token);
+export const renewSession = async (token: string) =>
+  (await store()).renewSession(token);
 export const joinPoolForUser = async (userId: string, joinCode: string) =>
   (await store()).joinPoolForUser(userId, joinCode);
 export const saveRosterForUser = async (userId: string, tournamentId: TournamentId, roster: unknown) =>

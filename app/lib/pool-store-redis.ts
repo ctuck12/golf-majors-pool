@@ -270,6 +270,11 @@ export async function createSession(userId: string) {
   return token;
 }
 
+// The Redis backend never expired sessions, so there is nothing to renew.
+export async function renewSession(): Promise<boolean> {
+  return false;
+}
+
 export async function removeSession(token: string) {
   const database = await readDatabase();
   database.sessions = database.sessions.filter((session) => session.token !== token);
