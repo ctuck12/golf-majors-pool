@@ -1,23 +1,17 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { getSessionContext, SESSION_COOKIE_NAME } from '../../../lib/pool-store';
+import { getSessionContext, isAppAdmin, SESSION_COOKIE_NAME } from '../../../lib/pool-store';
 import { detectPlayerTags } from '../../../lib/name-match';
 import { mergePlayerTags, getPlayerTags } from '../../../lib/player-tags-store';
 
 export const dynamic = 'force-dynamic';
-
-const COMMISSIONER_EMAIL = 'ctuck12@gmail.com';
-const COMMISSIONER_DISPLAY_NAME = 'Clayton Tucker';
 
 async function requireCommissioner() {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
   const session = await getSessionContext(token);
   if (!session.user) return { error: NextResponse.json({ error: 'Sign in to manage pool settings.' }, { status: 401 }) };
-  if (
-    session.user.email.trim().toLowerCase() !== COMMISSIONER_EMAIL ||
-    session.user.displayName.trim() !== COMMISSIONER_DISPLAY_NAME
-  ) {
+  if (!isAppAdmin(session.user)) {
     return { error: NextResponse.json({ error: 'You do not have access to commissioner tools.' }, { status: 403 }) };
   }
   return { session };

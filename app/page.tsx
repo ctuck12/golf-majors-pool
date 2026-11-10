@@ -65,7 +65,8 @@ const TOURNAMENT_ESPN_EVENT_IDS: Partial<Record<string, string>> = {
 
 const STORAGE_PREFIX = 'golf-pool-live';
 const DEFAULT_JOIN_CODE = 'MAJORS2026';
-const COMMISSIONER_EMAIL = 'ctuck12@gmail.com';
+// The founder pool's history counts the founder's own entry by name (The Players, below).
+// Who may use the app-wide admin tools is the server's call (isAppAdmin), sent with the session.
 const COMMISSIONER_DISPLAY_NAME = 'Clayton Tucker';
 // Set to true to re-enable the self-serve registration option on the login screen
 const REGISTRATION_OPEN = true;
@@ -1039,14 +1040,6 @@ function parseRosterField(value: string) {
     .split(',')
     .map((item) => Number(item.trim()))
     .filter((item) => Number.isInteger(item) && item > 0);
-}
-
-function canAccessCommissionerConsole(user: AuthUser | null) {
-  if (!user) {
-    return false;
-  }
-
-  return user.email.trim().toLowerCase() === COMMISSIONER_EMAIL && user.displayName.trim() === COMMISSIONER_DISPLAY_NAME;
 }
 
 function readStoredMainTab() {
@@ -2108,7 +2101,7 @@ export default function Page() {
   const tournament = TOURNAMENTS.find((item) => item.id === selectedTournament) ?? TOURNAMENTS[0];
   // The app admin runs the app-wide tools for every league; a league's commissioners run its league
   // tools (members, picks open/lock, payouts, tiebreak).
-  const isAppAdmin = sessionFlags.isAppAdmin || canAccessCommissionerConsole(sessionUser);
+  const isAppAdmin = sessionFlags.isAppAdmin;
   const canManagePool = isAppAdmin || pool?.role === 'commissioner';
   const isFounderPool = pool?.id === FOUNDER_POOL_ID;
 
@@ -2470,7 +2463,7 @@ export default function Page() {
     let isCommish = false;
     try {
       const snap = readStoredSession();
-      isCommish = !!snap?.user && (canAccessCommissionerConsole(snap.user) || snap.pool?.role === 'commissioner');
+      isCommish = !!snap?.user && (snap.isAppAdmin === true || snap.pool?.role === 'commissioner');
     } catch { isCommish = false; }
     if (!isCommish) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
