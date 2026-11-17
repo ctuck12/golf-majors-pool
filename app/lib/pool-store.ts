@@ -16,6 +16,8 @@ export {
   type LeagueContact,
   type LeagueRole,
   type LeagueSummary,
+  type LeagueVenmo,
+  type PayoutSent,
   type PublicPool,
   type PublicPoolEntry,
   type PublicUser,
@@ -98,6 +100,16 @@ export const redeemPass = async (userId: string, productId: string, action: Pass
   (await postgresOnly()).redeemPass(userId, productId, action);
 export const regenerateJoinCode = async (requestingUserId: string) =>
   (await postgresOnly()).regenerateJoinCode(requestingUserId);
+export const updateUserVenmo = async (userId: string, venmo: unknown) =>
+  (await postgresOnly()).updateUserVenmo(userId, venmo);
+export const updateEntryFees = async (requestingUserId: string, fees: Partial<Record<TournamentId, number | null>>) =>
+  (await postgresOnly()).updateEntryFees(requestingUserId, fees);
+export const setVenmoCollector = async (requestingUserId: string, collectorId: string) =>
+  (await postgresOnly()).setVenmoCollector(requestingUserId, collectorId);
+export const setPayoutSent = async (
+  requestingUserId: string,
+  input: { tournamentId: TournamentId; place: number; userId: string | null; amount: number; sent: boolean },
+) => (await postgresOnly()).setPayoutSent(requestingUserId, input);
 export const updatePoolWinnerScore = async (requestingUserId: string, tournamentId: TournamentId, score: number) =>
   (await store()).updatePoolWinnerScore(requestingUserId, tournamentId, score);
 

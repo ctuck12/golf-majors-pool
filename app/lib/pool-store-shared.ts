@@ -25,6 +25,8 @@ export type PublicUser = {
   rosters: Partial<Record<TournamentId, number[]>>;
   tieBreaks: Partial<Record<TournamentId, number>>;
   rosterSubmittedAt?: Partial<Record<TournamentId, string>>;
+  // Venmo username without the @ (null when not added yet).
+  venmo?: string | null;
 };
 
 export type PublicPoolEntry = {
@@ -33,6 +35,8 @@ export type PublicPoolEntry = {
   rosters: Partial<Record<TournamentId, number[]>>;
   tieBreaks: Partial<Record<TournamentId, number>>;
   rosterSubmittedAt?: Partial<Record<TournamentId, string>>;
+  // The member's Venmo, shown to the league's commissioners only (for paying out winnings).
+  venmo?: string | null;
 };
 
 export type PublicPool = {
@@ -43,9 +47,17 @@ export type PublicPool = {
   picksOpen: Partial<Record<TournamentId, boolean>>;
   payouts: Partial<Record<TournamentId, TournamentPayouts>>;
   winnerScores: Partial<Record<TournamentId, number>>;
+  // Entry fee per tournament, set by the league's commissioners.
+  entryFees?: Partial<Record<TournamentId, number>>;
 };
 
-export type LeagueContact = { id: string; name: string; email: string };
+export type LeagueContact = { id: string; name: string; email: string; venmo?: string | null };
+
+// Who members pay their entry fee to on Venmo.
+export type LeagueVenmo = { userId: string; name: string; handle: string };
+
+// A winner the commissioner has paid through Venmo this season.
+export type PayoutSent = { place: number; userId: string | null; amount: number; sentAt: string };
 
 // The pool as the signed-in user sees it: no winner scores, plus their role in it, its plan,
 // and who runs it (shown to members as the league's contact).
@@ -58,6 +70,12 @@ export type SessionPool = Omit<PublicPool, 'winnerScores'> & {
   seasonExpired: boolean;
   memberCount: number;
   commissioners: LeagueContact[];
+  // Venmo account entry fees go to (null until a commissioner adds theirs) and, for
+  // commissioners, which commissioner they picked to collect.
+  venmo?: LeagueVenmo | null;
+  venmoCollectorId?: string | null;
+  // Commissioners only: winners already paid this season, per tournament.
+  payoutsSent?: Partial<Record<TournamentId, PayoutSent[]>>;
 };
 
 export type LeagueSummary = { id: string; name: string; role: LeagueRole };
