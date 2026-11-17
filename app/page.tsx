@@ -6,6 +6,8 @@ import { isNativeApp, settleViewAfterKeyboard } from './native-bridge';
 import { Fragment, startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { LeagueGate, LeagueModal, type LeagueSummary } from './league-panel';
 import { PaywallModal, type PaywallMode } from './paywall';
+import { EntryFeesModal, openVenmoPayment, PayWinnersModal, VenmoFallbackNotice, VenmoModal, VenmoPrompt } from './venmo-ui';
+import { ENTRY_FEE_NOTE, formatMoney, formatVenmo } from '@/app/lib/venmo';
 import { PLAYER_POOL_WITH_PGA_IDS } from '@/app/lib/player-pool';
 import { PLAYER_ESPN_IDS } from '@/app/lib/player-espn-ids';
 import { TOURNAMENT_META } from '@/app/lib/tournament-config';
@@ -31,10 +33,12 @@ import {
   RefreshCw,
   Save,
   Search,
+  Send,
   Trash2,
   Trophy,
   UserPlus,
   Users,
+  Wallet,
 } from 'lucide-react';
 import {
   buildPlaceholderScoreBreakdown,
@@ -908,6 +912,7 @@ type AuthUser = {
   rosters: Partial<Record<TournamentId, number[]>>;
   tieBreaks: Partial<Record<TournamentId, number>>;
   rosterSubmittedAt?: Partial<Record<TournamentId, string>>;
+  venmo?: string | null;
 };
 
 type PoolInfo = {
@@ -924,7 +929,13 @@ type PoolInfo = {
   paidSeason?: number | null;
   seasonExpired?: boolean;
   memberCount?: number;
-  commissioners?: { id: string; name: string; email: string }[];
+  commissioners?: { id: string; name: string; email: string; venmo?: string | null }[];
+  // Entry fee per tournament and the Venmo that collects it (null until a commissioner adds one).
+  entryFees?: Partial<Record<TournamentId, number>>;
+  venmo?: { userId: string; name: string; handle: string } | null;
+  venmoCollectorId?: string | null;
+  // Commissioners only: winners already paid this season.
+  payoutsSent?: Partial<Record<TournamentId, { place: number; userId: string | null; amount: number; sentAt: string }[]>>;
 };
 
 type PoolEntry = {
@@ -933,6 +944,8 @@ type PoolEntry = {
   rosters: Partial<Record<TournamentId, number[]>>;
   tieBreaks: Partial<Record<TournamentId, number>>;
   rosterSubmittedAt?: Partial<Record<TournamentId, string>>;
+  // Shown to commissioners only, for paying winners.
+  venmo?: string | null;
 };
 
 type CommissionerMember = AuthUser;
@@ -1962,6 +1975,12 @@ export default function Page() {
   const [showRosterConfirm, setShowRosterConfirm] = useState(false);
   // Brief "Roster successfully submitted!" flash shown between Submit & Pay and the Venmo handoff.
   const [showSubmitToast, setShowSubmitToast] = useState(false);
+  // Venmo: editing your own, the commissioner's entry fees and pay-winners screens, and the
+  // venmo.com fallback when the Venmo app doesn't open.
+  const [venmoModalOpen, setVenmoModalOpen] = useState(false);
+  const [entryFeesOpen, setEntryFeesOpen] = useState(false);
+  const [payWinnersOpen, setPayWinnersOpen] = useState(false);
+  const [venmoFallbackUrl, setVenmoFallbackUrl] = useState<string | null>(null);
   const [showSubmittedPicksPopup, setShowSubmittedPicksPopup] = useState(false);
   // Submitted Picks popup ordering: alphabetical by default, or newest submission first.
   const [submittedPicksSort, setSubmittedPicksSort] = useState<'alpha' | 'newest'>('alpha');
@@ -2752,7 +2771,7 @@ export default function Page() {
         }),
       });
 
-      setPool(payload.pool);
+      setPool((current) => (current ? { ...current, ...payload.pool } : payload.pool));
       setCommissionerSuccess(`Lineup lock ${payload.pool.lineupLocks[selectedTournament] ? 'enabled' : 'disabled'}.`);
     } catch (err) {
       setCommissionerError(err instanceof Error ? err.message : 'Unable to update lineup lock.');
@@ -2781,7 +2800,7 @@ export default function Page() {
         }),
       });
 
-      setPool(payload.pool);
+      setPool((current) => (current ? { ...current, ...payload.pool } : payload.pool));
       setCommissionerSuccess(`Picks ${payload.pool.picksOpen?.[selectedTournament] ? 'opened' : 'closed'}.`);
     } catch (err) {
       setCommissionerError(err instanceof Error ? err.message : 'Unable to update picks open state.');
@@ -2811,7 +2830,7 @@ export default function Page() {
         }),
       });
 
-      setPool(payload.pool);
+      setPool((current) => (current ? { ...current, ...payload.pool } : payload.pool));
       setCommissionerSuccess(
         `${commissionerTournamentLabel} payouts saved.`,
       );
@@ -2882,7 +2901,7 @@ export default function Page() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tournamentId: entriesTournamentId, score }),
       });
-      setPool(payload.pool);
+      setPool((current) => (current ? { ...current, ...payload.pool } : payload.pool));
       setCommissionerSuccess(`${commissionerTournamentLabel} winner's score saved.`);
     } catch (err) {
       setCommissionerError(err instanceof Error ? err.message : 'Unable to save winner score.');
@@ -3459,6 +3478,15 @@ export default function Page() {
 
   const savedRoster = sessionUser?.rosters[entriesTournamentId] ?? [];
   const hasSubmittedRoster = savedRoster.length === REQUIRED_GOLFERS;
+  // Entry fee for the tournament being picked, and the commissioner's Venmo it's paid to. Members
+  // pay in the app only when both are set (and the collector doesn't pay themselves).
+  const entryFee = pool?.entryFees?.[entriesTournamentId] ?? 0;
+  const entryFeeVenmo = pool?.venmo ?? null;
+  const paysEntryFeeInApp = entryFee > 0 && !!entryFeeVenmo && entryFeeVenmo.userId !== sessionUser?.id;
+  const openEntryFeePayment = () => {
+    if (!entryFeeVenmo || entryFee <= 0) return;
+    openVenmoPayment({ recipient: entryFeeVenmo.handle, amount: entryFee, note: ENTRY_FEE_NOTE }, setVenmoFallbackUrl);
+  };
   const submittedEntries = poolEntries.filter((entry) => (entry.rosters[entriesTournamentId] ?? []).length === REQUIRED_GOLFERS);
   const otherSubmittedEntriesCount = sessionUser
     ? submittedEntries.filter((entry) => entry.id !== sessionUser.id).length
@@ -4594,6 +4622,15 @@ export default function Page() {
                   </div>
                   <div style={{ marginTop: 6, fontSize: isMobile ? 16 : 20, fontWeight: 900 }}>{sessionUser.displayName}</div>
                   <div style={{ marginTop: 4, fontSize: 13, color: '#6b7b88' }}>{sessionUser.email}</div>
+                  {accountPreferencesView === 'root' ? (
+                    <button
+                      type="button"
+                      onClick={() => { setAccountMenuOpen(false); setVenmoModalOpen(true); }}
+                      style={{ marginTop: 8, padding: 0, background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 800, color: '#008CFF', textAlign: 'left' }}
+                    >
+                      {sessionUser.venmo ? `Venmo: ${formatVenmo(sessionUser.venmo)} · Edit` : '+ Add your Venmo'}
+                    </button>
+                  ) : null}
 
                   {accountPreferencesView === 'password' ? (
                     <div style={{ position: 'relative', marginTop: 14 }}>
@@ -5106,6 +5143,48 @@ export default function Page() {
           onSession={(payload) => { applySession(payload); setPendingJoinCode(''); setMainTab('Standings'); }}
         />
 
+        {venmoModalOpen && sessionUser ? (
+          <VenmoModal<SessionPayload>
+            open
+            currentVenmo={sessionUser.venmo ?? null}
+            isCommissioner={pool?.role === 'commissioner'}
+            onClose={() => setVenmoModalOpen(false)}
+            onSession={applySession}
+          />
+        ) : null}
+
+        {entryFeesOpen && sessionUser && pool ? (
+          <EntryFeesModal<PoolInfo>
+            open
+            tournaments={TOURNAMENTS.map((t) => ({ id: t.id as TournamentId, label: t.name }))}
+            entryFees={pool.entryFees ?? {}}
+            commissioners={pool.commissioners ?? []}
+            collectorId={pool.venmoCollectorId ?? null}
+            leagueVenmo={pool.venmo ?? null}
+            currentUserId={sessionUser.id}
+            onClose={() => setEntryFeesOpen(false)}
+            onPool={(next) => setPool((current) => (current ? { ...current, ...next } : next))}
+            onAddVenmo={() => { setEntryFeesOpen(false); setVenmoModalOpen(true); }}
+          />
+        ) : null}
+
+        {payWinnersOpen && pool ? (
+          <PayWinnersModal<PoolInfo>
+            open
+            tournamentId={selectedTournament}
+            tournamentLabel={TOURNAMENTS.find((t) => t.id === selectedTournament)?.name ?? 'This tournament'}
+            isFinal={isTournamentFinal}
+            winners={standings.slice(0, 3).map((entry) => ({ place: entry.place, userId: entry.id, name: entry.name, venmo: entry.venmo ?? null }))}
+            payouts={selectedTournamentPayouts}
+            sent={pool.payoutsSent?.[selectedTournament] ?? []}
+            currentUserId={sessionUser?.id ?? ''}
+            onClose={() => setPayWinnersOpen(false)}
+            onPool={(next) => setPool((current) => (current ? { ...current, ...next } : next))}
+          />
+        ) : null}
+
+        <VenmoFallbackNotice url={venmoFallbackUrl} onClose={() => setVenmoFallbackUrl(null)} />
+
         <LeagueModal<SessionPayload>
           open={leagueModalOpen && !!sessionUser}
           onClose={() => { setLeagueModalOpen(false); setPendingJoinCode(''); }}
@@ -5166,6 +5245,14 @@ export default function Page() {
             </button>
           </div>
         ) : null}
+        <VenmoPrompt
+          userId={sessionUser.id}
+          hasVenmo={!!sessionUser.venmo}
+          isCommissioner={pool.role === 'commissioner'}
+          onAdd={() => setVenmoModalOpen(true)}
+          compact={isMobile}
+          marginTop={isMobile ? 10 : 16}
+        />
         {mainTab === 'Standings' ? (
           <section
             style={{
@@ -5324,12 +5411,16 @@ export default function Page() {
                       <div style={{ borderRadius: 999, background: selectedTournament === 'masters' ? '#2c6449' : selectedTournament === 'pga' ? '#B09963' : selectedTournament === 'us-open' ? '#BE3436' : '#173b63', padding: isSmallMobile ? '3px 7px' : isMobile ? '4px 9px' : isLandscapePhone ? '3px 7px' : '6px 10px', fontSize: isSmallMobile ? 10 : isMobile ? 11 : isLandscapePhone ? 10 : 13, fontWeight: 800, color: '#fff', border: selectedTournament === 'masters' ? '1.5px solid #1a4a33' : selectedTournament === 'pga' ? '1.5px solid #8a7040' : selectedTournament === 'us-open' ? '1.5px solid #7b1a13' : '1.5px solid #0f2448', boxShadow: selectedTournament === 'masters' ? '0 2px 8px rgba(30,80,50,0.45)' : selectedTournament === 'pga' ? '0 2px 8px rgba(140,112,64,0.4)' : selectedTournament === 'us-open' ? '0 2px 8px rgba(160,40,30,0.4)' : '0 2px 8px rgba(14,45,100,0.4)' }}>
                         1st: <span style={{ color: '#fff' }}>{formatPayoutAmount(selectedTournamentPayouts?.first)}</span>
                       </div>
+                      {selectedTournamentPayouts && !selectedTournamentPayouts.second ? null : (
                       <div style={{ borderRadius: 999, background: selectedTournament === 'masters' ? '#2c6449' : selectedTournament === 'pga' ? '#B09963' : selectedTournament === 'us-open' ? '#BE3436' : '#173b63', padding: isSmallMobile ? '3px 7px' : isMobile ? '4px 9px' : isLandscapePhone ? '3px 7px' : '6px 10px', fontSize: isSmallMobile ? 10 : isMobile ? 11 : isLandscapePhone ? 10 : 13, fontWeight: 800, color: '#fff', border: selectedTournament === 'masters' ? '1.5px solid #1a4a33' : selectedTournament === 'pga' ? '1.5px solid #8a7040' : selectedTournament === 'us-open' ? '1.5px solid #7b1a13' : '1.5px solid #0f2448', boxShadow: selectedTournament === 'masters' ? '0 2px 8px rgba(30,80,50,0.45)' : selectedTournament === 'pga' ? '0 2px 8px rgba(140,112,64,0.4)' : selectedTournament === 'us-open' ? '0 2px 8px rgba(160,40,30,0.4)' : '0 2px 8px rgba(14,45,100,0.4)' }}>
                         2nd: <span style={{ color: '#fff' }}>{formatPayoutAmount(selectedTournamentPayouts?.second)}</span>
                       </div>
+                      )}
+                      {selectedTournamentPayouts && !selectedTournamentPayouts.third ? null : (
                       <div style={{ borderRadius: 999, background: selectedTournament === 'masters' ? '#2c6449' : selectedTournament === 'pga' ? '#B09963' : selectedTournament === 'us-open' ? '#BE3436' : '#173b63', padding: isSmallMobile ? '3px 7px' : isMobile ? '4px 9px' : isLandscapePhone ? '3px 7px' : '6px 10px', fontSize: isSmallMobile ? 10 : isMobile ? 11 : isLandscapePhone ? 10 : 13, fontWeight: 800, color: '#fff', border: selectedTournament === 'masters' ? '1.5px solid #1a4a33' : selectedTournament === 'pga' ? '1.5px solid #8a7040' : selectedTournament === 'us-open' ? '1.5px solid #7b1a13' : '1.5px solid #0f2448', boxShadow: selectedTournament === 'masters' ? '0 2px 8px rgba(30,80,50,0.45)' : selectedTournament === 'pga' ? '0 2px 8px rgba(140,112,64,0.4)' : selectedTournament === 'us-open' ? '0 2px 8px rgba(160,40,30,0.4)' : '0 2px 8px rgba(14,45,100,0.4)' }}>
                         3rd: <span style={{ color: '#fff' }}>{formatPayoutAmount(selectedTournamentPayouts?.third)}</span>
                       </div>
+                      )}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                         <button
@@ -5343,6 +5434,15 @@ export default function Page() {
                         <div style={{ fontSize: isMobile ? 11 : 12, fontWeight: 800, color: (selectedTournament === 'players' || selectedTournament === 'masters' || selectedTournament === 'pga' || selectedTournament === 'us-open') ? '#c0392b' : '#0f1720', letterSpacing: '0.1em', textTransform: 'uppercase', textAlign: 'right' }}>
                           Final Results
                         </div>
+                      ) : null}
+                      {isTournamentFinal && !showFutureTournamentView && pool?.role === 'commissioner' ? (
+                        <button
+                          type="button"
+                          onClick={() => setPayWinnersOpen(true)}
+                          style={{ border: 'none', borderRadius: 999, padding: isMobile ? '5px 10px' : '6px 12px', background: '#008CFF', color: '#fff', fontSize: isMobile ? 11 : 12, fontWeight: 900, cursor: 'pointer' }}
+                        >
+                          Pay Winners
+                        </button>
                       ) : null}
                   </div>
                 ) : !showFutureTournamentView && !showFinalTournamentView ? (
@@ -7305,11 +7405,11 @@ export default function Page() {
                   <div style={{ padding: isMobile ? '0 14px 14px' : '0 22px 22px', display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: isMobile ? 6 : 10 }}>
                     <div style={{ border: selectedTournament === 'open' ? '1.5px solid #000000' : '1px solid #dce8f5', borderRadius: isMobile ? 10 : 12, padding: isMobile ? '8px 8px' : '10px 14px', background: selectedTournament === 'open' ? '#F4BC41' : '#f0f6ff' }}>
                       <div style={{ fontSize: 9, textTransform: 'uppercase', fontWeight: 800, color: selectedTournament === 'open' ? headerSolid : '#5b6b79', letterSpacing: '0.07em' }}>Entry Fee</div>
-                      <div style={{ marginTop: 4, fontSize: isMobile ? 20 : 30, fontWeight: 900, color: selectedTournament === 'open' ? '#000000' : '#173b63' }}>$30</div>
+                      <div style={{ marginTop: 4, fontSize: isMobile ? 20 : 30, fontWeight: 900, color: selectedTournament === 'open' ? '#000000' : '#173b63' }}>{pool?.entryFees?.[selectedTournament] ? formatMoney(pool.entryFees[selectedTournament]!) : '—'}</div>
                     </div>
                     <div style={{ border: selectedTournament === 'open' ? '1.5px solid #000000' : '1px solid #dce8f5', borderRadius: isMobile ? 10 : 12, padding: isMobile ? '8px 8px' : '10px 14px', background: selectedTournament === 'open' ? '#F4BC41' : '#f0f6ff' }}>
                       <div style={{ fontSize: 9, textTransform: 'uppercase', fontWeight: 800, color: selectedTournament === 'open' ? headerSolid : '#5b6b79', letterSpacing: '0.07em' }}>Venmo</div>
-                      <div style={{ marginTop: 4, fontSize: isMobile ? 13 : 16, fontWeight: 800, color: selectedTournament === 'open' ? '#000000' : '#173b63' }}>@claytont743</div>
+                      <div style={{ marginTop: 4, fontSize: isMobile ? 13 : 16, fontWeight: 800, color: selectedTournament === 'open' ? '#000000' : '#173b63' }}>{pool?.venmo ? formatVenmo(pool.venmo.handle) : '—'}</div>
                     </div>
                     <div style={{ border: selectedTournament === 'open' ? '1.5px solid #000000' : '1px solid #dce8f5', borderRadius: isMobile ? 10 : 12, padding: isMobile ? '8px 8px' : '10px 14px', background: selectedTournament === 'open' ? '#F4BC41' : '#f0f6ff' }}>
                       <div style={{ fontSize: 9, textTransform: 'uppercase', fontWeight: 800, color: selectedTournament === 'open' ? headerSolid : '#5b6b79', letterSpacing: '0.07em' }}>Questions</div>
@@ -7322,7 +7422,19 @@ export default function Page() {
                     </div>
                   </div>
                   ) : (
-                  <div style={{ padding: isMobile ? '0 14px 14px' : '0 22px 22px' }}>
+                  <div style={{ padding: isMobile ? '0 14px 14px' : '0 22px 22px', display: 'grid', gap: isMobile ? 6 : 10 }}>
+                    {pool?.entryFees?.[selectedTournament] || pool?.venmo ? (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: isMobile ? 6 : 10 }}>
+                        <div style={{ border: '1px solid #dce8f5', borderRadius: isMobile ? 10 : 12, padding: isMobile ? '8px 10px' : '10px 14px', background: '#fff' }}>
+                          <div style={{ fontSize: 9, textTransform: 'uppercase', fontWeight: 800, color: '#5b6b79', letterSpacing: '0.07em' }}>Entry Fee</div>
+                          <div style={{ marginTop: 4, fontSize: isMobile ? 20 : 30, fontWeight: 900, color: '#173b63' }}>{pool?.entryFees?.[selectedTournament] ? formatMoney(pool.entryFees[selectedTournament]!) : '—'}</div>
+                        </div>
+                        <div style={{ border: '1px solid #dce8f5', borderRadius: isMobile ? 10 : 12, padding: isMobile ? '8px 10px' : '10px 14px', background: '#fff', minWidth: 0 }}>
+                          <div style={{ fontSize: 9, textTransform: 'uppercase', fontWeight: 800, color: '#5b6b79', letterSpacing: '0.07em' }}>Venmo</div>
+                          <div style={{ marginTop: 4, fontSize: isMobile ? 13 : 16, fontWeight: 800, color: '#173b63', overflowWrap: 'anywhere' }}>{pool?.venmo ? formatVenmo(pool.venmo.handle) : '—'}</div>
+                        </div>
+                      </div>
+                    ) : null}
                     <div style={{ border: '1px solid #dce8f5', borderRadius: isMobile ? 10 : 12, padding: isMobile ? '8px 10px' : '10px 14px', background: '#fff' }}>
                       <div style={{ fontSize: 9, textTransform: 'uppercase', fontWeight: 800, color: '#5b6b79', letterSpacing: '0.07em' }}>Questions? Ask your commissioner</div>
                       {(pool?.commissioners ?? []).map((c) => (
@@ -8375,17 +8487,28 @@ export default function Page() {
             >
               <div style={{ fontSize: 13, fontWeight: 800, textTransform: 'uppercase', color: '#5b6b79', marginBottom: 14 }}>Pool Management Tools</div>
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))', gap: isMobile ? 10 : 14 }}>
-                {[
+                {([
+                  { key: 'entryFees', title: 'Entry Fees & Venmo', sub: pool?.venmo ? `Members pay ${formatVenmo(pool.venmo.handle)}` : 'Set fees and who collects them', Icon: DollarSign, open: () => setEntryFeesOpen(true) },
                   { key: 'payouts' as const, title: 'Tournament Payouts', sub: 'Set 1st / 2nd / 3rd place amounts', Icon: Trophy },
+                  { key: 'payWinners', title: 'Pay Winners', sub: 'Send winnings on Venmo once final', Icon: Send, open: () => setPayWinnersOpen(true) },
+                  { key: 'myVenmo', title: 'Your Venmo', sub: sessionUser?.venmo ? formatVenmo(sessionUser.venmo) : 'Add your Venmo', Icon: Wallet, open: () => setVenmoModalOpen(true) },
                   { key: 'markStatus' as const, title: 'Mark WD / DQ / MDF', sub: "Override a player's status", Icon: AlertCircle },
                   { key: 'roundLeader' as const, title: 'Round Leader Tools', sub: 'Clear a mis-captured round leader', Icon: RefreshCw },
                   { key: 'tiebreak' as const, title: 'Tiebreak Score', sub: 'Enter / override total strokes', Icon: Save },
-                ].filter((t) => isAppAdmin || t.key === 'payouts' || t.key === 'tiebreak').map((t) => {
+                ] as { key: string; title: string; sub: string; Icon: typeof Trophy; open?: () => void }[])
+                  // League tools for every commissioner; the app-wide ones for the app admin. The Venmo
+                  // tools need a league the user commissions (the admin can be in other leagues).
+                  .filter((t) => t.open ? pool?.role === 'commissioner' : isAppAdmin || t.key === 'payouts' || t.key === 'tiebreak')
+                  .map((t) => {
                   const Icon = t.Icon;
                   return (
                   <button
                     key={t.key}
-                    onClick={() => { setPoolToolConfirm(null); setPoolToolModal(t.key); }}
+                    onClick={() => {
+                      if (t.open) { t.open(); return; }
+                      setPoolToolConfirm(null);
+                      setPoolToolModal(t.key as 'payouts' | 'tiebreak' | 'roundLeader' | 'markStatus');
+                    }}
                     disabled={!canManagePool}
                     style={{ textAlign: 'left', border: '1px solid #e6edf1', borderRadius: 16, padding: isMobile ? '12px 14px' : '16px 18px', background: 'linear-gradient(180deg, #ffffff 0%, #f7fafc 100%)', boxShadow: '0 6px 18px rgba(9, 34, 51, 0.06)', cursor: canManagePool ? 'pointer' : 'not-allowed', opacity: canManagePool ? 1 : 0.5, display: 'flex', alignItems: 'center', gap: isMobile ? 11 : 13 }}
                   >
@@ -8424,7 +8547,7 @@ export default function Page() {
 
                     {poolToolModal === 'payouts' && (
                       <>
-                        <div style={{ fontSize: 13, color: '#5b6b79', lineHeight: 1.5 }}>Set the 1st, 2nd, and 3rd place payout amounts for the upcoming or active tournament.</div>
+                        <div style={{ fontSize: 13, color: '#5b6b79', lineHeight: 1.5 }}>Set the 1st, 2nd, and 3rd place payout amounts for the upcoming or active tournament. Leave a place at 0 if it doesn&apos;t pay (for example, winner takes all).</div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
                           {([['1st place', 'first'], ['2nd place', 'second'], ['3rd place', 'third']] as const).map(([label, key]) => (
                             <label key={key} style={{ display: 'grid', gap: 6 }}>
@@ -11812,8 +11935,8 @@ export default function Page() {
               <div style={{ background: entriesTournamentBg, padding: '16px 20px 14px', flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: hasSubmittedRoster ? 'center' : 'flex-start', gap: 12 }}>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 18, fontWeight: 900, color: '#fff' }}>Confirm Your Roster</div>
-                  {!hasSubmittedRoster && (
-                    <div style={{ marginTop: 5, fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.88)', letterSpacing: '0.01em' }}>Pool Entry Fee: $30</div>
+                  {!hasSubmittedRoster && entryFee > 0 && (
+                    <div style={{ marginTop: 5, fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.88)', letterSpacing: '0.01em' }}>Pool Entry Fee: {formatMoney(entryFee)}</div>
                   )}
                 </div>
                 {TOURNAMENT_TAB_LOGOS[entriesTournamentId] && (
@@ -11856,9 +11979,14 @@ export default function Page() {
                 </div>
 
                 {/* Explanation for the Submit & Pay flow */}
-                {!hasSubmittedRoster && (
+                {!hasSubmittedRoster && paysEntryFeeInApp && (
                   <div style={{ fontSize: 11.5, color: entriesTournamentId === 'open' ? entriesTournamentBg : '#5b6b79', lineHeight: 1.5, marginBottom: 10 }}>
-                    *Hitting <b>Submit &amp; Pay</b>{' '}submits your roster and automatically opens Venmo to @claytont743 to pay the pool entry fee. The $30 amount and what it&apos;s for are auto-populated for you.
+                    *Hitting <b>Submit &amp; Pay</b>{' '}submits your roster and automatically opens Venmo to {formatVenmo(entryFeeVenmo!.handle)} to pay the pool entry fee. The {formatMoney(entryFee)}{' '}amount and what it&apos;s for are auto-populated for you.
+                  </div>
+                )}
+                {!hasSubmittedRoster && entryFee > 0 && !entryFeeVenmo && (
+                  <div style={{ fontSize: 11.5, color: entriesTournamentId === 'open' ? entriesTournamentBg : '#5b6b79', lineHeight: 1.5, marginBottom: 10 }}>
+                    *Your commissioner hasn&apos;t added their Venmo yet, so pay the {formatMoney(entryFee)} entry fee to them directly.
                   </div>
                 )}
 
@@ -11876,12 +12004,12 @@ export default function Page() {
                           setShowSubmitToast(true);
                           setTimeout(() => {
                             setShowSubmitToast(false);
-                            window.location.href = `venmo://paycharge?txn=pay&recipients=claytont743&amount=30&note=${encodeURIComponent('⛳')}`;
-                          }, 2000);
+                            if (paysEntryFeeInApp) openEntryFeePayment();
+                          }, paysEntryFeeInApp ? 2000 : 1600);
                         }}
                         style={{ flex: 1, border: 'none', borderRadius: 12, padding: '13px 0', background: entriesTournamentBg, color: '#fff', fontSize: 15, fontWeight: 900, cursor: 'pointer' }}
                       >
-                        Submit &amp; Pay
+                        {paysEntryFeeInApp ? <>Submit &amp; Pay</> : 'Submit'}
                       </button>
                       <button
                         onClick={() => setShowRosterConfirm(false)}
@@ -11907,6 +12035,15 @@ export default function Page() {
                     </>
                   )}
                 </div>
+                {hasSubmittedRoster && paysEntryFeeInApp ? (
+                  <button
+                    type="button"
+                    onClick={() => openEntryFeePayment()}
+                    style={{ marginTop: 12, width: '100%', background: 'none', border: 'none', padding: 4, fontSize: 13, fontWeight: 800, color: entriesTournamentId === 'open' ? entriesTournamentBg : '#008CFF', cursor: 'pointer' }}
+                  >
+                    Still need to pay? Pay your {formatMoney(entryFee)} entry fee on Venmo
+                  </button>
+                ) : null}
               </div>
             </div>
           </div>
@@ -11918,7 +12055,9 @@ export default function Page() {
               <CheckCircle2 size={30} color="#1f8d4e" />
               <span style={{ fontSize: 17, fontWeight: 900, color: entriesTournamentId === 'open' ? entriesTournamentBg : '#0f1720' }}>
                 Roster successfully submitted!
-                <span style={{ display: 'block', marginTop: 4, fontSize: 14, fontWeight: 700, color: entriesTournamentId === 'open' ? entriesTournamentBg : '#5b6b79' }}>Now opening Venmo…</span>
+                {paysEntryFeeInApp ? (
+                  <span style={{ display: 'block', marginTop: 4, fontSize: 14, fontWeight: 700, color: entriesTournamentId === 'open' ? entriesTournamentBg : '#5b6b79' }}>Now opening Venmo…</span>
+                ) : null}
               </span>
             </div>
           </div>

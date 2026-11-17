@@ -93,6 +93,49 @@ create table if not exists league_purchases (
 );
 create index if not exists league_purchases_user_idx on league_purchases(user_id);
 
+-- Venmo payments: each user's Venmo username (no @), each league's entry fee per tournament,
+-- which commissioner collects entry fees, and the winners a commissioner has paid.
+alter table users add column if not exists venmo text;
+alter table leagues add column if not exists venmo_collector_id text references users(id) on delete set null;
+alter table league_tournaments add column if not exists entry_fee double precision;
+create table if not exists league_payouts_sent (
+  league_id text not null references leagues(id) on delete cascade,
+  tournament_id text not null,
+  season integer not null,
+  place integer not null,
+  user_id text references users(id) on delete set null,
+  amount double precision not null,
+  sent_by text references users(id) on delete set null,
+  sent_at timestamptz not null default now(),
+  primary key (league_id, tournament_id, season, place)
+);
+
+-- One-time data changes, each applied once (the name is recorded so it never re-runs).
+create table if not exists app_migrations (
+  name text primary key,
+  applied_at timestamptz not null default now()
+);
+
+-- The founder pool's $30 entry fee and Venmo (@claytont743) used to be built into the app; move
+-- them into the data so they work like every other league's.
+do $$
+declare applied integer;
+begin
+  insert into app_migrations (name) values ('founder-pool-venmo-and-fees') on conflict do nothing;
+  get diagnostics applied = row_count;
+  if applied = 1 then
+    update users set venmo = 'claytont743' where lower(email) = 'ctuck12@gmail.com' and venmo is null;
+    update leagues set venmo_collector_id = (select id from users where lower(email) = 'ctuck12@gmail.com')
+      where id = 'golf-majors-pool' and venmo_collector_id is null;
+    insert into league_tournaments (league_id, tournament_id, entry_fee)
+      select l.id, t.tid, 30 from leagues l
+      cross join unnest(array['players', 'masters', 'pga', 'us-open', 'open']) as t(tid)
+      where l.id = 'golf-majors-pool'
+    on conflict (league_id, tournament_id) do update
+      set entry_fee = coalesce(league_tournaments.entry_fee, excluded.entry_fee);
+  end if;
+end $$;
+
 alter table users enable row level security;
 alter table sessions enable row level security;
 alter table leagues enable row level security;
@@ -100,4 +143,6 @@ alter table league_members enable row level security;
 alter table league_tournaments enable row level security;
 alter table rosters enable row level security;
 alter table league_purchases enable row level security;
+alter table league_payouts_sent enable row level security;
+alter table app_migrations enable row level security;
 `;

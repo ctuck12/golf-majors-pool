@@ -1,5 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { db, type Sql, type TxSql } from './db';
+import { normalizeVenmoUsername } from './venmo';
 import { currentSeason, parsePassProduct, tierForLimit, tierInfo, type LeagueTier, type PassAction } from './league-passes';
 import { fetchPassPurchases } from './revenuecat';
 import {
@@ -16,7 +17,9 @@ import {
   TOURNAMENT_IDS,
   type LeagueRole,
   type LeagueSummary,
+  type LeagueVenmo,
   type MemberUpdates,
+  type PayoutSent,
   type PublicPool,
   type PublicPoolEntry,
   type PublicUser,
@@ -39,6 +42,7 @@ type UserRow = {
   password_hash: string;
   password_salt: string;
   created_at: Date;
+  venmo?: string | null;
 };
 
 type LeagueRow = {
@@ -48,6 +52,7 @@ type LeagueRow = {
   plan: string;
   member_limit: number | null;
   paid_season: number | null;
+  venmo_collector_id: string | null;
   role: LeagueRole;
 };
 
@@ -79,6 +84,7 @@ function toPublicUser(user: UserRow, poolIds: string[], data: RosterData): Publi
     id: user.id,
     email: user.email,
     displayName: user.display_name,
+    venmo: user.venmo ?? null,
     poolIds,
     rosters: data.rosters,
     tieBreaks: data.tieBreaks,
@@ -93,7 +99,7 @@ function toPublicUser(user: UserRow, poolIds: string[], data: RosterData): Publi
 
 async function findActiveLeague(sql: AnySql, userId: string): Promise<LeagueRow | null> {
   const [league] = await sql<LeagueRow[]>`
-    select l.id, l.name, l.join_code, l.plan, l.member_limit, l.paid_season, m.role
+    select l.id, l.name, l.join_code, l.plan, l.member_limit, l.paid_season, l.venmo_collector_id, m.role
     from league_members m
     join leagues l on l.id = m.league_id
     join users u on u.id = m.user_id
@@ -125,8 +131,9 @@ async function loadPool(sql: AnySql, league: { id: string; name: string; join_co
     payout_second: number | null;
     payout_third: number | null;
     winner_score: number | null;
+    entry_fee: number | null;
   }[]>`
-    select tournament_id, picks_open, lineup_locked, payout_first, payout_second, payout_third, winner_score
+    select tournament_id, picks_open, lineup_locked, payout_first, payout_second, payout_third, winner_score, entry_fee
     from league_tournaments where league_id = ${league.id}
   `;
 
@@ -138,6 +145,7 @@ async function loadPool(sql: AnySql, league: { id: string; name: string; join_co
     picksOpen: {},
     payouts: {},
     winnerScores: {},
+    entryFees: {},
   };
 
   for (const row of rows) {
@@ -153,6 +161,7 @@ async function loadPool(sql: AnySql, league: { id: string; name: string; join_co
       };
     }
     if (row.winner_score !== null) pool.winnerScores[tid] = row.winner_score;
+    if (row.entry_fee !== null && row.entry_fee > 0) pool.entryFees![tid] = row.entry_fee;
   }
 
   return pool;
@@ -201,7 +210,7 @@ async function loadPoolIds(sql: AnySql, userIds: string[]) {
 
 async function loadLeagueMembers(sql: AnySql, leagueId: string) {
   return sql<MemberRow[]>`
-    select u.id, u.email, u.display_name, u.password_hash, u.password_salt, u.created_at, m.role
+    select u.id, u.email, u.display_name, u.password_hash, u.password_salt, u.created_at, u.venmo, m.role
     from league_members m
     join users u on u.id = m.user_id
     where m.league_id = ${leagueId}
@@ -313,7 +322,7 @@ export async function loginUser(input: { email: string; password: string }) {
   const sql = db();
   const email = normalizeEmail(input.email);
   const [user] = await sql<UserRow[]>`
-    select id, email, display_name, password_hash, password_salt, created_at from users where email = ${email}
+    select id, email, display_name, password_hash, password_salt, created_at, venmo from users where email = ${email}
   `;
 
   if (!user) {
@@ -361,6 +370,33 @@ export async function renewSession(token: string): Promise<boolean> {
   return rows.length > 0;
 }
 
+// Who members pay entry fees to: the commissioner picked to collect, or else the first
+// commissioner (oldest account) with a Venmo. Only a current commissioner with a Venmo can collect.
+function leagueVenmo(members: MemberRow[], collectorId: string | null): LeagueVenmo | null {
+  const withVenmo = members.filter((member) => member.role === 'commissioner' && member.venmo);
+  const collector = withVenmo.find((member) => member.id === collectorId) ?? withVenmo[0];
+  return collector ? { userId: collector.id, name: collector.display_name, handle: collector.venmo! } : null;
+}
+
+async function loadPayoutsSent(sql: AnySql, leagueId: string) {
+  const rows = await sql<{ tournament_id: string; place: number; user_id: string | null; amount: number; sent_at: Date }[]>`
+    select tournament_id, place, user_id, amount, sent_at from league_payouts_sent
+    where league_id = ${leagueId} and season = ${currentSeason()}
+    order by place asc
+  `;
+  const byTournament: Partial<Record<TournamentId, PayoutSent[]>> = {};
+  for (const row of rows) {
+    if (!isTournamentId(row.tournament_id)) continue;
+    (byTournament[row.tournament_id] ??= []).push({
+      place: row.place,
+      userId: row.user_id,
+      amount: row.amount,
+      sentAt: row.sent_at.toISOString(),
+    });
+  }
+  return byTournament;
+}
+
 export async function getSessionContext(token: string | undefined): Promise<SessionContext> {
   if (!token) {
     return EMPTY_SESSION;
@@ -368,7 +404,7 @@ export async function getSessionContext(token: string | undefined): Promise<Sess
 
   const sql = db();
   const [user] = await sql<UserRow[]>`
-    select u.id, u.email, u.display_name, u.password_hash, u.password_salt, u.created_at
+    select u.id, u.email, u.display_name, u.password_hash, u.password_salt, u.created_at, u.venmo
     from sessions s
     join users u on u.id = s.user_id
     where s.token_hash = ${hashSessionToken(token)} and s.expires_at > now()
@@ -389,14 +425,19 @@ export async function getSessionContext(token: string | undefined): Promise<Sess
     return { user: await publicUserInLeague(sql, user, null), pool: null, entries: [], ...userFlags };
   }
 
-  const [pool, members] = await Promise.all([loadPool(sql, league), loadLeagueMembers(sql, league.id)]);
+  const isCommissioner = league.role === 'commissioner';
+  const [pool, members, payoutsSent] = await Promise.all([
+    loadPool(sql, league),
+    loadLeagueMembers(sql, league.id),
+    isCommissioner ? loadPayoutsSent(sql, league.id) : Promise.resolve(undefined),
+  ]);
   const memberIds = members.map((member) => member.id);
   const [rosterData, poolIds] = await Promise.all([
     loadRosterData(sql, league.id, memberIds),
     loadPoolIds(sql, [user.id]),
   ]);
 
-  const maskRosters = maskRostersFor(pool, league.role === 'commissioner');
+  const maskRosters = maskRostersFor(pool, isCommissioner);
   const entries: PublicPoolEntry[] = members.map((member) => {
     const data = rosterData.get(member.id) ?? emptyRosterData();
     return {
@@ -404,6 +445,7 @@ export async function getSessionContext(token: string | undefined): Promise<Sess
       name: member.display_name,
       rosters: maskRosters(data.rosters, member.id === user.id),
       tieBreaks: data.tieBreaks,
+      ...(isCommissioner ? { venmo: member.venmo ?? null } : {}),
       rosterSubmittedAt: resolveRosterSubmittedAt({
         displayName: member.display_name,
         createdAt: member.created_at.toISOString(),
@@ -422,6 +464,7 @@ export async function getSessionContext(token: string | undefined): Promise<Sess
       lineupLocks: pool.lineupLocks,
       picksOpen: pool.picksOpen,
       payouts: pool.payouts,
+      entryFees: pool.entryFees,
       role: league.role,
       plan: league.plan,
       memberLimit: league.member_limit,
@@ -430,7 +473,10 @@ export async function getSessionContext(token: string | undefined): Promise<Sess
       memberCount: members.length,
       commissioners: members
         .filter((member) => member.role === 'commissioner')
-        .map((member) => ({ id: member.id, name: member.display_name, email: member.email })),
+        .map((member) => ({ id: member.id, name: member.display_name, email: member.email, venmo: member.venmo ?? null })),
+      venmo: leagueVenmo(members, league.venmo_collector_id),
+      venmoCollectorId: isCommissioner ? league.venmo_collector_id : undefined,
+      payoutsSent,
     },
     entries,
     ...userFlags,
@@ -572,7 +618,7 @@ export async function updateUserAccount(
     }
 
     const [user] = await sql<UserRow[]>`
-      select id, email, display_name, password_hash, password_salt, created_at from users where id = ${userId}
+      select id, email, display_name, password_hash, password_salt, created_at, venmo from users where id = ${userId}
     `;
     const league = await findActiveLeague(sql, userId);
     return publicUserInLeague(sql, user, league?.id ?? null);
@@ -680,7 +726,7 @@ export async function updatePoolMember(requestingUserId: string, memberId: strin
       }
 
       const [member] = await sql<UserRow[]>`
-        select id, email, display_name, password_hash, password_salt, created_at from users where id = ${memberId}
+        select id, email, display_name, password_hash, password_salt, created_at, venmo from users where id = ${memberId}
       `;
       return publicUserInLeague(sql, member, league.id);
     });
@@ -1085,5 +1131,106 @@ export async function redeemPass(userId: string, productId: string, action: Pass
       where id = ${credit.id}
     `;
     return leagueId;
+  });
+}
+
+// ── Venmo payments ───────────────────────────────────────────────────────────
+
+// Saves (or clears, with null / "") the user's own Venmo username.
+export async function updateUserVenmo(userId: string, venmoInput: unknown) {
+  const venmo = normalizeVenmoUsername(venmoInput);
+  const sql = db();
+  const [user] = await sql<UserRow[]>`
+    update users set venmo = ${venmo} where id = ${userId}
+    returning id, email, display_name, password_hash, password_salt, created_at, venmo
+  `;
+  if (!user) {
+    throw new Error('User account was not found.');
+  }
+  const league = await findActiveLeague(sql, userId);
+  return publicUserInLeague(sql, user, league?.id ?? null);
+}
+
+async function requireCommissionerLeague(sql: AnySql, userId: string) {
+  const league = await requireActiveLeague(sql, userId);
+  if (league.role !== 'commissioner') {
+    throw new Error('Only a commissioner can change this.');
+  }
+  return league;
+}
+
+// Entry fee per tournament (0 / null clears it, so members just submit without paying).
+export async function updateEntryFees(requestingUserId: string, fees: Partial<Record<TournamentId, number | null>>) {
+  await db().begin(async (sql) => {
+    const league = await requireCommissionerLeague(sql, requestingUserId);
+    for (const tid of TOURNAMENT_IDS) {
+      if (!(tid in fees)) continue;
+      const raw = fees[tid];
+      const fee = raw === null || raw === undefined ? null : Number(raw);
+      if (fee !== null && (!Number.isFinite(fee) || fee < 0 || fee > 10000)) {
+        throw new Error('Enter entry fees between $0 and $10,000.');
+      }
+      const value = fee ? Math.round(fee * 100) / 100 : null;
+      await sql`
+        insert into league_tournaments (league_id, tournament_id, entry_fee) values (${league.id}, ${tid}, ${value})
+        on conflict (league_id, tournament_id) do update set entry_fee = excluded.entry_fee
+      `;
+    }
+  });
+}
+
+// Which commissioner members pay entry fees to.
+export async function setVenmoCollector(requestingUserId: string, collectorId: string) {
+  await db().begin(async (sql) => {
+    const league = await requireCommissionerLeague(sql, requestingUserId);
+    const [collector] = await sql<{ role: LeagueRole; venmo: string | null }[]>`
+      select m.role, u.venmo from league_members m join users u on u.id = m.user_id
+      where m.league_id = ${league.id} and m.user_id = ${collectorId}
+    `;
+    if (!collector || collector.role !== 'commissioner') {
+      throw new Error('Entry fees can only go to one of this league\'s commissioners.');
+    }
+    if (!collector.venmo) {
+      throw new Error('That commissioner hasn\'t added their Venmo yet.');
+    }
+    await sql`update leagues set venmo_collector_id = ${collectorId} where id = ${league.id}`;
+  });
+}
+
+// Records that the commissioner paid a winner through Venmo this season (or undoes it).
+export async function setPayoutSent(
+  requestingUserId: string,
+  input: { tournamentId: TournamentId; place: number; userId: string | null; amount: number; sent: boolean },
+) {
+  if (!Number.isInteger(input.place) || input.place < 1 || input.place > 3) {
+    throw new Error('Unknown place.');
+  }
+  await db().begin(async (sql) => {
+    const league = await requireCommissionerLeague(sql, requestingUserId);
+    const season = currentSeason();
+    if (!input.sent) {
+      await sql`
+        delete from league_payouts_sent
+        where league_id = ${league.id} and tournament_id = ${input.tournamentId} and season = ${season} and place = ${input.place}
+      `;
+      return;
+    }
+    if (!Number.isFinite(input.amount) || input.amount <= 0) {
+      throw new Error('Enter a valid amount.');
+    }
+    if (input.userId) {
+      const [member] = await sql`
+        select 1 from league_members where league_id = ${league.id} and user_id = ${input.userId}
+      `;
+      if (!member) {
+        throw new Error('That person is not in this league.');
+      }
+    }
+    await sql`
+      insert into league_payouts_sent (league_id, tournament_id, season, place, user_id, amount, sent_by)
+      values (${league.id}, ${input.tournamentId}, ${season}, ${input.place}, ${input.userId}, ${input.amount}, ${requestingUserId})
+      on conflict (league_id, tournament_id, season, place) do update
+        set user_id = excluded.user_id, amount = excluded.amount, sent_by = excluded.sent_by, sent_at = now()
+    `;
   });
 }
