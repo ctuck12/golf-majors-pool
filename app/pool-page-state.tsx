@@ -580,6 +580,17 @@ export function usePoolPage() {
     });
   }, []);
 
+  // The league list and app-admin / create-league flags come with every session read; take them
+  // on load and on background refresh too, not only after a sign-in or league change.
+  const applySessionFlags = (payload: { leagues?: SessionFlags['leagues']; isAppAdmin?: boolean; canCreateLeague?: boolean }) => {
+    if (!payload.leagues) return; // older saved sessions predate these fields
+    setSessionFlags({
+      leagues: payload.leagues,
+      isAppAdmin: payload.isAppAdmin ?? false,
+      canCreateLeague: payload.canCreateLeague ?? false,
+    });
+  };
+
   useEffect(() => {
     const loadSession = async () => {
       setSessionLoading(true);
@@ -590,6 +601,7 @@ export function usePoolPage() {
         setSessionUser(storedSnapshot.user);
         setPool(storedSnapshot.pool);
         setPoolEntries(storedSnapshot.entries);
+        applySessionFlags(storedSnapshot);
       }
 
       try {
@@ -598,6 +610,7 @@ export function usePoolPage() {
           setSessionUser(payload.user);
           setPool(payload.pool);
           setPoolEntries(payload.entries);
+          applySessionFlags(payload);
           writeStoredSession(payload);
         } else {
           // The server says this device is signed out (the session ended, was signed out
@@ -628,6 +641,7 @@ export function usePoolPage() {
           setSessionUser(payload.user);
           setPool(payload.pool);
           setPoolEntries(payload.entries);
+          applySessionFlags(payload);
           writeStoredSession(payload);
         }
       } catch {
