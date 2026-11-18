@@ -347,6 +347,7 @@ export function usePoolPage() {
   const [entryFeesOpen, setEntryFeesOpen] = useState(false);
   const [adminLeaguesOpen, setAdminLeaguesOpen] = useState(false);
   const [payWinnersOpen, setPayWinnersOpen] = useState(false);
+  const [poolMessageOpen, setPoolMessageOpen] = useState(false);
   const [venmoFallbackUrl, setVenmoFallbackUrl] = useState<string | null>(null);
   const [showSubmittedPicksPopup, setShowSubmittedPicksPopup] = useState(false);
   // Submitted Picks popup ordering: alphabetical by default, or newest submission first.
@@ -3040,6 +3041,8 @@ export function usePoolPage() {
     setAdminLeaguesOpen,
     payWinnersOpen,
     setPayWinnersOpen,
+    poolMessageOpen,
+    setPoolMessageOpen,
     venmoFallbackUrl,
     setVenmoFallbackUrl,
     showSubmittedPicksPopup,

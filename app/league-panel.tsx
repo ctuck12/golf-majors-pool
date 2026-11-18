@@ -2,6 +2,7 @@
 
 import { useState, type CSSProperties } from 'react';
 import { Check, Copy, LogOut, Plus, RefreshCw, Trash2, Users, X } from 'lucide-react';
+import { PUBLIC_SITE } from './lib/pool-message';
 import { tierForLimit, type LeagueTier } from './lib/league-passes';
 import type { PaywallMode } from './paywall';
 
@@ -73,7 +74,9 @@ async function postJson<T extends SessionLike>(url: string, body: unknown, metho
 
 export function inviteLinkFor(joinCode: string) {
   if (typeof window === 'undefined') return '';
-  return `${window.location.origin}/?join=${encodeURIComponent(joinCode)}`;
+  // Inside the iPhone app the page's own address isn't a web link; share the public site's.
+  const origin = /^https?:$/.test(window.location.protocol) ? window.location.origin : PUBLIC_SITE;
+  return `${origin}/?join=${encodeURIComponent(joinCode)}`;
 }
 
 function JoinForm<T extends SessionLike>({

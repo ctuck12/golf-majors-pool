@@ -47,7 +47,7 @@ const inputStyle: CSSProperties = {
   color: '#0f1720',
 };
 
-const primaryButton = (busy = false, color = navy): CSSProperties => ({
+export const primaryButton = (busy = false, color = navy): CSSProperties => ({
   border: 'none',
   borderRadius: 12,
   padding: '12px 16px',
@@ -59,7 +59,7 @@ const primaryButton = (busy = false, color = navy): CSSProperties => ({
   opacity: busy ? 0.7 : 1,
 });
 
-const secondaryButton: CSSProperties = {
+export const secondaryButton: CSSProperties = {
   border: '1px solid #d7e0e8',
   borderRadius: 12,
   padding: '11px 16px',
@@ -70,7 +70,7 @@ const secondaryButton: CSSProperties = {
   cursor: 'pointer',
 };
 
-const sectionLabel: CSSProperties = {
+export const sectionLabel: CSSProperties = {
   fontSize: 11,
   textTransform: 'uppercase',
   fontWeight: 800,
@@ -163,7 +163,7 @@ export function VenmoFallbackNotice({ url, onClose }: { url: string | null; onCl
 
 // ── Shared modal frame ───────────────────────────────────────────────────────
 
-function Modal({ title, onClose, children, zIndex = 1050 }: { title: ReactNode; onClose: () => void; children: ReactNode; zIndex?: number }) {
+export function Modal({ title, onClose, children, zIndex = 1050 }: { title: ReactNode; onClose: () => void; children: ReactNode; zIndex?: number }) {
   return (
     <div
       onClick={onClose}
@@ -197,7 +197,7 @@ function Modal({ title, onClose, children, zIndex = 1050 }: { title: ReactNode; 
   );
 }
 
-function ErrorText({ children }: { children: ReactNode }) {
+export function ErrorText({ children }: { children: ReactNode }) {
   if (!children) return null;
   return <div style={{ fontSize: 13, color: '#a61b1b', lineHeight: 1.4 }}>{children}</div>;
 }

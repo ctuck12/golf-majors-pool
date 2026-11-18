@@ -7,10 +7,12 @@ import { PaywallModal } from './paywall';
 import { VenmoSetupStep, VerifyEmailGate } from './onboarding';
 import { AdminLeaguesModal } from './admin-leagues';
 import { VenmoMark } from './venmo-mark';
+import { PoolMessageModal } from './pool-message';
+import { currentTournamentMeta, effectiveLockTime } from '@/app/lib/tournament-config';
 import { EntryFeesModal, PayWinnersModal, VenmoFallbackNotice, VenmoModal, VenmoPrompt } from './venmo-ui';
 import { formatVenmo } from '@/app/lib/venmo';
 import { AlertCircle, CircleUserRound, CheckCircle2, ChevronDown, Eye, EyeOff, LogIn, UserPlus, } from 'lucide-react';
-import { REGISTRATION_OPEN, TOURNAMENTS, TOURNAMENT_TAB_LOGOS, KNOCKOUT_TAB_LOGOS, TOURNAMENT_TAB_LOGO_HEIGHTS, TOURNAMENT_CARD_WIDTH, TOURNAMENT_CARD_HEIGHT, MAIN_TABS, REPORT_OPTIONS, REPORT_TOURNAMENT_SOLID, NO_SESSION_FLAGS, clearStoredMainTab, clearStoredSession, fieldStyle, type TournamentId, type ReportType, type PoolInfo, type SessionPayload } from './pool-data';
+import { REGISTRATION_OPEN, SALARY_CAP, REQUIRED_GOLFERS, TOURNAMENTS, TOURNAMENT_TAB_LOGOS, KNOCKOUT_TAB_LOGOS, TOURNAMENT_TAB_LOGO_HEIGHTS, TOURNAMENT_CARD_WIDTH, TOURNAMENT_CARD_HEIGHT, MAIN_TABS, REPORT_OPTIONS, REPORT_TOURNAMENT_SOLID, NO_SESSION_FLAGS, clearStoredMainTab, clearStoredSession, fieldStyle, type TournamentId, type ReportType, type PoolInfo, type SessionPayload } from './pool-data';
 import { usePoolPage } from './pool-page-state';
 import { DetailsScreen } from './screens/details-screen';
 import { ReportsScreen } from './screens/reports-screen';
@@ -32,6 +34,15 @@ import { PointsSystemPopup } from './popups/points-system-popup';
 import { WinsListPopup } from './popups/wins-list-popup';
 import { PickSummaryPlayerPopup } from './popups/pick-summary-player-popup';
 import { PickedByPopup } from './popups/picked-by-popup';
+
+// How each event reads in "It's ___ week!".
+const WEEK_NAMES: Record<TournamentId, string> = {
+  players: 'Players Championship',
+  masters: 'Masters',
+  pga: 'PGA Championship',
+  'us-open': 'U.S. Open',
+  open: 'Open Championship',
+};
 
 // The app's one page. Its state and logic live in usePoolPage() (app/pool-page-state.tsx).
 export default function Page() {
@@ -126,6 +137,9 @@ export default function Page() {
     setAdminLeaguesOpen,
     payWinnersOpen,
     setPayWinnersOpen,
+    poolMessageOpen,
+    setPoolMessageOpen,
+    lockTimeOverrides,
     venmoFallbackUrl,
     setVenmoFallbackUrl,
     showSubmittedPicksPopup,
@@ -1014,6 +1028,28 @@ export default function Page() {
             currentUserId={sessionUser?.id ?? ''}
             onClose={() => setPayWinnersOpen(false)}
             onPool={(next) => setPool((current) => (current ? { ...current, ...next } : next))}
+          />
+        ) : null}
+
+        {poolMessageOpen && pool && pool.role === 'commissioner' ? (
+          <PoolMessageModal
+            tournaments={TOURNAMENTS.map((t) => ({
+              id: t.id as TournamentId,
+              label: t.name,
+              fullName: WEEK_NAMES[t.id as TournamentId],
+              lockAtIso: effectiveLockTime(lockTimeOverrides[t.id as TournamentId], currentTournamentMeta(t.id)?.lockAtUtc),
+              picksOpen: pool.picksOpen?.[t.id as TournamentId] === true && pool.lineupLocks?.[t.id as TournamentId] !== true,
+            }))}
+            initialTournamentId={entriesTournamentId}
+            leagueName={pool.name}
+            joinCode={pool.joinCode || null}
+            entryFees={pool.entryFees ?? {}}
+            venmoHandle={pool.venmo?.handle ?? null}
+            payouts={pool.payouts ?? {}}
+            signOff={sessionUser?.displayName?.split(' ')[0] ?? null}
+            rosterSize={REQUIRED_GOLFERS}
+            salaryCap={SALARY_CAP}
+            onClose={() => setPoolMessageOpen(false)}
           />
         ) : null}
 

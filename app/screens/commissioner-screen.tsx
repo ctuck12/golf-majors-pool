@@ -4,7 +4,7 @@ import { type ReactNode } from 'react';
 import { VenmoMark } from '../venmo-mark';
 import { formatVenmo } from '@/app/lib/venmo';
 import { currentTournamentMeta, effectiveLockTime } from '@/app/lib/tournament-config';
-import { AlertCircle, ArrowLeft, Calendar, CircleUserRound, CheckCircle2, DollarSign, Eye, EyeOff, Globe, Lock, Pencil, RefreshCw, Save, Search, Send, Trophy, Users, Wallet } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Calendar, CircleUserRound, CheckCircle2, DollarSign, Eye, EyeOff, Globe, Lock, MessageSquareText, Pencil, RefreshCw, Save, Search, Send, Trophy, Users, Wallet } from 'lucide-react';
 import { SALARY_CAP, REQUIRED_GOLFERS, totalParFor, TOURNAMENTS, getFlagSrc, getCountryLabel, TOURNAMENT_TAB_LOGOS, TOURNAMENT_EVENT_LOGOS, eventLogoStyle, KNOCKOUT_TAB_LOGOS, pgaPhoto, playerPhotoSrc, photoOnError, MOBILE_TWO_LINE_NAMES, MOBILE_CUSTOM_SPLITS, utcToCentralInput, shouldShowPreTournamentView, formatRefresh, fieldStyle } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
 
@@ -54,6 +54,7 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
     setEntryFeesOpen,
     setAdminLeaguesOpen,
     setPayWinnersOpen,
+    setPoolMessageOpen,
     commissionerPlayerSearch,
     setCommissionerPlayerSearch,
     setCommissionerRosterMemberId,
@@ -479,6 +480,7 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))', gap: isMobile ? 10 : 14 }}>
                 {([
                   { key: 'allLeagues', title: 'All Leagues', sub: 'Every league, its commissioner and plan', Icon: Users, open: () => setAdminLeaguesOpen(true), adminOnly: true },
+                  { key: 'poolMessage', title: 'Message Your Pool', sub: `Tournament-week text for ${entriesTournament.name}`, Icon: MessageSquareText, open: () => setPoolMessageOpen(true) },
                   { key: 'entryFees', title: <>Entry Fees &amp; <VenmoMark tone="blue" /></>, sub: pool?.venmo ? `Members pay ${formatVenmo(pool.venmo.handle)}` : 'Set fees and who collects them', Icon: DollarSign, open: () => setEntryFeesOpen(true) },
                   { key: 'payouts' as const, title: 'Tournament Payouts', sub: 'Set 1st / 2nd / 3rd place amounts', Icon: Trophy },
                   { key: 'payWinners', title: 'Pay Winners', sub: <>Send winnings on <VenmoMark tone="blue" /> once final</>, Icon: Send, open: () => setPayWinnersOpen(true) },
