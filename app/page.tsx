@@ -129,6 +129,8 @@ import {
   setLockTimeOverrides,
 } from './pool-data';
 
+const NO_OVERRIDES: Record<number, number> = {};
+
 export default function Page() {
   const initialTournament = getDefaultTournamentId(getTournamentCardStatuses(), new Date());
   const [mainTab, setMainTab] = useState<MainTab>('Standings');
@@ -1704,8 +1706,10 @@ export default function Page() {
     };
   }, []);
   // The pick sheet is built from the CURRENT tournament's salaries/world ranks.
-  const salaryOverrides = useMemo(() => salaryByTournament[entriesTournamentId]?.salaries ?? {}, [salaryByTournament, entriesTournamentId]);
-  const worldRankOverrides = useMemo(() => salaryByTournament[entriesTournamentId]?.worldRanks ?? {}, [salaryByTournament, entriesTournamentId]);
+  // Read straight from state: the maps keep their identity until a new list loads, and a missing
+  // list uses one shared empty map, so the player list isn't rebuilt on every render.
+  const salaryOverrides = salaryByTournament[entriesTournamentId]?.salaries ?? NO_OVERRIDES;
+  const worldRankOverrides = salaryByTournament[entriesTournamentId]?.worldRanks ?? NO_OVERRIDES;
   // No salary list has been uploaded for this tournament yet (salaries come only from the upload).
   const salaryListMissing = salaryListLoaded && Object.keys(salaryOverrides).length === 0;
 
