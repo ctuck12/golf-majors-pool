@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type CSSProperties } from 'react';
 import { ChevronDown, X } from 'lucide-react';
+import { VenmoMark } from './venmo-mark';
 
 // App admin only: every league in the app, its plan and commissioner, with the two fixes only the
 // admin can make (reassign a league's commissioner, give a paid league a free season).
@@ -160,7 +161,7 @@ export function AdminLeaguesModal({ open, onClose }: { open: boolean; onClose: (
                     {league.commissioner ? (
                       <div style={small}>
                         Commissioner: <b style={{ color: '#0f1720' }}>{league.commissioner.name}</b> · {league.commissioner.email}
-                        {league.commissioner.venmo ? ` · @${league.commissioner.venmo}` : ' · no Venmo'}
+                        {' · '}<VenmoMark tone="blue" /> {league.commissioner.venmo ? `@${league.commissioner.venmo}` : 'not added'}
                       </div>
                     ) : null}
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>

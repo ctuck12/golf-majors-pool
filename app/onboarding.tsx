@@ -2,6 +2,7 @@
 
 import { useState, type CSSProperties } from 'react';
 import { normalizeVenmoUsername } from './lib/venmo';
+import { VenmoMark } from './venmo-mark';
 
 // New-account steps after signing up: confirm the email with the emailed code, then add Venmo.
 
@@ -191,20 +192,22 @@ export function VenmoSetupStep<T>({
 
   if (warning) {
     return (
-      <section style={card}>
-        <div style={{ fontSize: 22, fontWeight: 900, color: '#0f1720' }}>Are you sure?</div>
-        <div style={{ fontSize: 15, color: '#3d4b58', lineHeight: 1.55 }}>
-          Without your Venmo, your commissioner can&apos;t send your winnings straight from the app, so getting paid takes longer.
-          It only takes a few seconds to add.
+      <section style={{ ...card, textAlign: 'center', justifyItems: 'center', gap: 16 }}>
+        <div style={{ borderRadius: 18, background: venmoBlue, padding: '16px 22px', display: 'grid', placeItems: 'center' }}>
+          <VenmoMark height="26px" />
         </div>
-        <button type="button" onClick={() => setWarning(false)} style={primary(false, venmoBlue)}>
-          Add my Venmo
+        <div style={{ fontSize: 22, fontWeight: 900, color: '#0f1720' }}>Skip getting paid in the app?</div>
+        <div style={{ fontSize: 15, color: '#3d4b58', lineHeight: 1.55, maxWidth: 340 }}>
+          Your commissioner sends winnings straight to your <VenmoMark tone="blue" />. Without it, getting paid takes longer.
+        </div>
+        <button type="button" onClick={() => setWarning(false)} style={{ ...primary(false, venmoBlue), width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+          Add my <VenmoMark />
         </button>
-        <button type="button" onClick={onDone} style={{ ...link, textAlign: 'center' }}>
-          Continue without it (you can add it later in your account)
+        <button type="button" onClick={onDone} style={{ width: '100%', border: '1px solid #d7e0e8', borderRadius: 14, padding: '12px 16px', background: '#fff', color: '#0f1720', fontSize: 15, fontWeight: 800, cursor: 'pointer' }}>
+          Skip for now
         </button>
-        <button type="button" disabled={busy} onClick={() => void noVenmo()} style={{ ...link, textAlign: 'center', color: '#6b7b88' }}>
-          I don&apos;t have Venmo
+        <button type="button" disabled={busy} onClick={() => void noVenmo()} style={{ ...link, fontSize: 13, color: '#6b7b88', textAlign: 'center', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+          I don&apos;t use <VenmoMark tone="blue" height="0.8em" />
         </button>
       </section>
     );
@@ -212,13 +215,13 @@ export function VenmoSetupStep<T>({
 
   return (
     <section style={card}>
-      <div style={{ fontSize: 22, fontWeight: 900, color: '#0f1720' }}>Add your Venmo</div>
+      <div style={{ fontSize: 22, fontWeight: 900, color: '#0f1720', display: 'flex', alignItems: 'center', gap: 7 }}>Add your <VenmoMark tone="blue" /></div>
       <div style={{ fontSize: 15, color: '#3d4b58', lineHeight: 1.55 }}>
-        This is how you get paid if you win: your commissioner sends your winnings to your Venmo right from the app.
+        This is how you get paid if you win: your commissioner sends your winnings to your <VenmoMark tone="blue" /> right from the app.
         It also lets you pay your entry fee in one tap when you submit your picks.
       </div>
       <div style={{ background: '#f1f7ff', border: '1px solid #cfe3fb', borderRadius: 14, padding: '12px 14px', fontSize: 14, color: '#1d3a5c', lineHeight: 1.5 }}>
-        <b>Finding it:</b> open Venmo, tap <b>Me</b>, and your username is the <b>@name</b> under your photo.
+        <b>Finding it:</b> open <VenmoMark tone="blue" />, tap <b>Me</b>, and your username is the <b>@name</b> under your photo.
       </div>
       <form
         onSubmit={(event) => {
@@ -239,8 +242,8 @@ export function VenmoSetupStep<T>({
           style={input}
         />
         {error ? <div style={{ fontSize: 13, color: '#a61b1b' }}>{error}</div> : null}
-        <button type="submit" disabled={busy || !value.trim()} style={{ ...primary(busy, venmoBlue), opacity: busy || !value.trim() ? 0.6 : 1 }}>
-          {busy ? 'Saving…' : 'Save Venmo'}
+        <button type="submit" disabled={busy || !value.trim()} style={{ ...primary(busy, venmoBlue), opacity: busy || !value.trim() ? 0.6 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+          {busy ? 'Saving…' : <>Save <VenmoMark /></>}
         </button>
       </form>
       <button type="button" onClick={() => setWarning(true)} style={{ ...link, textAlign: 'center' }}>

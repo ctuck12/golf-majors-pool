@@ -3,11 +3,12 @@
 // Inside the iPhone app, sends this page's /api calls to the live site (no-op on the web).
 import { isNativeApp, settleViewAfterKeyboard } from './native-bridge';
 
-import { Fragment, startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { Fragment, startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { LeagueGate, LeagueModal, type LeagueSummary } from './league-panel';
 import { PaywallModal, type PaywallMode } from './paywall';
 import { VenmoSetupStep, VerifyEmailGate } from './onboarding';
 import { AdminLeaguesModal } from './admin-leagues';
+import { VenmoMark } from './venmo-mark';
 import { EntryFeesModal, openVenmoPayment, PayWinnersModal, VenmoFallbackNotice, VenmoModal, VenmoPrompt } from './venmo-ui';
 import { ENTRY_FEE_NOTE, formatMoney, formatVenmo } from '@/app/lib/venmo';
 import { PLAYER_POOL_WITH_PGA_IDS } from '@/app/lib/player-pool';
@@ -4659,7 +4660,9 @@ export default function Page() {
                       onClick={() => { setAccountMenuOpen(false); setVenmoModalOpen(true); }}
                       style={{ marginTop: 8, padding: 0, background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 800, color: '#008CFF', textAlign: 'left' }}
                     >
-                      {sessionUser.venmo ? `Venmo: ${formatVenmo(sessionUser.venmo)} · Edit` : '+ Add your Venmo'}
+                      {sessionUser.venmo
+                        ? <><VenmoMark tone="blue" /> {formatVenmo(sessionUser.venmo)} · Edit</>
+                        : <>+ Add your <VenmoMark tone="blue" /></>}
                     </button>
                   ) : null}
 
@@ -7471,7 +7474,7 @@ export default function Page() {
                       <div style={{ marginTop: 4, fontSize: isMobile ? 20 : 30, fontWeight: 900, color: selectedTournament === 'open' ? '#000000' : '#173b63' }}>{pool?.entryFees?.[selectedTournament] ? formatMoney(pool.entryFees[selectedTournament]!) : '—'}</div>
                     </div>
                     <div style={{ border: selectedTournament === 'open' ? '1.5px solid #000000' : '1px solid #dce8f5', borderRadius: isMobile ? 10 : 12, padding: isMobile ? '8px 8px' : '10px 14px', background: selectedTournament === 'open' ? '#F4BC41' : '#f0f6ff' }}>
-                      <div style={{ fontSize: 9, textTransform: 'uppercase', fontWeight: 800, color: selectedTournament === 'open' ? headerSolid : '#5b6b79', letterSpacing: '0.07em' }}>Venmo</div>
+                      <div style={{ fontSize: 9, textTransform: 'uppercase', fontWeight: 800, color: selectedTournament === 'open' ? headerSolid : '#5b6b79', letterSpacing: '0.07em' }}><VenmoMark tone="blue" height="11px" /></div>
                       <div style={{ marginTop: 4, fontSize: isMobile ? 13 : 16, fontWeight: 800, color: selectedTournament === 'open' ? '#000000' : '#173b63' }}>{pool?.venmo ? formatVenmo(pool.venmo.handle) : '—'}</div>
                     </div>
                     <div style={{ border: selectedTournament === 'open' ? '1.5px solid #000000' : '1px solid #dce8f5', borderRadius: isMobile ? 10 : 12, padding: isMobile ? '8px 8px' : '10px 14px', background: selectedTournament === 'open' ? '#F4BC41' : '#f0f6ff' }}>
@@ -7493,7 +7496,7 @@ export default function Page() {
                           <div style={{ marginTop: 4, fontSize: isMobile ? 20 : 30, fontWeight: 900, color: '#173b63' }}>{pool?.entryFees?.[selectedTournament] ? formatMoney(pool.entryFees[selectedTournament]!) : '—'}</div>
                         </div>
                         <div style={{ border: '1px solid #dce8f5', borderRadius: isMobile ? 10 : 12, padding: isMobile ? '8px 10px' : '10px 14px', background: '#fff', minWidth: 0 }}>
-                          <div style={{ fontSize: 9, textTransform: 'uppercase', fontWeight: 800, color: '#5b6b79', letterSpacing: '0.07em' }}>Venmo</div>
+                          <div style={{ fontSize: 9, textTransform: 'uppercase', fontWeight: 800, color: '#5b6b79', letterSpacing: '0.07em' }}><VenmoMark tone="blue" height="11px" /></div>
                           <div style={{ marginTop: 4, fontSize: isMobile ? 13 : 16, fontWeight: 800, color: '#173b63', overflowWrap: 'anywhere' }}>{pool?.venmo ? formatVenmo(pool.venmo.handle) : '—'}</div>
                         </div>
                       </div>
@@ -8553,14 +8556,14 @@ export default function Page() {
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))', gap: isMobile ? 10 : 14 }}>
                 {([
                   { key: 'allLeagues', title: 'All Leagues', sub: 'Every league, its commissioner and plan', Icon: Users, open: () => setAdminLeaguesOpen(true), adminOnly: true },
-                  { key: 'entryFees', title: 'Entry Fees & Venmo', sub: pool?.venmo ? `Members pay ${formatVenmo(pool.venmo.handle)}` : 'Set fees and who collects them', Icon: DollarSign, open: () => setEntryFeesOpen(true) },
+                  { key: 'entryFees', title: <>Entry Fees &amp; <VenmoMark tone="blue" /></>, sub: pool?.venmo ? `Members pay ${formatVenmo(pool.venmo.handle)}` : 'Set fees and who collects them', Icon: DollarSign, open: () => setEntryFeesOpen(true) },
                   { key: 'payouts' as const, title: 'Tournament Payouts', sub: 'Set 1st / 2nd / 3rd place amounts', Icon: Trophy },
-                  { key: 'payWinners', title: 'Pay Winners', sub: 'Send winnings on Venmo once final', Icon: Send, open: () => setPayWinnersOpen(true) },
+                  { key: 'payWinners', title: 'Pay Winners', sub: <>Send winnings on <VenmoMark tone="blue" /> once final</>, Icon: Send, open: () => setPayWinnersOpen(true) },
                   { key: 'myVenmo', title: 'Your Venmo', sub: sessionUser?.venmo ? formatVenmo(sessionUser.venmo) : 'Add your Venmo', Icon: Wallet, open: () => setVenmoModalOpen(true) },
                   { key: 'markStatus' as const, title: 'Mark WD / DQ / MDF', sub: "Override a player's status", Icon: AlertCircle },
                   { key: 'roundLeader' as const, title: 'Round Leader Tools', sub: 'Clear a mis-captured round leader', Icon: RefreshCw },
                   { key: 'tiebreak' as const, title: 'Tiebreak Score', sub: 'Enter / override total strokes', Icon: Save },
-                ] as { key: string; title: string; sub: string; Icon: typeof Trophy; open?: () => void; adminOnly?: boolean }[])
+                ] as { key: string; title: ReactNode; sub: ReactNode; Icon: typeof Trophy; open?: () => void; adminOnly?: boolean }[])
                   // League tools for every commissioner; the app-wide ones for the app admin. The Venmo
                   // tools need a league the user commissions (the admin can be in other leagues).
                   // League tools (payouts, tiebreak, Venmo) are for the league's commissioner; the
@@ -12056,12 +12059,12 @@ export default function Page() {
                 {/* Explanation for the Submit & Pay flow */}
                 {!hasSubmittedRoster && paysEntryFeeInApp && (
                   <div style={{ fontSize: 11.5, color: entriesTournamentId === 'open' ? entriesTournamentBg : '#5b6b79', lineHeight: 1.5, marginBottom: 10 }}>
-                    *Hitting <b>Submit &amp; Pay</b>{' '}submits your roster and automatically opens Venmo to {formatVenmo(entryFeeVenmo!.handle)} to pay the pool entry fee. The {formatMoney(entryFee)}{' '}amount and what it&apos;s for are auto-populated for you.
+                    *Hitting <b>Submit &amp; Pay</b>{' '}submits your roster and automatically opens <VenmoMark tone="blue" /> to {formatVenmo(entryFeeVenmo!.handle)} to pay the pool entry fee. The {formatMoney(entryFee)}{' '}amount and what it&apos;s for are auto-populated for you.
                   </div>
                 )}
                 {!hasSubmittedRoster && entryFee > 0 && !entryFeeVenmo && (
                   <div style={{ fontSize: 11.5, color: entriesTournamentId === 'open' ? entriesTournamentBg : '#5b6b79', lineHeight: 1.5, marginBottom: 10 }}>
-                    *Your commissioner hasn&apos;t added their Venmo yet, so pay the {formatMoney(entryFee)} entry fee to them directly.
+                    *Your commissioner hasn&apos;t added their <VenmoMark tone="blue" /> yet, so pay the {formatMoney(entryFee)} entry fee to them directly.
                   </div>
                 )}
 
@@ -12116,7 +12119,7 @@ export default function Page() {
                     onClick={() => openEntryFeePayment()}
                     style={{ marginTop: 12, width: '100%', background: 'none', border: 'none', padding: 4, fontSize: 13, fontWeight: 800, color: entriesTournamentId === 'open' ? entriesTournamentBg : '#008CFF', cursor: 'pointer' }}
                   >
-                    Still need to pay? Pay your {formatMoney(entryFee)} entry fee on Venmo
+                    Still need to pay? Pay your {formatMoney(entryFee)} entry fee on <VenmoMark tone="blue" />
                   </button>
                 ) : null}
               </div>
@@ -12131,7 +12134,7 @@ export default function Page() {
               <span style={{ fontSize: 17, fontWeight: 900, color: entriesTournamentId === 'open' ? entriesTournamentBg : '#0f1720' }}>
                 Roster successfully submitted!
                 {paysEntryFeeInApp ? (
-                  <span style={{ display: 'block', marginTop: 4, fontSize: 14, fontWeight: 700, color: entriesTournamentId === 'open' ? entriesTournamentBg : '#5b6b79' }}>Now opening Venmo…</span>
+                  <span style={{ display: 'block', marginTop: 4, fontSize: 14, fontWeight: 700, color: entriesTournamentId === 'open' ? entriesTournamentBg : '#5b6b79' }}>Now opening <VenmoMark tone="blue" />…</span>
                 ) : null}
               </span>
             </div>

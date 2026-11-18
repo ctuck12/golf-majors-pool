@@ -3,6 +3,7 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { Check, ExternalLink, X } from 'lucide-react';
 import { isNativeApp } from './native-bridge';
+import { VenmoMark } from './venmo-mark';
 import type { PayoutSent, TournamentId } from './lib/pool-store-shared';
 import {
   formatMoney,
@@ -142,7 +143,7 @@ export function VenmoFallbackNotice({ url, onClose }: { url: string | null; onCl
         }}
       >
         <div style={{ flex: 1, minWidth: 0, fontSize: 14, lineHeight: 1.4 }}>
-          Venmo didn&apos;t open.{' '}
+          <VenmoMark /> didn&apos;t open.{' '}
           <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: '#7cc4ff', fontWeight: 800 }}>
             Pay on venmo.com instead
           </a>
@@ -162,7 +163,7 @@ export function VenmoFallbackNotice({ url, onClose }: { url: string | null; onCl
 
 // ── Shared modal frame ───────────────────────────────────────────────────────
 
-function Modal({ title, onClose, children, zIndex = 1050 }: { title: string; onClose: () => void; children: ReactNode; zIndex?: number }) {
+function Modal({ title, onClose, children, zIndex = 1050 }: { title: ReactNode; onClose: () => void; children: ReactNode; zIndex?: number }) {
   return (
     <div
       onClick={onClose}
@@ -180,7 +181,7 @@ function Modal({ title, onClose, children, zIndex = 1050 }: { title: string; onC
         }}
       >
         <div style={{ background: navy, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <div style={{ color: '#fff', fontSize: 17, fontWeight: 900 }}>{title}</div>
+          <div style={{ color: '#fff', fontSize: 17, fontWeight: 900, display: 'flex', alignItems: 'center', gap: 6 }}>{title}</div>
           <button
             type="button"
             onClick={onClose}
@@ -243,11 +244,11 @@ export function VenmoModal<T>({
   };
 
   return (
-    <Modal title="Your Venmo" onClose={onClose}>
+    <Modal title={<>Your <VenmoMark /></>} onClose={onClose}>
       <div style={{ fontSize: 14, color: '#3d4b58', lineHeight: 1.5 }}>
         {isCommissioner
-          ? 'Members pay their entry fee to this Venmo when they submit their roster, and your commissioner can pay you here if you win.'
-          : 'Your commissioner pays your winnings to this Venmo, straight from the app.'}
+          ? <>Members pay their entry fee to this <VenmoMark tone="blue" /> when they submit their roster, and you get paid here if you win.</>
+          : <>Your commissioner pays your winnings to this <VenmoMark tone="blue" />, straight from the app.</>}
       </div>
       <form
         onSubmit={(event) => {
@@ -256,7 +257,7 @@ export function VenmoModal<T>({
         }}
         style={{ display: 'grid', gap: 10 }}
       >
-        <label htmlFor="venmo-username" style={sectionLabel}>Venmo username</label>
+        <label htmlFor="venmo-username" style={sectionLabel}>Username</label>
         <input
           id="venmo-username"
           value={value}
@@ -269,12 +270,12 @@ export function VenmoModal<T>({
           style={inputStyle}
         />
         <div style={{ fontSize: 12.5, color: '#6b7b88', lineHeight: 1.45 }}>
-          In Venmo, tap <b>Me</b>: it&apos;s the @name under your photo.
+          In <VenmoMark tone="blue" />, tap <b>Me</b>: it&apos;s the @name under your photo.
         </div>
         <ErrorText>{error}</ErrorText>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button type="submit" disabled={busy || !value.trim()} style={{ ...primaryButton(busy), flex: 1, opacity: busy || !value.trim() ? 0.6 : 1 }}>
-            {busy ? 'Saving…' : 'Save Venmo'}
+          <button type="submit" disabled={busy || !value.trim()} style={{ ...primaryButton(busy, venmoBlue), flex: 1, opacity: busy || !value.trim() ? 0.6 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+            {busy ? 'Saving…' : <>Save <VenmoMark /></>}
           </button>
           {currentVenmo ? (
             <button type="button" disabled={busy} onClick={() => void save('')} style={secondaryButton}>
@@ -356,7 +357,7 @@ export function VenmoPrompt({
       }}
     >
       <div style={{ flex: '1 1 220px', minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 900, color: '#0f1720' }}>Add your Venmo</div>
+        <div style={{ fontSize: 14, fontWeight: 900, color: '#0f1720', display: 'flex', alignItems: 'center', gap: 5 }}>Add your <VenmoMark tone="blue" /></div>
         <div style={{ fontSize: 13, color: '#4a5a68', lineHeight: 1.4, marginTop: 2 }}>
           {isCommissioner
             ? 'So members can pay their entry fee the moment they submit their roster.'
@@ -364,8 +365,8 @@ export function VenmoPrompt({
         </div>
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
-        <button type="button" onClick={onAdd} style={{ ...primaryButton(false, venmoBlue), padding: '9px 14px', fontSize: 14 }}>
-          Add Venmo
+        <button type="button" onClick={onAdd} style={{ ...primaryButton(false, venmoBlue), padding: '9px 14px', fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+          Add <VenmoMark />
         </button>
         <button type="button" onClick={snooze} style={{ ...secondaryButton, padding: '8px 12px', fontSize: 13 }}>
           Not now
@@ -434,18 +435,18 @@ export function EntryFeesModal<P>({
   };
 
   return (
-    <Modal title="Entry Fees & Venmo" onClose={onClose}>
+    <Modal title={<>Entry Fees &amp; <VenmoMark /></>} onClose={onClose}>
       <div style={{ fontSize: 14, color: '#3d4b58', lineHeight: 1.5 }}>
-        When a member submits their roster, Venmo opens with the entry fee and &ldquo;Golf Majors Pool ⛳&rdquo; already filled in
+        When a member submits their roster, <VenmoMark tone="blue" /> opens with the entry fee and &ldquo;Golf Majors Pool ⛳&rdquo; already filled in
         {commissionerVenmo ? <>, paying you at <b>{formatVenmo(commissionerVenmo)}</b></> : null}.
       </div>
 
       {!commissionerVenmo ? (
         <div style={{ background: '#fff7e6', border: '1px solid #f3d38b', borderRadius: 12, padding: 12, fontSize: 13.5, color: '#5c4310', lineHeight: 1.45 }}>
-          Add your Venmo so members can pay you in the app.
+          Add your <VenmoMark tone="blue" /> so members can pay you in the app.
           <div style={{ marginTop: 10 }}>
-            <button type="button" onClick={onAddVenmo} style={{ ...primaryButton(false, venmoBlue), padding: '9px 14px', fontSize: 14 }}>
-              Add your Venmo
+            <button type="button" onClick={onAddVenmo} style={{ ...primaryButton(false, venmoBlue), padding: '9px 14px', fontSize: 14, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              Add your <VenmoMark />
             </button>
           </div>
         </div>
@@ -559,7 +560,7 @@ export function PayWinnersModal<P>({
       ) : (
         <>
           <div style={{ fontSize: 14, color: '#3d4b58', lineHeight: 1.5 }}>
-            Tap <b>Pay</b>{' '}and Venmo opens with the amount and what it&apos;s for filled in. Check it and send.
+            Tap <b>Pay</b>{' '}and <VenmoMark tone="blue" /> opens with the amount and what it&apos;s for filled in. Check it and send.
           </div>
           <div style={{ display: 'grid', gap: 10 }}>
             {rows.map((row) => (
@@ -569,7 +570,7 @@ export function PayWinnersModal<P>({
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 16, fontWeight: 900, color: '#0f1720' }}>{row.name}</div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: row.venmo ? venmoBlue : '#8a6d1d' }}>
-                      {row.venmo ? formatVenmo(row.venmo) : 'No Venmo on their account: pick them in Venmo'}
+                      {row.venmo ? formatVenmo(row.venmo) : <>No <VenmoMark tone="blue" /> on their account: pick them in <VenmoMark tone="blue" /></>}
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
@@ -583,7 +584,7 @@ export function PayWinnersModal<P>({
                 {row.sent ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13.5, fontWeight: 800, color: '#0f7a3d' }}>
-                      <Check size={16} /> {row.userId === currentUserId ? 'Paid' : 'Opened in Venmo'} {new Date(row.sent.sentAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      <Check size={16} /> {row.userId === currentUserId ? 'Paid' : <>Opened in <VenmoMark tone="blue" /></>} {new Date(row.sent.sentAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                     </span>
                     <span style={{ flex: 1 }} />
                     {row.userId !== currentUserId ? (
@@ -616,7 +617,7 @@ export function PayWinnersModal<P>({
                     onClick={() => pay(row)}
                     style={{ ...primaryButton(busyPlace === row.place, venmoBlue), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
                   >
-                    Pay {formatMoney(row.amount)} on Venmo <ExternalLink size={15} />
+                    Pay {formatMoney(row.amount)} on <VenmoMark /> <ExternalLink size={15} />
                   </button>
                 )}
               </div>
