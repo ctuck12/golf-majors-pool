@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest } from 'next/server';
 import redis from '@/app/lib/redis';
+import { legacyRowKey, legacyYears } from '@/app/lib/legacy-archive';
 import { cookies } from 'next/headers';
 import { DEFAULT_POOL_ID, getSessionContext, SESSION_COOKIE_NAME, archiveSeasonsFor, readStandingsArchive, saveStandingsArchive, userDataBackend } from '@/app/lib/pool-store';
 
@@ -13,20 +14,8 @@ import { DEFAULT_POOL_ID, getSessionContext, SESSION_COOKIE_NAME, archiveSeasons
 const TOURNAMENT_IDS = new Set(['players', 'masters', 'pga', 'us-open', 'open']);
 
 type ArchiveGolfer = { name: string; score: string; points: number; position: string; salary: number };
-type ArchiveRow = { place: number; name: string; points: number; holesRemaining: number; tieBreak: number; golfers?: ArchiveGolfer[] };
+type ArchiveRow = { id?: string; place: number; name: string; points: number; holesRemaining: number; tieBreak: number; golfers?: ArchiveGolfer[] };
 type ArchivePayouts = { first?: number; second?: number; third?: number };
-
-const legacyRowKey = (tid: string, year: number) => `standings-archive:v1:${tid}:${year}`;
-const legacyYearsKey = (tid: string) => `standings-archive-years:v1:${tid}`;
-
-async function legacyYears(tid: string): Promise<number[]> {
-  try {
-    const raw = await redis.get(legacyYearsKey(tid));
-    if (!raw) return [];
-    const arr = JSON.parse(raw as string) as number[];
-    return Array.isArray(arr) ? arr.filter((y) => typeof y === 'number') : [];
-  } catch { return []; }
-}
 
 async function currentLeague() {
   const cookieStore = await cookies();
@@ -86,6 +75,7 @@ export async function POST(req: NextRequest) {
   if (standings.length < 1) return Response.json({ error: 'empty standings' }, { status: 400 });
 
   const clean: ArchiveRow[] = standings.slice(0, 500).map((r) => ({
+    ...(typeof r.id === 'string' && r.id ? { id: r.id.slice(0, 80) } : {}),
     place: Number(r.place) || 0,
     name: String(r.name ?? '').slice(0, 80),
     points: Number(r.points) || 0,

@@ -69,6 +69,9 @@ export type PublicPool = {
   payoutInfo?: Partial<Record<TournamentId, PayoutInfo>>;
   // How to pay the entry fee when it isn't through the commissioner's Venmo.
   paymentNote?: string | null;
+  // The season championship's buy-in and payout plan (both optional).
+  seasonFee?: number | null;
+  seasonPayoutPlan?: PayoutPlan | null;
   // Entry fee status per tournament (for the event on show), by member id. Members get only theirs.
   entryPayments?: Partial<Record<TournamentId, Record<string, PaymentStatus>>>;
 };

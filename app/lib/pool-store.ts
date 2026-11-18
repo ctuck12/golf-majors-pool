@@ -93,6 +93,9 @@ export const setEntryPaymentStatus = async (userId: string, tournamentId: Tourna
   (await postgresOnly()).setEntryPaymentStatus(userId, tournamentId, memberId, status);
 export const claimReminder = async (userId: string, tournamentId: TournamentId, kind: 'pay' | 'picks') =>
   (await postgresOnly()).claimReminder(userId, tournamentId, kind);
+export const setSeasonSettings = async (userId: string, fee: number | null, plan: PayoutPlan | null) =>
+  (await postgresOnly()).setSeasonSettings(userId, fee, plan);
+export const readLeagueHistory = async (leagueId: string) => (await postgresOnly()).readLeagueHistory(leagueId);
 export const setPaymentNote = async (userId: string, note: string | null) =>
   (await postgresOnly()).setPaymentNote(userId, note);
 export const setLeaguePayoutPlan = async (userId: string, plan: PayoutPlan | null) =>

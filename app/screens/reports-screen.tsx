@@ -4,6 +4,8 @@ import { Fragment, type CSSProperties } from 'react';
 import { Search } from 'lucide-react';
 import { TOURNAMENTS, getPlayerFlag, getFlagSrc, getCountryLabel, TOURNAMENT_TAB_LOGOS, PICK_HISTORY_NAMES, pgaPhoto, playerPhotoSrc, photoOnError, REPORT_OPTIONS, REPORT_TOURNAMENTS, POOL_SEASONS, REPORT_DROPDOWN_LOGO_H, REPORT_TOURNAMENT_SOLID, PPS_ALL_BAR_GRADIENT, REPORT_TOURNAMENT_CHIP, formatLeaderboardPosition, type TournamentId } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
+import { SeasonStandingsReport } from '../reports/season-standings';
+import { HallOfChampionsReport } from '../reports/hall-of-champions';
 
 // Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
 export function ReportsScreen({ p }: { p: PoolPage }) {
@@ -64,7 +66,11 @@ export function ReportsScreen({ p }: { p: PoolPage }) {
     <main style={{ marginTop: isMobile ? 12 : 24 }}>
             <section ref={reportTopRef} style={{ scrollMarginTop: 12, background: '#fff', borderRadius: 20, overflow: 'hidden', boxShadow: '0 18px 40px rgba(9,34,51,0.08)', borderTop: `3px solid ${headerSolid}` }}>
               <div style={{ padding: isMobile ? 18 : 28 }}>
-                {selectedReport === 'Player Pick Summary' ? (() => {
+                {selectedReport === 'Season Standings' ? (
+                  <SeasonStandingsReport p={p} />
+                ) : selectedReport === 'Hall of Champions' ? (
+                  <HallOfChampionsReport p={p} />
+                ) : selectedReport === 'Player Pick Summary' ? (() => {
                   const ppsControls = (
                     <div style={{ display: 'flex', flexWrap: isMobile ? 'nowrap' : 'wrap', alignItems: 'flex-end', gap: isMobile ? 7 : 12 }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 0, flex: isMobile ? '1.5 1 92px' : '0 0 220px' }}>

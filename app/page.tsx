@@ -11,6 +11,7 @@ import { PoolMessageModal } from './pool-message';
 import { PayoutPlanModal } from './payout-plan-ui';
 import { CommissionerGuide } from './commissioner-guide';
 import { EntryFeeTracker } from './entry-fee-tracker';
+import { SeasonSettingsModal } from './season-settings';
 import { currentTournamentMeta, effectiveLockTime } from '@/app/lib/tournament-config';
 import { EntryFeesModal, PayWinnersModal, VenmoFallbackNotice, VenmoModal, VenmoPrompt } from './venmo-ui';
 import { formatVenmo } from '@/app/lib/venmo';
@@ -148,6 +149,8 @@ export default function Page() {
     setGuideOpen,
     feeTrackerOpen,
     setFeeTrackerOpen,
+    seasonSettingsOpen,
+    setSeasonSettingsOpen,
     lockTimeOverrides,
     venmoFallbackUrl,
     setVenmoFallbackUrl,
@@ -1041,6 +1044,16 @@ export default function Page() {
           />
         ) : null}
 
+        {seasonSettingsOpen && pool && pool.role === 'commissioner' ? (
+          <SeasonSettingsModal<PoolInfo>
+            fee={pool.seasonFee ?? null}
+            plan={pool.seasonPayoutPlan ?? null}
+            memberCount={pool.memberCount ?? 0}
+            onPool={(next) => setPool((current) => (current ? { ...current, ...next } : next))}
+            onClose={() => setSeasonSettingsOpen(false)}
+          />
+        ) : null}
+
         {feeTrackerOpen && pool && pool.role === 'commissioner' && sessionUser ? (
           <EntryFeeTracker<PoolInfo>
             tournamentId={entriesTournamentId}
@@ -1329,6 +1342,10 @@ export default function Page() {
           const reportIcon = (opt: ReportType) => {
             const p = { width: 15, height: 15, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
             switch (opt) {
+              case 'Season Standings':
+                return <svg {...p}><path d="M8 21h8" /><path d="M12 17v4" /><path d="M7 4h10v5a5 5 0 0 1-10 0V4Z" /><path d="M17 5h3v2a3 3 0 0 1-3 3" /><path d="M7 5H4v2a3 3 0 0 0 3 3" /></svg>;
+              case 'Hall of Champions':
+                return <svg {...p}><circle cx="12" cy="8" r="6" /><path d="M15.48 12.89 17 22l-5-3-5 3 1.52-9.11" /></svg>;
               case 'Player Pick Summary':
                 return <svg {...p}><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></svg>;
               case 'Pool Member Pick History':

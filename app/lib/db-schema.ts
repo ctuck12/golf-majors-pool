@@ -194,6 +194,9 @@ alter table league_tournaments add column if not exists payouts_season integer;
 -- How members pay the entry fee when the commissioner doesn't use Venmo (e.g. "Cash or Zelle to
 -- Clayton"). Shown at Submit and in the tournament-week text.
 alter table leagues add column if not exists payment_note text;
+-- Season championship: an optional season buy-in and how that pot is split (a payout plan).
+alter table leagues add column if not exists season_fee double precision;
+alter table leagues add column if not exists season_payout_plan jsonb;
 do $$
 declare applied integer;
 begin

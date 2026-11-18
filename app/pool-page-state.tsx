@@ -351,6 +351,7 @@ export function usePoolPage() {
   const [payoutPlanOpen, setPayoutPlanOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const [feeTrackerOpen, setFeeTrackerOpen] = useState(false);
+  const [seasonSettingsOpen, setSeasonSettingsOpen] = useState(false);
   const [venmoFallbackUrl, setVenmoFallbackUrl] = useState<string | null>(null);
   const [showSubmittedPicksPopup, setShowSubmittedPicksPopup] = useState(false);
   // Submitted Picks popup ordering: alphabetical by default, or newest submission first.
@@ -2310,7 +2311,7 @@ export function usePoolPage() {
       body: JSON.stringify({
         tournamentId: selectedTournament,
         year,
-        standings: standings.map((e) => ({ place: e.place, name: e.name, points: e.rosterPoints, holesRemaining: e.holesRemaining, tieBreak: e.tieBreakValue, golfers: e.golfers.map((g) => ({ name: g.name, score: g.score, points: g.points, position: g.position, salary: g.salary })) })),
+        standings: standings.map((e) => ({ id: e.id, place: e.place, name: e.name, points: e.rosterPoints, holesRemaining: e.holesRemaining, tieBreak: e.tieBreakValue, golfers: e.golfers.map((g) => ({ name: g.name, score: g.score, points: g.points, position: g.position, salary: g.salary })) })),
         payouts: selectedTournamentPayouts ? { first: selectedTournamentPayouts.first, second: selectedTournamentPayouts.second, third: selectedTournamentPayouts.third } : undefined,
       }),
     }).catch(() => { archivedThisSession.current.delete(key); });
@@ -3066,6 +3067,8 @@ export function usePoolPage() {
     setGuideOpen,
     feeTrackerOpen,
     setFeeTrackerOpen,
+    seasonSettingsOpen,
+    setSeasonSettingsOpen,
     venmoFallbackUrl,
     setVenmoFallbackUrl,
     showSubmittedPicksPopup,

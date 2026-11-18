@@ -149,7 +149,7 @@ async function loadPool(sql: AnySql, league: { id: string; name: string; join_co
     select tournament_id, picks_open, lineup_locked, payout_first, payout_second, payout_third, winner_score, entry_fee, state_season, payouts_season
     from league_tournaments where league_id = ${league.id}
   `;
-  const [planRow] = await sql<{ payout_plan: PayoutPlan | null; payment_note: string | null }[]>`select payout_plan, payment_note from leagues where id = ${league.id}`;
+  const [planRow] = await sql<{ payout_plan: PayoutPlan | null; payment_note: string | null; season_fee: number | null; season_payout_plan: PayoutPlan | null }[]>`select payout_plan, payment_note, season_fee, season_payout_plan from leagues where id = ${league.id}`;
   const payoutPlan = planRow?.payout_plan ?? null;
   // Entries per tournament and season: members who have picks in.
   const counts = await sql<{ tournament_id: string; season: number; entries: number }[]>`
@@ -183,6 +183,8 @@ async function loadPool(sql: AnySql, league: { id: string; name: string; join_co
     payoutPlan,
     payoutInfo: {},
     entryPayments: {},
+    seasonFee: planRow?.season_fee ?? null,
+    seasonPayoutPlan: planRow?.season_payout_plan ?? null,
     paymentNote: planRow?.payment_note ?? null,
   };
 
@@ -554,6 +556,8 @@ export async function getSessionContext(token: string | undefined): Promise<Sess
       payoutPlan: pool.payoutPlan ?? null,
       payoutInfo: pool.payoutInfo,
       paymentNote: pool.paymentNote ?? null,
+      seasonFee: pool.seasonFee ?? null,
+      seasonPayoutPlan: pool.seasonPayoutPlan ?? null,
       // Members see only their own entry fee status; the commissioner sees everyone's.
       entryPayments: isCommissioner
         ? pool.entryPayments
@@ -1315,6 +1319,33 @@ export async function updateEntryFees(requestingUserId: string, fees: Partial<Re
       `;
     }
   });
+}
+
+// The season championship's buy-in (null/0: none) and payout plan. Commissioner only.
+export async function setSeasonSettings(requestingUserId: string, fee: number | null, plan: PayoutPlan | null) {
+  if (fee !== null && (!Number.isFinite(fee) || fee < 0 || fee > 10000)) throw new Error('Enter a season buy-in between $0 and $10,000.');
+  return db().begin(async (sql) => {
+    const league = await requireCommissionerLeague(sql, requestingUserId);
+    await sql`
+      update leagues set season_fee = ${fee ? Math.round(fee * 100) / 100 : null}, season_payout_plan = ${plan ? sql.json(plan as never) : null}
+      where id = ${league.id}
+    `;
+    return loadPool(sql, league);
+  });
+}
+
+// Every finished tournament this league has saved, without the golfer detail (for the season
+// standings and the Hall of Champions).
+export async function readLeagueHistory(leagueId: string) {
+  return db()<{ tournament_id: string; season: number; standings: { id?: string; name: string; place: number; points: number }[]; payouts: unknown }[]>`
+    select tournament_id, season,
+      coalesce((select jsonb_agg(jsonb_build_object('id', e->'id', 'name', e->'name', 'place', e->'place', 'points', e->'points'))
+        from jsonb_array_elements(standings) e), '[]'::jsonb) as standings,
+      payouts
+    from league_standings_archive
+    where league_id = ${leagueId}
+    order by season desc, tournament_id
+  `;
 }
 
 // How members pay when it isn't through the commissioner's Venmo (null clears it).
