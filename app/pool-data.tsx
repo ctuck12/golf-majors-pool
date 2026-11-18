@@ -758,8 +758,8 @@ export type TournamentId = (typeof TOURNAMENTS)[number]['id'];
 export type MainTab = 'Standings' | 'My Entries' | 'Details' | 'Reports' | 'Commissioner Hub';
 export const MAIN_TABS: MainTab[] = ['Standings', 'My Entries', 'Details', 'Reports', 'Commissioner Hub'];
 
-export type ReportType = 'Season Standings' | 'Hall of Champions' | 'Player Pick Summary' | 'Pool Member Pick History' | 'Pool Member Pick Summary' | 'Player Performance Summary' | 'Pool Standings History';
-export const REPORT_OPTIONS: ReportType[] = ['Season Standings', 'Hall of Champions', 'Player Pick Summary', 'Pool Member Pick History', 'Pool Member Pick Summary', 'Player Performance Summary', 'Pool Standings History'];
+export type ReportType = 'Season Standings' | 'Hall of Champions' | 'Value Picks' | 'Head-to-Head' | 'Player Pick Summary' | 'Pool Member Pick History' | 'Pool Member Pick Summary' | 'Player Performance Summary' | 'Pool Standings History';
+export const REPORT_OPTIONS: ReportType[] = ['Season Standings', 'Hall of Champions', 'Value Picks', 'Head-to-Head', 'Player Pick Summary', 'Pool Member Pick History', 'Pool Member Pick Summary', 'Player Performance Summary', 'Pool Standings History'];
 export const REPORT_TOURNAMENTS: { id: TournamentId; label: string }[] = [
   { id: 'players', label: 'The Players' },
   { id: 'masters', label: 'The Masters' },
