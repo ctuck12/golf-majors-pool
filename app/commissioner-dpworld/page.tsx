@@ -56,6 +56,7 @@ export default function CommissionerDpWorldPage() {
     } catch { setGateError('Network error loading current rankings.'); }
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- loads the saved rankings once when the page opens
   useEffect(() => { loadStatus(); }, []);
 
   const save = async () => {

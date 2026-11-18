@@ -281,6 +281,13 @@ export default function Page() {
     }
     return initial;
   });
+  // ESPN event id for a tournament's stats: its most recent event, from the schedule or, for a new
+  // season whose id isn't in the schedule yet, the one live scoring found (sent with the feed).
+  const statsEventId = (tid: TournamentId) => {
+    const season = latestStartedSeason(tid) ?? picksSeason(tid);
+    const fromFeed = feeds[tid]?.season === season ? feeds[tid]?.espnEventId : undefined;
+    return espnEventIdFor(tid, season) ?? fromFeed;
+  };
   const [isLoading, setIsLoading] = useState(() => readFeedCache(initialTournament) === null);
   const [error, setError] = useState('');
   const [feedRefreshNonce, setFeedRefreshNonce] = useState(0);
@@ -364,6 +371,7 @@ export default function Page() {
     if (!token) return;
     url.searchParams.delete('reset');
     window.history.replaceState(null, '', url.pathname + url.search + url.hash);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reads the reset link from the address bar once on load
     setResetToken(token);
     setForgotOpen(true);
     setForgotEmailExists(true);
@@ -1659,8 +1667,8 @@ export default function Page() {
   const [salaryListLoaded, setSalaryListLoaded] = useState(false); // false until the fetch resolves
   // Re-fetchable so a fresh commissioner upload shows up without a hard reload (mobile back/bfcache
   // otherwise restores the pre-upload page without re-running the mount fetch).
-  const loadSalaryOverrides = useRef<() => void>(() => {});
-  loadSalaryOverrides.current = () => {
+  // Only calls state setters (which never change), so the function is created once.
+  const loadSalaryOverrides = useRef<() => void>(() => {
     fetch('/api/salary-overrides', { cache: 'no-store' })
       .then((r) => r.json())
       .then((d: { byTournament?: Record<string, { salaries?: Record<string, number>; worldRanks?: Record<string, number> }>; bySeason?: Record<string, Record<string, { salaries?: Record<string, number>; worldRanks?: Record<string, number> }>>; dynamicPlayers?: Array<{ id: number; name: string; pgaTourId: number; worldRank: number; defaultOdds: string }> }) => {
@@ -1682,7 +1690,7 @@ export default function Page() {
       })
       .catch(() => { /* keep built-in values */ })
       .finally(() => { setSalaryListLoaded(true); });
-  };
+  });
   useEffect(() => {
     loadSalaryOverrides.current();
     // Re-fetch when the tab/app regains focus (e.g. returning from the commissioner upload page).
@@ -2124,7 +2132,7 @@ export default function Page() {
     const ctxTid = ctxTournamentId ?? selectedTournament;
     const ctxStatus = tournamentCardStatuses[ctxTid];
     const ctxStatsUnlocked = ctxStatus?.label === 'LOCKED' || ctxStatus?.label === 'IN PROGRESS';
-    const espnEventId = espnEventIdFor(ctxTid, latestStartedSeason(ctxTid) ?? picksSeason(ctxTid));
+    const espnEventId = statsEventId(ctxTid);
     const statsCtx: 'season' | 'tournament' = ctxStatsUnlocked ? 'tournament' : 'season';
     const params = new URLSearchParams({ name: player.name, context: statsCtx });
     if (espnEventId && ctxStatsUnlocked) params.set('eventId', espnEventId);
@@ -4551,6 +4559,7 @@ export default function Page() {
                                     >
                                       <td style={{ padding: isMobile ? '6px 4px' : '7px 8px', textAlign: 'center', fontWeight: 600, color: selectedTournament === 'open' ? '#0f1720' : '#374151' }}>{notStartedR1 ? '—' : (player.score === 'WD' || player.score === 'DQ') ? <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: '#cc2944', color: '#fff', borderRadius: 4, padding: '2px 5px', minWidth: 28, fontWeight: 700 }}>{player.score}</span> : formatLeaderboardPosition(player.position)}</td>
                                       <td style={{ padding: isMobile ? '6px 4px' : '7px 8px', fontWeight: activePlayer ? 800 : 500, color: '#0f1720' }}>{player.name}</td>
+                                      {/* eslint-disable-next-line react-hooks/refs -- the tap handler reads its timer ref when tapped, not while rendering */}
                                       <td style={{ padding: isMobile ? '6px 4px' : '7px 8px', textAlign: 'center', fontWeight: colIsCut ? 600 : 700, color: colUnderPar && !useRedBadge ? '#dc2626' : (useNavyBadge ? '#0f1720' : (colVal === 'E' ? '#16a34a' : (colIsCut ? '#374151' : '#0f1720'))) }}>{notStartedR1 ? '—' : player.score === 'CUT' && player.originalScore && leaderboardSortMode === 'default' ? <span onClick={(e) => handleCutTotalTap(String(player.playerId), player.name, e)} style={{ cursor: 'pointer', display: 'inline-block', minWidth: 34, textAlign: 'center', WebkitTapHighlightColor: 'transparent', userSelect: 'none', touchAction: 'manipulation' }}>{expandedCutIds.has(String(player.playerId)) ? player.originalScore : 'CUT'}</span> : (() => { const valNode = useRedBadge ? <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: '#dc2626', color: '#fff', borderRadius: 4, padding: '2px 5px', minWidth: 28, fontWeight: 700 }}>{colVal}</span> : useNavyBadge ? <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: '#1e3a5f', color: '#fff', borderRadius: 4, padding: '2px 5px', minWidth: 28, fontWeight: 700 }}>{colVal}</span> : (colIsCut && colVal !== 'CUT') ? <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: '#cc2944', color: '#fff', borderRadius: 4, padding: '2px 5px', minWidth: 28, fontWeight: 700 }}>{colVal}</span> : colVal; return (player.poolPlayerId !== null && timesPicked > 0) ? <span onClick={(e) => { e.stopPropagation(); openLiveScorecard(player.name, player.teeTime ?? null, player.thru, player.backNineStart ?? false); }} style={{ cursor: 'pointer', display: 'inline-block', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}>{valNode}</span> : valNode; })()}</td>
                                       <td style={{ padding: isMobile ? '6px 4px' : '7px 8px', textAlign: 'center', whiteSpace: 'nowrap', color: selectedTournament === 'open' ? '#000000' : '#374151' }}>{(() => {
                                         const isGoldTheme = selectedTournament === 'open';
@@ -10305,7 +10314,7 @@ export default function Page() {
                               const avg = avgKey ? avgs[avgKey] : undefined;
                               const rank = rankKey ? getRank(rankKey, value) : null;
                               return (
-                                <div key={label} onClick={() => { if (rankKey) { const lbEventId = espnEventIdFor(careerTournamentId, latestStartedSeason(careerTournamentId) ?? picksSeason(careerTournamentId)); const url = isTournView && lbEventId ? `/api/tournament-stat-leaderboard?statKey=${rankKey}&eventId=${lbEventId}` : `/api/stat-leaderboard?statKey=${rankKey}`; const subtitle = isTournView ? 'Tournament Leaders' : 'Season Leaders'; setStatLeaderboardModal({ label, statKey: rankKey, subtitle, tourAvg: null, avgLabel: isTournView ? 'Field Avg' : 'Tour Avg', playerName: pickHistoryPlayerPopup?.player.name ?? null, entries: null }); fetch(url).then(r => r.json()).then(d => setStatLeaderboardModal(prev => prev?.statKey === rankKey ? { ...prev, tourAvg: d.fieldAvg ?? d.tourAvg ?? null, entries: d.entries ?? [] } : prev)).catch(() => setStatLeaderboardModal(prev => prev?.statKey === rankKey ? { ...prev, entries: [] } : prev)); } }} style={{ background: '#fff', borderRadius: 8, border: '1px solid #e2e8ef', padding: '8px 10px', cursor: rankKey ? 'pointer' : 'default' }}>
+                                <div key={label} onClick={() => { if (rankKey) { const lbEventId = statsEventId(careerTournamentId); const url = isTournView && lbEventId ? `/api/tournament-stat-leaderboard?statKey=${rankKey}&eventId=${lbEventId}` : `/api/stat-leaderboard?statKey=${rankKey}`; const subtitle = isTournView ? 'Tournament Leaders' : 'Season Leaders'; setStatLeaderboardModal({ label, statKey: rankKey, subtitle, tourAvg: null, avgLabel: isTournView ? 'Field Avg' : 'Tour Avg', playerName: pickHistoryPlayerPopup?.player.name ?? null, entries: null }); fetch(url).then(r => r.json()).then(d => setStatLeaderboardModal(prev => prev?.statKey === rankKey ? { ...prev, tourAvg: d.fieldAvg ?? d.tourAvg ?? null, entries: d.entries ?? [] } : prev)).catch(() => setStatLeaderboardModal(prev => prev?.statKey === rankKey ? { ...prev, entries: [] } : prev)); } }} style={{ background: '#fff', borderRadius: 8, border: '1px solid #e2e8ef', padding: '8px 10px', cursor: rankKey ? 'pointer' : 'default' }}>
                                   <div style={{ fontSize: 9, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>{label}</div>
                                   <div style={{ fontSize: 13, fontWeight: 800, color: '#0f1720' }}>
                                     {value}{rank && <span style={{ fontSize: 10, fontWeight: 600, color: '#607282', marginLeft: 4 }}>({rank})</span>}
@@ -10324,7 +10333,7 @@ export default function Page() {
                             {sgStatCells.map(({ label, value, rankKey }) => {
                               const rank = rankKey ? getRank(rankKey, value) : null;
                               return (
-                                <div key={label} onClick={() => { if (rankKey) { const lbEventId = espnEventIdFor(careerTournamentId, latestStartedSeason(careerTournamentId) ?? picksSeason(careerTournamentId)); const url = isTournView && lbEventId ? `/api/tournament-stat-leaderboard?statKey=${rankKey}&eventId=${lbEventId}` : `/api/stat-leaderboard?statKey=${rankKey}`; const subtitle = isTournView ? 'Tournament Leaders' : 'Season Leaders'; setStatLeaderboardModal({ label: `Strokes Gained: ${label}`, statKey: rankKey, subtitle, tourAvg: null, avgLabel: isTournView ? 'Field Avg' : 'Tour Avg', playerName: pickHistoryPlayerPopup?.player.name ?? null, entries: null }); fetch(url).then(r => r.json()).then(d => setStatLeaderboardModal(prev => prev?.statKey === rankKey ? { ...prev, tourAvg: isTournView ? null : (d.fieldAvg ?? d.tourAvg ?? null), entries: d.entries ?? [] } : prev)).catch(() => setStatLeaderboardModal(prev => prev?.statKey === rankKey ? { ...prev, entries: [] } : prev)); } }} style={{ background: '#fff', borderRadius: 8, border: '1px solid #e2e8ef', padding: '8px 10px', cursor: rankKey ? 'pointer' : 'default' }}>
+                                <div key={label} onClick={() => { if (rankKey) { const lbEventId = statsEventId(careerTournamentId); const url = isTournView && lbEventId ? `/api/tournament-stat-leaderboard?statKey=${rankKey}&eventId=${lbEventId}` : `/api/stat-leaderboard?statKey=${rankKey}`; const subtitle = isTournView ? 'Tournament Leaders' : 'Season Leaders'; setStatLeaderboardModal({ label: `Strokes Gained: ${label}`, statKey: rankKey, subtitle, tourAvg: null, avgLabel: isTournView ? 'Field Avg' : 'Tour Avg', playerName: pickHistoryPlayerPopup?.player.name ?? null, entries: null }); fetch(url).then(r => r.json()).then(d => setStatLeaderboardModal(prev => prev?.statKey === rankKey ? { ...prev, tourAvg: isTournView ? null : (d.fieldAvg ?? d.tourAvg ?? null), entries: d.entries ?? [] } : prev)).catch(() => setStatLeaderboardModal(prev => prev?.statKey === rankKey ? { ...prev, entries: [] } : prev)); } }} style={{ background: '#fff', borderRadius: 8, border: '1px solid #e2e8ef', padding: '8px 10px', cursor: rankKey ? 'pointer' : 'default' }}>
                                   <div style={{ fontSize: 9, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>{label}</div>
                                   <div style={{ fontSize: 13, fontWeight: 800, color: '#0f1720' }}>
                                     {value}{rank && <span style={{ fontSize: 10, fontWeight: 600, color: '#607282', marginLeft: 4 }}>({rank})</span>}

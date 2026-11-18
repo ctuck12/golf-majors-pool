@@ -595,6 +595,7 @@ export function HeaderNameFlag({ name, flagSrc, abbr, base, min, allowStack, ini
   const [size, setSize] = useState(base);
   const [stacked, setStacked] = useState(initialStacked);
   const [, setMeasureTick] = useState(0);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- restarts the fit-to-width measurement when the name changes
   useLayoutEffect(() => { setSize(base); setStacked(initialStacked); }, [name, base, initialStacked]);
   // The row's free space changes without a React render when the flag/logo images finish
   // loading (they start at width 0) — observe the span's box so any squeeze re-fits.
@@ -652,6 +653,7 @@ export function FitOneLineText({ text, base, min, style }: { text: string; base:
   const measureRef = useRef<HTMLSpanElement>(null);
   const [size, setSize] = useState(base);
   const [, setTick] = useState(0);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- restarts the fit-to-width measurement when the text changes
   useLayoutEffect(() => { setSize(base); }, [text, base]);
   useLayoutEffect(() => {
     const outer = outerRef.current;
@@ -857,6 +859,9 @@ export type ArchivedStandingsData = { available?: boolean; standings?: ArchivedS
 
 export type FeedResponse = {
   fetchedAt: string;
+  // The season the data is from, and its ESPN event id (found by name for a new season).
+  season?: number;
+  espnEventId?: string;
   players: FeedRow[];
   odds: Array<{
     canonicalName: string;

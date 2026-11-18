@@ -26,6 +26,7 @@ import {
 } from '@/app/lib/pool-store';
 import redis from '@/app/lib/redis';
 import { trackScoreHealth } from '@/app/lib/score-alerts';
+import { recordFoundEspnEvent } from '@/app/lib/espn-event-ids';
 
 const TOURNAMENT_NAMES: Record<string, string> = {
   players: 'The Players',
@@ -274,6 +275,9 @@ async function refreshTournamentFromESPN(
   let espnResult: Awaited<ReturnType<typeof fetchESPNTournament>>;
   try {
     espnResult = await fetchESPNTournament(espnEventId, tournamentId);
+    // Found by name (no id in the schedule yet): remember the id for the stat features.
+    const meta = currentTournamentMeta(tournamentId);
+    if (!espnEventId && meta) await recordFoundEspnEvent(tournamentId, Number(meta.year), espnResult.eventId).catch(() => {});
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (msg.includes('400')) {

@@ -138,7 +138,7 @@ export async function GET(request: Request) {
     if (result.entries.length > 0) {
       // Static (completed/future) events cache long; a LIVE event caches briefly so the card tracks
       // each round instead of freezing on the first warm. (Empty builds are never cached.)
-      try { await redis.setex(cacheKey, tournLbTtl(eventId), JSON.stringify(result)); } catch { /* ignore */ }
+      try { await redis.setex(cacheKey, await tournLbTtl(eventId), JSON.stringify(result)); } catch { /* ignore */ }
     }
     return Response.json(result);
   } catch {

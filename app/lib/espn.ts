@@ -62,6 +62,8 @@ export type ESPNTournamentResult = {
   // ONLY reliable signal that the tournament is truly final — `roundStatus` alone is
   // ambiguous because ESPN reports state='post' between rounds too.
   eventComplete: boolean;
+  // ESPN's id for the event (useful when it was found by name).
+  eventId: string;
 };
 
 // ── Private helpers ────────────────────────────────────────────────────────
@@ -331,5 +333,5 @@ export async function fetchESPNTournament(espnEventId: string | undefined, tourn
     }
   }
 
-  return { leaderboardRows, currentRound, roundStatus, projectedCut: null, playerScorecards, eventComplete };
+  return { leaderboardRows, currentRound, roundStatus, projectedCut: null, playerScorecards, eventComplete, eventId: event.id };
 }

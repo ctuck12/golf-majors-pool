@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 import redis from '@/app/lib/redis';
-import { scheduledEspnEvents } from '@/app/lib/tournament-config';
+import { knownEspnEvents } from '@/app/lib/espn-event-ids';
 
 // Cron job: keep the stat-leaderboard caches warm WITHOUT hammering the upstream PGA/ESPN APIs.
 //
@@ -102,7 +102,7 @@ export async function GET(request: Request) {
   // (app/lib/tournament-config.ts). Completed-event data is static, so these cache for 7 days and
   // rarely rebuild. Shares the per-run rebuild cap with season stats, so a cold start warms
   // gradually across runs. The newest events go first.
-  const scheduledEvents = scheduledEspnEvents().reverse();
+  const scheduledEvents = (await knownEspnEvents()).reverse();
   // ESPN-sourced course stats (every event). Scrambling and SG come from the PGA feed instead.
   const ESPN_COURSE_KEYS = ['drivingDistance', 'drivingAccuracy', 'gir', 'sandSaves', 'puttAverage'];
   const PGA_KEYS = ['sgTotal', 'sgTeeToGreen', 'sgOffTee', 'sgApproach', 'sgAroundGreen', 'sgPutting', 'scrambling'];

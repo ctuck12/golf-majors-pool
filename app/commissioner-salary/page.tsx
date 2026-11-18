@@ -157,9 +157,10 @@ export default function CommissionerSalaryPage() {
       if (res.ok) { const d = await res.json(); setProCount(typeof d.clubProCount === 'number' ? d.clubProCount : null); }
     } catch { /* ignore */ }
   };
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- loads the saved lists once when the page opens
   useEffect(() => { loadStatus(); loadFieldStatus(); loadProStatus(); }, []);
   // Reload the salary status whenever the target tournament changes (so "Last updated" reflects it).
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect -- reloads when the tournament picker changes
   useEffect(() => { loadStatus(); }, [salaryTid]);
 
   const readFileToText = async (file: File): Promise<string | null> => {

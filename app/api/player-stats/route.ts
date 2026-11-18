@@ -6,7 +6,7 @@ import { fetchPlayerSeasonStats, fetchPlayerTournamentStats } from '@/app/lib/es
 import { fetchPgaTourPlayerStats } from '@/app/lib/pga-player-stats';
 import type { PlayerStatRanks } from '@/app/lib/pga-player-stats';
 import { fetchPgaScorecardStats, pgaTourTournId } from '@/app/lib/pga-scorecard-stats';
-import { getTournamentMetaByEspnId } from '@/app/lib/tournament-config';
+import { metaForEspnEvent } from '@/app/lib/espn-event-ids';
 import { resolvePgaTourIdByName } from '@/app/lib/pga-id-resolver';
 import { getOrBuildPgaLeaderboard, tournLbCacheKey } from '@/app/lib/tournament-sg-leaderboard';
 import { resolveChangedAt } from '@/app/lib/changed-at';
@@ -131,7 +131,7 @@ export async function GET(request: Request) {
     }
 
     if (isTournament) {
-      const meta = getTournamentMetaByEspnId(eventId);
+      const meta = await metaForEspnEvent(eventId);
       const pgaTournId = meta ? pgaTourTournId(meta.pgaTournCode, meta.year) : null;
 
       const [espnStats, scorecardResult] = await Promise.all([
