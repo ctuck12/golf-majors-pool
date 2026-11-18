@@ -130,6 +130,26 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
     <main style={{ marginTop: isMobile ? 12 : 24, display: 'grid', gap: isMobile ? 12 : 20 }}>
             {commissionerConsoleView === 'dashboard' ? (
               <>
+              {pool?.role === 'commissioner' ? (
+                <button
+                  type="button"
+                  onClick={() => setGuideOpen(true)}
+                  style={{ width: '100%', textAlign: 'left', border: 'none', borderRadius: 16, padding: isMobile ? '13px 14px' : '16px 18px', background: 'linear-gradient(135deg, #173b63 0%, #2f5f96 100%)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 10px 24px rgba(23,59,99,0.25)' }}
+                >
+                  <div style={{ width: isMobile ? 36 : 42, height: isMobile ? 36 : 42, borderRadius: 11, background: 'rgba(255,255,255,0.16)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                    <BookOpen size={isMobile ? 19 : 22} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: isMobile ? 15 : 16, fontWeight: 900 }}>
+                      Commissioner Guide{guideStepsLeft > 0 ? <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 900, background: '#F4BC41', color: '#173b63', borderRadius: 999, padding: '2px 8px', verticalAlign: 'middle' }}>START HERE</span> : null}
+                    </div>
+                    <div style={{ marginTop: 2, fontSize: isMobile ? 12 : 13, color: 'rgba(255,255,255,0.82)' }}>
+                      {guideStepsLeft > 0 ? `${guideStepsLeft} setup ${guideStepsLeft === 1 ? 'step' : 'steps'} left · how it all works · our blueprint` : 'Setup, tournament week, payouts and our blueprint'}
+                    </div>
+                  </div>
+                  <ChevronRight size={18} style={{ flexShrink: 0, opacity: 0.8 }} />
+                </button>
+              ) : null}
             <section
               style={{
                 background: '#fff',
@@ -476,26 +496,6 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                 boxShadow: '0 18px 40px rgba(9, 34, 51, 0.08)',
               }}
             >
-              {pool?.role === 'commissioner' ? (
-                <button
-                  type="button"
-                  onClick={() => setGuideOpen(true)}
-                  style={{ width: '100%', textAlign: 'left', border: 'none', borderRadius: 16, padding: isMobile ? '13px 14px' : '16px 18px', marginBottom: isMobile ? 14 : 18, background: 'linear-gradient(135deg, #173b63 0%, #2f5f96 100%)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 10px 24px rgba(23,59,99,0.25)' }}
-                >
-                  <div style={{ width: isMobile ? 36 : 42, height: isMobile ? 36 : 42, borderRadius: 11, background: 'rgba(255,255,255,0.16)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-                    <BookOpen size={isMobile ? 19 : 22} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: isMobile ? 15 : 16, fontWeight: 900 }}>
-                      Commissioner Guide{guideStepsLeft > 0 ? <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 900, background: '#F4BC41', color: '#173b63', borderRadius: 999, padding: '2px 8px', verticalAlign: 'middle' }}>START HERE</span> : null}
-                    </div>
-                    <div style={{ marginTop: 2, fontSize: isMobile ? 12 : 13, color: 'rgba(255,255,255,0.82)' }}>
-                      {guideStepsLeft > 0 ? `${guideStepsLeft} setup ${guideStepsLeft === 1 ? 'step' : 'steps'} left · how it all works · our blueprint` : 'Setup, tournament week, payouts and our blueprint'}
-                    </div>
-                  </div>
-                  <ChevronRight size={18} style={{ flexShrink: 0, opacity: 0.8 }} />
-                </button>
-              ) : null}
               <div style={{ fontSize: 13, fontWeight: 800, textTransform: 'uppercase', color: '#5b6b79', marginBottom: 14 }}>Pool Management Tools</div>
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))', gap: isMobile ? 10 : 14 }}>
                 {([
