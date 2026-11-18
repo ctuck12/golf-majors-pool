@@ -10,7 +10,7 @@ import { EntryFeesModal, openVenmoPayment, PayWinnersModal, VenmoFallbackNotice,
 import { ENTRY_FEE_NOTE, formatMoney, formatVenmo } from '@/app/lib/venmo';
 import { PLAYER_POOL_WITH_PGA_IDS } from '@/app/lib/player-pool';
 import { PLAYER_ESPN_IDS } from '@/app/lib/player-espn-ids';
-import { TOURNAMENT_META } from '@/app/lib/tournament-config';
+import { currentTournamentMeta, effectiveLockTime, getTournamentMeta, latestStartedSeason, picksSeason, POOL_SEASONS as SCHEDULED_SEASONS, type TournamentMeta } from '@/app/lib/tournament-config';
 import { canonicalNameKey } from '@/app/lib/name-match';
 import { applyNameAlias } from '@/app/lib/name-aliases';
 import {
@@ -51,21 +51,16 @@ const REQUIRED_GOLFERS = 6;
 
 // Total tournament par (course par × 4 rounds). Players and Masters never change.
 // Update pga/us-open/open each season as courses rotate.
-const TOURNAMENT_TOTAL_PAR: Partial<Record<string, number>> = {
-  players: 288,   // TPC Sawgrass, par 72
-  masters: 288,   // Augusta National, par 72
-  pga: 280,       // Aronimink Golf Club, par 70 (2026)
-  'us-open': 280, // Oakmont Country Club, par 70 (2026)
-  open: 280,      // Royal Birkdale, par 70 (2026)
-};
+// Total par (course par × 4 rounds) of a tournament's event in a season — its picks season by default.
+function totalParFor(tournamentId: string, season = picksSeason(tournamentId)): number | undefined {
+  const par = getTournamentMeta(tournamentId, season)?.par;
+  return par ? par * 4 : undefined;
+}
 
-const TOURNAMENT_ESPN_EVENT_IDS: Partial<Record<string, string>> = {
-  players: '401811937',
-  masters: '401811941',
-  pga: '401811947',
-  'us-open': '401811952',
-  open: '401811957',
-};
+// ESPN event id of a tournament's event in a season (unknown for a new season until ESPN lists it).
+function espnEventIdFor(tournamentId: string, season: number): string | undefined {
+  return getTournamentMeta(tournamentId, season)?.espnEventId;
+}
 
 const STORAGE_PREFIX = 'golf-pool-live';
 const DEFAULT_JOIN_CODE = 'MAJORS2026';
@@ -78,6 +73,9 @@ const REGISTRATION_OPEN = true;
 // Players history) that other leagues don't get.
 const FOUNDER_POOL_ID = 'golf-majors-pool';
 
+// Tournament names in schedule order. Dates, first tee times and courses for each season are in
+// app/lib/tournament-config.ts; firstTeeUtc here is only the fallback time of day for a year that
+// isn't scheduled yet.
 const TOURNAMENTS = [
   {
     id: 'players',
@@ -97,21 +95,21 @@ const TOURNAMENTS = [
     id: 'pga',
     name: 'The PGA',
     fullName: 'The PGA Championship',
-    venue: 'Aronimink',
+    venue: 'PGA Frisco',
     firstTeeUtc: '2026-05-14T11:20:00Z',
   },
   {
     id: 'us-open',
     name: 'U.S. Open',
     fullName: 'U.S. Open Championship',
-    venue: 'Shinnecock Hills',
+    venue: 'Pebble Beach',
     firstTeeUtc: '2026-06-18T11:15:00Z',
   },
   {
     id: 'open',
     name: 'The Open',
     fullName: 'The Open Championship',
-    venue: 'Royal Birkdale',
+    venue: 'St Andrews',
     firstTeeUtc: '2026-07-16T05:35:00Z',
   },
 ] as const;
@@ -480,13 +478,6 @@ const TOURNAMENT_HEADING_LOGOS: Partial<Record<TournamentId, string>> = {
   masters: '/masters-heading-logo.png',
 };
 
-const TOURNAMENT_PARS: Partial<Record<TournamentId, number>> = {
-  players: 72,
-  masters: 72,
-  pga: 70,
-  'us-open': 70,
-  open: 70,
-};
 
 const PICK_HISTORY_NAMES: Record<string, string> = {
   players: 'The Players Championship',
@@ -496,33 +487,14 @@ const PICK_HISTORY_NAMES: Record<string, string> = {
   open: 'The Open Championship',
 };
 
-// 12pm EDT on the Friday (Round 2) of each tournament
-const TOURNAMENT_CUT_SHOW_AT: Partial<Record<TournamentId, string>> = {
-  players: '2026-03-13T12:00:00-04:00',
-  masters: '2026-04-10T12:00:00-04:00',
-  pga: '2026-05-15T13:00:00-04:00',
-  'us-open': '2026-06-19T12:00:00-04:00',
-  open: '2026-07-17T10:00:00-04:00', // 9 AM Central — the Open's R2 runs overnight US time, so the cut picture forms much earlier
-};
-
-// Approximate first tee time (EDT) on the Saturday (Round 3) of each tournament
-const TOURNAMENT_CUT_HIDE_AT: Partial<Record<TournamentId, string>> = {
-  players: '2026-03-14T07:30:00-04:00',
-  masters: '2026-04-11T08:00:00-04:00',
-  pga: '2026-05-16T08:00:00-04:00',
-  'us-open': '2026-06-20T07:45:00-04:00',
-  open: '2026-07-18T01:35:00-04:00', // ~6:35 AM BST
-};
-
-// IANA timezone of each tournament's course (2026 venues) — powers the "Course Time"
-// display in the standings card while a round is underway and no projected cut is shown.
-const TOURNAMENT_COURSE_TIMEZONES: Record<TournamentId, string> = {
-  players: 'America/New_York',   // TPC Sawgrass
-  masters: 'America/New_York',   // Augusta National
-  pga: 'America/New_York',       // Aronimink
-  'us-open': 'America/New_York', // Shinnecock Hills
-  open: 'Europe/London',         // Royal Birkdale
-};
+// Projected-cut window for the event being played: from noon EDT on Friday (Round 2) — 10 AM EDT
+// for The Open, whose R2 runs overnight US time — until Round 3's first tee on Saturday.
+function cutShowAt(meta: TournamentMeta, tournamentId: string) {
+  return Date.parse(`${meta.startDate}T00:00:00Z`) + 24 * 60 * 60 * 1000 + (tournamentId === 'open' ? 14 : 16) * 60 * 60 * 1000;
+}
+function cutHideAt(meta: TournamentMeta) {
+  return Date.parse(meta.lockAtUtc) + 2 * 24 * 60 * 60 * 1000 - 10 * 60 * 1000;
+}
 
 const TOURNAMENT_TAB_LOGO_HEIGHTS: Partial<Record<TournamentId, number>> = {
   players: 46,
@@ -826,7 +798,39 @@ const REPORT_TOURNAMENTS: { id: TournamentId; label: string }[] = [
   { id: 'open', label: 'The Open' },
 ];
 // Seasons the pool has run (season 1 = 2026). Append new years as future seasons are played.
-const POOL_SEASONS = [2026];
+// Seasons with at least one event started (season 1 = 2026). A new season joins the year pickers
+// once its first tournament tees off.
+const POOL_SEASONS = SCHEDULED_SEASONS.filter((season) =>
+  TOURNAMENTS.some((t) => Date.now() >= Date.parse(getTournamentMeta(t.id, season)?.lockAtUtc ?? '')),
+);
+
+type SeasonPicks = {
+  rosters: Partial<Record<TournamentId, number[]>>;
+  tieBreaks: Partial<Record<TournamentId, number>>;
+  pastSeasons?: Record<number, { rosters: Partial<Record<TournamentId, number[]>>; tieBreaks: Partial<Record<TournamentId, number>> }>;
+};
+
+// A member's picks for one tournament in a season. `rosters` holds each tournament's current
+// picks season; earlier seasons come from pastSeasons.
+function rosterInSeason(entry: SeasonPicks, tournamentId: TournamentId, season: number) {
+  return season === picksSeason(tournamentId) ? entry.rosters[tournamentId] : entry.pastSeasons?.[season]?.rosters[tournamentId];
+}
+function tieBreakInSeason(entry: SeasonPicks, tournamentId: TournamentId, season: number) {
+  return season === picksSeason(tournamentId) ? entry.tieBreaks?.[tournamentId] : entry.pastSeasons?.[season]?.tieBreaks[tournamentId];
+}
+// The entry with every tournament's picks taken from one season (Reports by year).
+function withSeasonPicks<T extends SeasonPicks>(entry: T, season: number): T {
+  const rosters: Partial<Record<TournamentId, number[]>> = {};
+  const tieBreaks: Partial<Record<TournamentId, number>> = {};
+  for (const t of TOURNAMENTS) {
+    const id = t.id as TournamentId;
+    const roster = rosterInSeason(entry, id, season);
+    const tieBreak = tieBreakInSeason(entry, id, season);
+    if (roster) rosters[id] = roster;
+    if (tieBreak !== undefined) tieBreaks[id] = tieBreak;
+  }
+  return { ...entry, rosters, tieBreaks };
+}
 // Explicit render heights (px) for the tournament logo shown inside the Reports dropdown box.
 // Uses an explicit height (not max-height) so the small source PNGs upscale to fill the box.
 const REPORT_DROPDOWN_LOGO_H: Record<TournamentId, number> = { players: 48, masters: 28, pga: 44, 'us-open': 32, open: 34 };
@@ -913,6 +917,7 @@ type AuthUser = {
   tieBreaks: Partial<Record<TournamentId, number>>;
   rosterSubmittedAt?: Partial<Record<TournamentId, string>>;
   venmo?: string | null;
+  pastSeasons?: SeasonPicks['pastSeasons'];
 };
 
 type PoolInfo = {
@@ -946,6 +951,8 @@ type PoolEntry = {
   rosterSubmittedAt?: Partial<Record<TournamentId, string>>;
   // Shown to commissioners only, for paying winners.
   venmo?: string | null;
+  // Earlier seasons' picks, by year (rosters / tieBreaks above are each tournament's current season).
+  pastSeasons?: SeasonPicks['pastSeasons'];
 };
 
 type CommissionerMember = AuthUser;
@@ -1295,14 +1302,15 @@ type TournamentCardStatus = {
 } | null;
 
 function getTournamentEventWindow(tournament: (typeof TOURNAMENTS)[number], year: number) {
-  const startDate = getTournamentStartDate(tournament.id, year);
+  // Scheduled seasons use their real dates (app/lib/tournament-config.ts); later years fall back to
+  // the usual week of the month.
+  const meta = getTournamentMeta(tournament.id, year);
+  const startDate = meta ? new Date(`${meta.startDate}T00:00:00`) : getTournamentStartDate(tournament.id, year);
   const activeAt = addDays(startOfDay(startDate), -3);
-  const overrideIso = LOCK_TIME_OVERRIDES[tournament.id];
-  const overrideDate = overrideIso ? new Date(overrideIso) : null;
-  // A commissioner-set Pool Lock Time replaces the built-in first-tee time for its year.
-  const inProgressAt = overrideDate && overrideDate.getFullYear() === year
-    ? overrideDate
-    : buildOccurrenceDate(tournament.firstTeeUtc, year, startDate);
+  const scheduledTee = meta ? new Date(meta.lockAtUtc) : buildOccurrenceDate(tournament.firstTeeUtc, year, startDate);
+  // A commissioner-set Pool Lock Time replaces the built-in first-tee time for its week.
+  const overrideIso = effectiveLockTime(LOCK_TIME_OVERRIDES[tournament.id], scheduledTee.toISOString());
+  const inProgressAt = overrideIso ? new Date(overrideIso) : scheduledTee;
   const concludeAt = addDays(startOfDay(startDate), 4);
 
   return {
@@ -1874,6 +1882,8 @@ export default function Page() {
   // A league code from an invite link (/?join=CODE), kept until the user joins or dismisses it.
   const [pendingJoinCode, setPendingJoinCode] = useState('');
   const [poolEntries, setPoolEntries] = useState<PoolEntry[]>([]);
+  // Pool members with the Reports year's picks (each tournament's picks from that season).
+  const reportEntries = useMemo(() => poolEntries.map((entry) => withSeasonPicks(entry, reportYear)), [poolEntries, reportYear]);
   const [sessionLoading, setSessionLoading] = useState(true);
   const [authBusy, setAuthBusy] = useState(false);
   const [authError, setAuthError] = useState('');
@@ -2096,6 +2106,13 @@ export default function Page() {
     return new Date(nowTick) >= getTournamentEventWindow(tournament, year).inProgressAt;
   };
   const selectedTournamentStatus = tournamentCardStatuses[selectedTournament];
+  // The season whose picks and results the selected tournament's standings show: the upcoming or
+  // live event's, or, on the results view after an event, the season that event was played in.
+  const selectedPicksSeason = picksSeason(selectedTournament, new Date(nowTick));
+  const standingsSeason = selectedTournamentStatus?.label === 'LOCKED'
+    ? (latestStartedSeason(selectedTournament, new Date(nowTick)) ?? selectedPicksSeason)
+    : selectedPicksSeason;
+  const standingsMeta = getTournamentMeta(selectedTournament, standingsSeason);
   const entriesTournamentId = getDefaultTournamentId(tournamentCardStatuses, new Date());
   const careerTournamentId = pickHistoryPlayerPopup?.ctxTournamentId ?? selectedTournament;
   const entriesTournament = TOURNAMENTS.find((item) => item.id === entriesTournamentId) ?? TOURNAMENTS[0];
@@ -2112,7 +2129,7 @@ export default function Page() {
   // Locked when: the commissioner's manual toggle is ON, the event is live, OR the pool lock
   // time (manual override or built-in) has passed. A stored `false` from a past toggle must
   // NOT suppress the time-based lock (`?? ` did exactly that and let edits through post-lock).
-  const entriesLockAtIso = lockTimeOverrides[entriesTournamentId] ?? TOURNAMENT_META[entriesTournamentId]?.lockAtUtc;
+  const entriesLockAtIso = effectiveLockTime(lockTimeOverrides[entriesTournamentId], currentTournamentMeta(entriesTournamentId, new Date(nowTick))?.lockAtUtc);
   const entriesLocked =
     pool?.lineupLocks?.[entriesTournamentId] === true ||
     entriesTournamentStatus?.label === 'IN PROGRESS' ||
@@ -2131,17 +2148,8 @@ export default function Page() {
   const commissionerAutoWinnerTotal = commissionerAutoWinner?.total && commissionerAutoWinner.total !== '--' ? parseInt(commissionerAutoWinner.total, 10) : NaN;
   const commissionerAutoDetected = !isNaN(commissionerAutoWinnerTotal) ? commissionerAutoWinnerTotal : null;
   const tiebreakResolved = commissionerAutoDetected ?? commissionerTournamentWinnerScore;
-  const entriesTournamentCourseName =
-    entriesTournamentId === 'players'
-      ? 'TPC Sawgrass'
-      : entriesTournamentId === 'masters'
-        ? 'Augusta National Golf Club'
-        : entriesTournamentId === 'pga'
-          ? 'Aronimink Golf Club'
-          : entriesTournamentId === 'us-open'
-            ? 'Shinnecock Hills Golf Club'
-            : 'Royal Birkdale Golf Club';
-  const entriesTournamentPar = TOURNAMENT_PARS[entriesTournamentId];
+  const entriesTournamentCourseName = currentTournamentMeta(entriesTournamentId)?.courseName ?? '';
+  const entriesTournamentPar = currentTournamentMeta(entriesTournamentId)?.par;
 
   useEffect(() => {
     const checkMobile = () => {
@@ -3177,6 +3185,10 @@ export default function Page() {
   // (selectedTournament), so a past event's entry shows the salaries each golfer had at THAT event.
   type SalaryMaps = { salaries: Record<number, number>; worldRanks: Record<number, number> };
   const [salaryByTournament, setSalaryByTournament] = useState<Record<string, SalaryMaps>>({});
+  // Every season's lists (season -> tournament -> maps), for past standings and Reports by year.
+  const [salaryBySeason, setSalaryBySeason] = useState<Record<number, Record<string, SalaryMaps>>>({});
+  const salariesFor = (tournamentId: string, season: number): SalaryMaps | undefined =>
+    salaryBySeason[season]?.[tournamentId] ?? (season === picksSeason(tournamentId) ? salaryByTournament[tournamentId] : undefined);
   // Players the commissioner's salary upload auto-added because they weren't in the static pool.
   const [dynamicPlayers, setDynamicPlayers] = useState<Array<{ id: number; name: string; pgaTourId: number; worldRank: number; defaultOdds: string }>>([]);
   const [salaryListLoaded, setSalaryListLoaded] = useState(false); // false until the fetch resolves
@@ -3186,17 +3198,21 @@ export default function Page() {
   loadSalaryOverrides.current = () => {
     fetch('/api/salary-overrides', { cache: 'no-store' })
       .then((r) => r.json())
-      .then((d: { byTournament?: Record<string, { salaries?: Record<string, number>; worldRanks?: Record<string, number> }>; dynamicPlayers?: Array<{ id: number; name: string; pgaTourId: number; worldRank: number; defaultOdds: string }> }) => {
+      .then((d: { byTournament?: Record<string, { salaries?: Record<string, number>; worldRanks?: Record<string, number> }>; bySeason?: Record<string, Record<string, { salaries?: Record<string, number>; worldRanks?: Record<string, number> }>>; dynamicPlayers?: Array<{ id: number; name: string; pgaTourId: number; worldRank: number; defaultOdds: string }> }) => {
         if (!d) return;
-        const byT: Record<string, SalaryMaps> = {};
-        for (const [tid, m] of Object.entries(d.byTournament ?? {})) {
-          const salaries: Record<number, number> = {};
-          const worldRanks: Record<number, number> = {};
-          for (const [k, v] of Object.entries(m.salaries ?? {})) salaries[Number(k)] = Number(v);
-          for (const [k, v] of Object.entries(m.worldRanks ?? {})) worldRanks[Number(k)] = Number(v);
-          byT[tid] = { salaries, worldRanks };
-        }
-        setSalaryByTournament(byT);
+        const toMaps = (lists: Record<string, { salaries?: Record<string, number>; worldRanks?: Record<string, number> }>) => {
+          const byT: Record<string, SalaryMaps> = {};
+          for (const [tid, m] of Object.entries(lists)) {
+            const salaries: Record<number, number> = {};
+            const worldRanks: Record<number, number> = {};
+            for (const [k, v] of Object.entries(m.salaries ?? {})) salaries[Number(k)] = Number(v);
+            for (const [k, v] of Object.entries(m.worldRanks ?? {})) worldRanks[Number(k)] = Number(v);
+            byT[tid] = { salaries, worldRanks };
+          }
+          return byT;
+        };
+        setSalaryByTournament(toMaps(d.byTournament ?? {}));
+        setSalaryBySeason(Object.fromEntries(Object.entries(d.bySeason ?? {}).map(([season, lists]) => [Number(season), toMaps(lists)])));
         if (Array.isArray(d.dynamicPlayers) && d.dynamicPlayers.length > 0) setDynamicPlayers(d.dynamicPlayers);
       })
       .catch(() => { /* keep built-in values */ })
@@ -3304,7 +3320,7 @@ export default function Page() {
         return !!tournament && clockNow >= getTournamentEventWindow(tournament, reportYear).inProgressAt;
       };
       const countById = new Map<number, number>();
-      for (const entry of poolEntries) {
+      for (const entry of reportEntries) {
         for (const t of REPORT_TOURNAMENTS) {
           if (!revealed(t.id)) continue;
           for (const pid of entry.rosters[t.id] ?? []) countById.set(pid, (countById.get(pid) ?? 0) + 1);
@@ -3324,9 +3340,9 @@ export default function Page() {
     const sortBy = ppsSortBy;
     const posByName = new Map<string, string>();
     for (const row of feeds[T]?.players ?? []) posByName.set(normalizeName(row.canonicalName ?? ''), row.position);
-    const salaries = salaryByTournament[T]?.salaries ?? {};
+    const salaries = salariesFor(T, reportYear)?.salaries ?? {};
     const countById = new Map<number, number>();
-    for (const entry of poolEntries) {
+    for (const entry of reportEntries) {
       for (const pid of entry.rosters[T] ?? []) countById.set(pid, (countById.get(pid) ?? 0) + 1);
     }
     const rows = Array.from(countById.entries())
@@ -3343,7 +3359,7 @@ export default function Page() {
         : (b.count - a.count) || (positionSortRank(a.position) - positionSortRank(b.position)) || a.name.localeCompare(b.name),
     );
     return { tournament: T, sortBy, rows };
-  }, [ppsTournament, ppsSortBy, feeds, salaryByTournament, poolEntries, playerDirectory, nowTick, preTournamentTick, reportYear]);
+  }, [ppsTournament, ppsSortBy, feeds, salaryByTournament, salaryBySeason, reportEntries, playerDirectory, nowTick, preTournamentTick, reportYear]);
 
   // Full-field performance rows for the Player Performance Summary — one per player in the chosen
   // tournament's field, with finish, score to par, and every scoring/bonus stat.
@@ -3550,17 +3566,16 @@ export default function Page() {
   const showProjectedCut = (() => {
     if (selectedTournamentStatus?.label !== 'IN PROGRESS') return false;
     if (cutAssigned) return false;
-    const showAt = TOURNAMENT_CUT_SHOW_AT[selectedTournament];
-    if (!showAt) return false;
+    const liveMeta = currentTournamentMeta(selectedTournament, new Date(nowTick));
+    if (!liveMeta) return false;
     const now = nowTick;
-    if (now < new Date(showAt).getTime()) return false;
-    const hideAt = TOURNAMENT_CUT_HIDE_AT[selectedTournament];
-    return hideAt ? now < new Date(hideAt).getTime() : true;
+    if (now < cutShowAt(liveMeta, selectedTournament)) return false;
+    return now < cutHideAt(liveMeta);
   })();
   // Fills the slot right of the round chip when no projected cut is displayed: the time
   // of day at the course while a round is in progress/suspended (ticks with nowTick).
   const courseLocalTimeLabel = new Intl.DateTimeFormat('en-US', {
-    timeZone: TOURNAMENT_COURSE_TIMEZONES[selectedTournament],
+    timeZone: standingsMeta?.timeZone ?? 'America/New_York',
     hour: 'numeric', minute: '2-digit', hour12: true,
   }).format(new Date(nowTick)).toLowerCase();
   // Once a round is complete, the same slot shows when the next round begins — the
@@ -3622,7 +3637,7 @@ export default function Page() {
   // Picks-lock deadline in Central time, derived from the tournament's configured lock
   // timestamp (e.g. The Open locks 05:35 UTC = 12:35 am CST on Thursday).
   const lineupDeadlineLabel = (() => {
-    const lockAt = lockTimeOverrides[selectedTournament] ?? TOURNAMENT_META[selectedTournament]?.lockAtUtc;
+    const lockAt = effectiveLockTime(lockTimeOverrides[selectedTournament], currentTournamentMeta(selectedTournament, new Date(nowTick))?.lockAtUtc);
     if (!lockAt) return '6:15 am CST on Thursday';
     const d = new Date(lockAt);
     const time = d.toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit' }).toLowerCase();
@@ -3644,7 +3659,7 @@ export default function Page() {
     const ctxTid = ctxTournamentId ?? selectedTournament;
     const ctxStatus = tournamentCardStatuses[ctxTid];
     const ctxStatsUnlocked = ctxStatus?.label === 'LOCKED' || ctxStatus?.label === 'IN PROGRESS';
-    const espnEventId = TOURNAMENT_ESPN_EVENT_IDS[ctxTid];
+    const espnEventId = espnEventIdFor(ctxTid, latestStartedSeason(ctxTid) ?? picksSeason(ctxTid));
     const statsCtx: 'season' | 'tournament' = ctxStatsUnlocked ? 'tournament' : 'season';
     const params = new URLSearchParams({ name: player.name, context: statsCtx });
     if (espnEventId && ctxStatsUnlocked) params.set('eventId', espnEventId);
@@ -3743,7 +3758,11 @@ export default function Page() {
 
   const liveStandingEntries = (
     poolEntries.length > 0
-      ? poolEntries
+      ? poolEntries.map((entry) => ({
+          ...entry,
+          rosters: { ...entry.rosters, [selectedTournament]: rosterInSeason(entry, selectedTournament, standingsSeason) },
+          tieBreaks: { ...entry.tieBreaks, [selectedTournament]: tieBreakInSeason(entry, selectedTournament, standingsSeason) },
+        }))
       : [
           {
             id: sessionUser?.id ?? 'guest-entry',
@@ -3789,7 +3808,7 @@ export default function Page() {
       // current tournament's salaries (or $0). Falls back to $0 when that event has no uploaded list.
       // World rank, by contrast, stays on the global/static source everywhere except the salary pick
       // list — so pin it to the original rank here (matching the info popup), never the uploaded rank.
-      const viewedSalaries = salaryByTournament[selectedTournament]?.salaries;
+      const viewedSalaries = salariesFor(selectedTournament, standingsSeason)?.salaries;
       const golfers = picks
         .map((id) => {
           const p = playersById[id];
@@ -3867,7 +3886,7 @@ export default function Page() {
   // the larger snapshot if a partial render ever posts.
   useEffect(() => {
     if (!isTournamentFinal || standings.length === 0) return;
-    const yearStr = TOURNAMENT_META[selectedTournament]?.year;
+    const yearStr = standingsMeta?.year;
     const year = yearStr ? parseInt(yearStr, 10) : NaN;
     if (isNaN(year)) return;
     const key = `${selectedTournament}:${year}`;
@@ -5399,8 +5418,8 @@ export default function Page() {
                       {showFinalTournamentView ? tournament.name : `${tournament.name} Pool Standings`}
                     </h2>
                   )}
-                  {isTournamentFinal && !showFutureTournamentView && TOURNAMENT_META[selectedTournament]?.courseName ? (() => {
-                    const cn = TOURNAMENT_META[selectedTournament]!.courseName;
+                  {isTournamentFinal && !showFutureTournamentView && standingsMeta?.courseName ? (() => {
+                    const cn = standingsMeta.courseName;
                     const fs = isMobile ? (cn.length > 23 ? 11.5 : cn.length > 18 ? 12.5 : 13.5) : (cn.length > 26 ? 13.5 : 14.5);
                     return <div style={{ marginTop: 3, fontSize: fs, lineHeight: isMobile ? '15px' : '17px', fontStyle: 'italic', fontWeight: 400, color: '#0f1720', whiteSpace: 'nowrap' }}>{cn}</div>;
                   })() : null}
@@ -6729,7 +6748,11 @@ export default function Page() {
                     </div>
                     <div style={{ display: 'grid', gap: 12 }}>
                       {TOURNAMENTS.map((event) => {
-                        const historyPlayers = (sessionUser.rosters[event.id] ?? []).map((id) => playersById[id]).filter(Boolean);
+                        // This season's picks once made; until then, the picks from the last time it was played.
+                        const historyRoster = sessionUser.rosters[event.id]?.length
+                          ? sessionUser.rosters[event.id]
+                          : rosterInSeason(sessionUser, event.id, latestStartedSeason(event.id) ?? picksSeason(event.id));
+                        const historyPlayers = (historyRoster ?? []).map((id) => playersById[id]).filter(Boolean);
                         return (
                           <div
                             key={`history-${event.id}`}
@@ -7023,7 +7046,7 @@ export default function Page() {
                         const val = e.target.value.replace(/\D/g, '').slice(0, 3);
                         setTieBreakInput(val);
                       }}
-                      placeholder={`Enter tiebreak value* (Par = ${TOURNAMENT_TOTAL_PAR[selectedTournament] ?? '?'})`}
+                      placeholder={`Enter tiebreak value* (Par = ${totalParFor(selectedTournament) ?? '?'})`}
                       inputMode="numeric"
                       maxLength={3}
                       style={{
@@ -7048,7 +7071,7 @@ export default function Page() {
                     </button>
                     <div style={{ color: entriesTournamentId === 'open' ? '#000000' : '#5b6b79', fontSize: 13, lineHeight: 1.65 }}>
                       * - The tiebreak value is your predicted total score for the winning golfer of this tournament.
-                      Use their total strokes, NOT score to par. Example: Enter {(TOURNAMENT_TOTAL_PAR[entriesTournamentId] ?? 288) - 14} (NOT -14)
+                      Use their total strokes, NOT score to par. Example: Enter {(totalParFor(entriesTournamentId) ?? 288) - 14} (NOT -14)
                     </div>
                   </aside>
                 </div>
@@ -7315,7 +7338,7 @@ export default function Page() {
                           const val = e.target.value.replace(/\D/g, '').slice(0, 3);
                           setTieBreakInput(val);
                         }}
-                        placeholder={`Enter tiebreak value* (Par = ${TOURNAMENT_TOTAL_PAR[selectedTournament] ?? '?'})`}
+                        placeholder={`Enter tiebreak value* (Par = ${totalParFor(selectedTournament) ?? '?'})`}
                         inputMode="numeric"
                         maxLength={3}
                         style={{ ...fieldStyle(), marginTop: 4 }}
@@ -7359,7 +7382,7 @@ export default function Page() {
                       </button>
                       <div style={{ color: entriesTournamentId === 'open' ? '#000000' : '#5b6b79', fontSize: 13, lineHeight: 1.65 }}>
                         * - The tiebreak value is your predicted total score for the winning golfer of this tournament.
-                        Use their total strokes, NOT score to par. Example: Enter {(TOURNAMENT_TOTAL_PAR[entriesTournamentId] ?? 288) - 14} (NOT -14)
+                        Use their total strokes, NOT score to par. Example: Enter {(totalParFor(entriesTournamentId) ?? 288) - 14} (NOT -14)
                       </div>
                     </div>
                   </div>
@@ -7614,8 +7637,8 @@ export default function Page() {
                   </>
                   );
                 })() : selectedReport === 'Pool Member Pick History' ? (() => {
-                  const entriesSorted = poolEntries.slice().sort((a, b) => a.name.localeCompare(b.name));
-                  const entry = poolEntries.find((e) => e.id === pmphEntryId) ?? null;
+                  const entriesSorted = reportEntries.slice().sort((a, b) => a.name.localeCompare(b.name));
+                  const entry = reportEntries.find((e) => e.id === pmphEntryId) ?? null;
                   return (
                     <>
                       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: isMobile ? 10 : 14, rowGap: 12, flexWrap: 'wrap' }}>
@@ -7719,8 +7742,8 @@ export default function Page() {
                     </>
                   );
                 })() : selectedReport === 'Pool Member Pick Summary' ? (() => {
-                  const entriesSorted = poolEntries.slice().sort((a, b) => a.name.localeCompare(b.name));
-                  const entry = poolEntries.find((e) => e.id === pmpsEntryId) ?? null;
+                  const entriesSorted = reportEntries.slice().sort((a, b) => a.name.localeCompare(b.name));
+                  const entry = reportEntries.find((e) => e.id === pmpsEntryId) ?? null;
                   const agg = new Map<number, { count: number; tournaments: TournamentId[] }>();
                   if (entry) {
                     for (const { id: tid } of REPORT_TOURNAMENTS) {
@@ -8383,7 +8406,7 @@ export default function Page() {
                 {isAppAdmin ? (
                 <button
                   onClick={() => {
-                    const current = lockTimeOverrides[entriesTournamentId] ?? TOURNAMENT_META[entriesTournamentId]?.lockAtUtc;
+                    const current = effectiveLockTime(lockTimeOverrides[entriesTournamentId], currentTournamentMeta(entriesTournamentId)?.lockAtUtc);
                     setPoolLockInput(current ? utcToCentralInput(current) : '');
                     setPoolLockMsg('');
                     setPoolLockModalOpen(true);
@@ -8423,8 +8446,9 @@ export default function Page() {
                       Round 1 first tee time for <b>{entriesTournament.name}</b>, in <b>Central time</b>. At exactly this moment picks lock and the standings switch to the live leaderboard.
                     </div>
                     {(() => {
-                      const overrideIso = lockTimeOverrides[entriesTournamentId];
-                      const effective = overrideIso ?? TOURNAMENT_META[entriesTournamentId]?.lockAtUtc;
+                      const scheduledIso = currentTournamentMeta(entriesTournamentId)?.lockAtUtc;
+                      const overrideIso = effectiveLockTime(lockTimeOverrides[entriesTournamentId], scheduledIso) === scheduledIso ? undefined : lockTimeOverrides[entriesTournamentId];
+                      const effective = overrideIso ?? scheduledIso;
                       if (!effective) return null;
                       const label = new Date(effective).toLocaleString('en-US', { timeZone: 'America/Chicago', weekday: 'long', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
                       return (
@@ -9493,7 +9517,7 @@ export default function Page() {
                         const val = e.target.value.replace(/\D/g, '').slice(0, 3);
                         setCommissionerTieBreakInput(val);
                       }}
-                      placeholder={`Enter tiebreak value* (Par = ${TOURNAMENT_TOTAL_PAR[selectedTournament] ?? '?'})`}
+                      placeholder={`Enter tiebreak value* (Par = ${totalParFor(selectedTournament) ?? '?'})`}
                       inputMode="numeric"
                       maxLength={3}
                       style={{ ...fieldStyle(), marginTop: 4 }}
@@ -9519,7 +9543,7 @@ export default function Page() {
                     </button>
 
                     <div style={{ fontSize: 13, color: entriesTournamentId === 'open' ? '#000000' : '#607282', marginTop: 4 }}>
-                      * - The tiebreak value is your predicted total score for the winning golfer of this tournament. Use their total strokes, NOT score to par. Example: Enter {(TOURNAMENT_TOTAL_PAR[entriesTournamentId] ?? 288) - 14} (NOT -14)
+                      * - The tiebreak value is your predicted total score for the winning golfer of this tournament. Use their total strokes, NOT score to par. Example: Enter {(totalParFor(entriesTournamentId) ?? 288) - 14} (NOT -14)
                     </div>
                   </div>
                 </div>
@@ -10749,7 +10773,7 @@ export default function Page() {
           // Only reveal per-major counts for tournaments that have started/concluded.
           const rows = REPORT_TOURNAMENTS.filter((t) => picksRevealedForYear(t.id, reportYear)).map((t) => ({
             t,
-            count: poolEntries.filter((e) => (e.rosters[t.id] ?? []).includes(player.id)).length,
+            count: reportEntries.filter((e) => (e.rosters[t.id] ?? []).includes(player.id)).length,
           }));
           const maxC = rows.reduce((m, r) => Math.max(m, r.count), 0) || 1;
           const total = rows.reduce((s, r) => s + r.count, 0);
@@ -10794,7 +10818,7 @@ export default function Page() {
           const T = ppsPickPopup.tournament;
           const headerColor = REPORT_TOURNAMENT_SOLID[T];
           const logo = KNOCKOUT_TAB_LOGOS[T] ?? TOURNAMENT_TAB_LOGOS[T];
-          const entriesPicked = poolEntries
+          const entriesPicked = reportEntries
             .filter((e) => (e.rosters[T] ?? []).includes(ppsPickPopup.id))
             .map((e) => e.name)
             .sort((a, b) => a.localeCompare(b));
@@ -11767,7 +11791,7 @@ export default function Page() {
                               const avg = avgKey ? avgs[avgKey] : undefined;
                               const rank = rankKey ? getRank(rankKey, value) : null;
                               return (
-                                <div key={label} onClick={() => { if (rankKey) { const lbEventId = TOURNAMENT_ESPN_EVENT_IDS[careerTournamentId]; const url = isTournView && lbEventId ? `/api/tournament-stat-leaderboard?statKey=${rankKey}&eventId=${lbEventId}` : `/api/stat-leaderboard?statKey=${rankKey}`; const subtitle = isTournView ? 'Tournament Leaders' : 'Season Leaders'; setStatLeaderboardModal({ label, statKey: rankKey, subtitle, tourAvg: null, avgLabel: isTournView ? 'Field Avg' : 'Tour Avg', playerName: pickHistoryPlayerPopup?.player.name ?? null, entries: null }); fetch(url).then(r => r.json()).then(d => setStatLeaderboardModal(prev => prev?.statKey === rankKey ? { ...prev, tourAvg: d.fieldAvg ?? d.tourAvg ?? null, entries: d.entries ?? [] } : prev)).catch(() => setStatLeaderboardModal(prev => prev?.statKey === rankKey ? { ...prev, entries: [] } : prev)); } }} style={{ background: '#fff', borderRadius: 8, border: '1px solid #e2e8ef', padding: '8px 10px', cursor: rankKey ? 'pointer' : 'default' }}>
+                                <div key={label} onClick={() => { if (rankKey) { const lbEventId = espnEventIdFor(careerTournamentId, latestStartedSeason(careerTournamentId) ?? picksSeason(careerTournamentId)); const url = isTournView && lbEventId ? `/api/tournament-stat-leaderboard?statKey=${rankKey}&eventId=${lbEventId}` : `/api/stat-leaderboard?statKey=${rankKey}`; const subtitle = isTournView ? 'Tournament Leaders' : 'Season Leaders'; setStatLeaderboardModal({ label, statKey: rankKey, subtitle, tourAvg: null, avgLabel: isTournView ? 'Field Avg' : 'Tour Avg', playerName: pickHistoryPlayerPopup?.player.name ?? null, entries: null }); fetch(url).then(r => r.json()).then(d => setStatLeaderboardModal(prev => prev?.statKey === rankKey ? { ...prev, tourAvg: d.fieldAvg ?? d.tourAvg ?? null, entries: d.entries ?? [] } : prev)).catch(() => setStatLeaderboardModal(prev => prev?.statKey === rankKey ? { ...prev, entries: [] } : prev)); } }} style={{ background: '#fff', borderRadius: 8, border: '1px solid #e2e8ef', padding: '8px 10px', cursor: rankKey ? 'pointer' : 'default' }}>
                                   <div style={{ fontSize: 9, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>{label}</div>
                                   <div style={{ fontSize: 13, fontWeight: 800, color: '#0f1720' }}>
                                     {value}{rank && <span style={{ fontSize: 10, fontWeight: 600, color: '#607282', marginLeft: 4 }}>({rank})</span>}
@@ -11786,7 +11810,7 @@ export default function Page() {
                             {sgStatCells.map(({ label, value, rankKey }) => {
                               const rank = rankKey ? getRank(rankKey, value) : null;
                               return (
-                                <div key={label} onClick={() => { if (rankKey) { const lbEventId = TOURNAMENT_ESPN_EVENT_IDS[careerTournamentId]; const url = isTournView && lbEventId ? `/api/tournament-stat-leaderboard?statKey=${rankKey}&eventId=${lbEventId}` : `/api/stat-leaderboard?statKey=${rankKey}`; const subtitle = isTournView ? 'Tournament Leaders' : 'Season Leaders'; setStatLeaderboardModal({ label: `Strokes Gained: ${label}`, statKey: rankKey, subtitle, tourAvg: null, avgLabel: isTournView ? 'Field Avg' : 'Tour Avg', playerName: pickHistoryPlayerPopup?.player.name ?? null, entries: null }); fetch(url).then(r => r.json()).then(d => setStatLeaderboardModal(prev => prev?.statKey === rankKey ? { ...prev, tourAvg: isTournView ? null : (d.fieldAvg ?? d.tourAvg ?? null), entries: d.entries ?? [] } : prev)).catch(() => setStatLeaderboardModal(prev => prev?.statKey === rankKey ? { ...prev, entries: [] } : prev)); } }} style={{ background: '#fff', borderRadius: 8, border: '1px solid #e2e8ef', padding: '8px 10px', cursor: rankKey ? 'pointer' : 'default' }}>
+                                <div key={label} onClick={() => { if (rankKey) { const lbEventId = espnEventIdFor(careerTournamentId, latestStartedSeason(careerTournamentId) ?? picksSeason(careerTournamentId)); const url = isTournView && lbEventId ? `/api/tournament-stat-leaderboard?statKey=${rankKey}&eventId=${lbEventId}` : `/api/stat-leaderboard?statKey=${rankKey}`; const subtitle = isTournView ? 'Tournament Leaders' : 'Season Leaders'; setStatLeaderboardModal({ label: `Strokes Gained: ${label}`, statKey: rankKey, subtitle, tourAvg: null, avgLabel: isTournView ? 'Field Avg' : 'Tour Avg', playerName: pickHistoryPlayerPopup?.player.name ?? null, entries: null }); fetch(url).then(r => r.json()).then(d => setStatLeaderboardModal(prev => prev?.statKey === rankKey ? { ...prev, tourAvg: isTournView ? null : (d.fieldAvg ?? d.tourAvg ?? null), entries: d.entries ?? [] } : prev)).catch(() => setStatLeaderboardModal(prev => prev?.statKey === rankKey ? { ...prev, entries: [] } : prev)); } }} style={{ background: '#fff', borderRadius: 8, border: '1px solid #e2e8ef', padding: '8px 10px', cursor: rankKey ? 'pointer' : 'default' }}>
                                   <div style={{ fontSize: 9, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>{label}</div>
                                   <div style={{ fontSize: 13, fontWeight: 800, color: '#0f1720' }}>
                                     {value}{rank && <span style={{ fontSize: 10, fontWeight: 600, color: '#607282', marginLeft: 4 }}>({rank})</span>}
@@ -11975,7 +11999,7 @@ export default function Page() {
                 {/* Tiebreaker */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 16 }}>
                   <span style={{ color: entriesTournamentId === 'open' ? entriesTournamentBg : '#5b6b79' }}>Your tiebreaker</span>
-                  <span style={{ fontWeight: 700, color: '#0f1720' }}>{tieBreakInput} <span style={{ fontWeight: 400, color: entriesTournamentId === 'open' ? entriesTournamentBg : '#8a99a6' }}>(par {TOURNAMENT_TOTAL_PAR[entriesTournamentId] ?? '—'})</span></span>
+                  <span style={{ fontWeight: 700, color: '#0f1720' }}>{tieBreakInput} <span style={{ fontWeight: 400, color: entriesTournamentId === 'open' ? entriesTournamentBg : '#8a99a6' }}>(par {totalParFor(entriesTournamentId) ?? '—'})</span></span>
                 </div>
 
                 {/* Explanation for the Submit & Pay flow */}

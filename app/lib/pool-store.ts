@@ -198,6 +198,15 @@ export async function getStatOverrides(): Promise<StatOverrides> {
   return raw ? (JSON.parse(raw) as StatOverrides) : {};
 }
 
+// Drops every manual stat correction for one tournament (when its new season begins).
+export async function clearStatOverrides(tournamentId: string): Promise<void> {
+  const overrides = await getStatOverrides();
+  const keep = Object.fromEntries(Object.entries(overrides).filter(([key]) => !key.startsWith(`${tournamentId}:`)));
+  if (Object.keys(keep).length !== Object.keys(overrides).length) {
+    await redis.set(STAT_OVERRIDES_KEY, JSON.stringify(keep));
+  }
+}
+
 export async function setStatOverride(
   tournamentId: string,
   playerName: string,

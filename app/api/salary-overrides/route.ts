@@ -6,6 +6,7 @@ import { PLAYER_POOL_WITH_PGA_IDS } from '@/app/lib/player-pool';
 import { canonicalNameKey } from '@/app/lib/name-match';
 import { applyNameAlias } from '@/app/lib/name-aliases';
 import { ALL_TOURNAMENT_IDS, getHeaderTournament } from '@/app/lib/tournament-logo';
+import { POOL_SEASONS } from '@/app/lib/tournament-config';
 
 // Public read of the commissioner's uploaded pick lists, consumed by the pick sheet + standings.
 // Salary lists are stored PER TOURNAMENT, so this returns a byTournament map (id -> {salaries,
@@ -15,9 +16,12 @@ import { ALL_TOURNAMENT_IDS, getHeaderTournament } from '@/app/lib/tournament-lo
 // Also returns any auto-added dynamic players (from salary uploads whose names weren't in the static
 // pool). Dynamic players since backfilled into the static pool are dropped here (matched by name).
 export async function GET() {
-  const [byTid, dynamicRaw] = await Promise.all([
+  // Current picks season's lists, plus every scheduled season's (past standings and Reports show
+  // the salaries golfers had at that year's event).
+  const [byTid, dynamicRaw, ...seasonLists] = await Promise.all([
     getAllManualSalaries(ALL_TOURNAMENT_IDS),
     getDynamicPlayers(),
+    ...POOL_SEASONS.map((season) => getAllManualSalaries(ALL_TOURNAMENT_IDS, () => season)),
   ]);
 
   // Repair map: a prior upload (before name aliases existed) may have saved salaries under a DYNAMIC
@@ -30,8 +34,10 @@ export async function GET() {
     if (poolId != null && poolId !== dp.id) idRemap.set(dp.id, poolId);
   }
 
-  const byTournament: Record<string, { salaries: Record<number, number>; worldRanks: Record<number, number>; updatedAt: string | null }> = {};
-  for (const [tid, list] of Object.entries(byTid)) {
+  type SalaryMaps = { salaries: Record<number, number>; worldRanks: Record<number, number>; updatedAt: string | null };
+  const toMaps = (lists: typeof byTid) => {
+  const byTournament: Record<string, SalaryMaps> = {};
+  for (const [tid, list] of Object.entries(lists)) {
     const salaries: Record<number, number> = {};
     const worldRanks: Record<number, number> = {};
     for (const [id, entry] of Object.entries(list.map)) {
@@ -47,6 +53,10 @@ export async function GET() {
     }
     byTournament[tid] = { salaries, worldRanks, updatedAt: list.updatedAt };
   }
+  return byTournament;
+  };
+  const byTournament = toMaps(byTid);
+  const bySeason = Object.fromEntries(POOL_SEASONS.map((season, i) => [season, toMaps(seasonLists[i])]));
 
   const currentId = getHeaderTournament().id;
   const current = byTournament[currentId];
@@ -61,6 +71,7 @@ export async function GET() {
   return Response.json({
     active: !!current,
     byTournament,
+    bySeason,
     currentTournamentId: currentId,
     salaries: current?.salaries ?? {},   // back-compat: current tournament's flat maps
     worldRanks: current?.worldRanks ?? {},

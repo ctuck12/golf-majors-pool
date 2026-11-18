@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { parseMongo, type SlashGolfLeaderboardRow } from '@/app/lib/slashgolf';
 import { fetchESPNTournament } from '@/app/lib/espn';
-import { TOURNAMENT_META } from '@/app/lib/tournament-config';
+import { currentTournamentMeta, effectiveLockTime } from '@/app/lib/tournament-config';
 import { getLockTimeOverrides } from '@/app/lib/lock-time-store';
 import {
   getScorecardCache,
@@ -13,10 +13,14 @@ import {
   saveLowRound,
   readLeaderboardCache,
   writeLeaderboardCache,
+  getLiveSeason,
+  setLiveSeason,
+  clearTournamentLiveData,
   type StoredPlayerScorecards,
 } from '@/app/lib/scorecard-store';
 import {
   autoLockPoolLineup,
+  clearStatOverrides,
   TOURNAMENT_IDS,
   type TournamentId,
 } from '@/app/lib/pool-store';
@@ -255,12 +259,12 @@ async function autoLockOnFirstScore(
 
 async function refreshTournamentFromESPN(
   tournamentId: string,
-  espnEventId: string,
+  espnEventId: string | undefined,
   existing: Awaited<ReturnType<typeof readLeaderboardCache>>,
 ): Promise<string> {
   let espnResult: Awaited<ReturnType<typeof fetchESPNTournament>>;
   try {
-    espnResult = await fetchESPNTournament(espnEventId);
+    espnResult = await fetchESPNTournament(espnEventId, tournamentId);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (msg.includes('400')) {
@@ -387,11 +391,38 @@ async function refreshTournamentFromESPN(
   return 'leaderboard-refreshed';
 }
 
-async function refreshTournament(tournamentId: string): Promise<string> {
-  const meta = TOURNAMENT_META[tournamentId];
-  if (!meta) return 'unknown-tournament';
+const DAY_MS = 24 * 60 * 60 * 1000;
 
-  const existing = await readLeaderboardCache(tournamentId);
+// Drops one tournament's locked odds snapshot (stored with every tournament's under one key).
+async function clearLockedOdds(tournamentId: string) {
+  const raw = await redis.get('locked-odds');
+  if (!raw) return;
+  const store = JSON.parse(raw as string) as Record<string, unknown>;
+  if (!(tournamentId in store)) return;
+  delete store[tournamentId];
+  await redis.set('locked-odds', JSON.stringify(store));
+}
+
+async function refreshTournament(tournamentId: string): Promise<string> {
+  const meta = currentTournamentMeta(tournamentId);
+  if (!meta) return 'unknown-tournament';
+  const season = Number(meta.year);
+
+  let existing = await readLeaderboardCache(tournamentId);
+
+  // A new season: last season's final results stay on show until this event's week begins
+  // (Monday), then all of that event's live data is cleared so the new one starts clean.
+  const marker = await getLiveSeason(tournamentId);
+  const storedSeason = marker?.season ?? (existing ? 2026 : season);
+  if (storedSeason < season) {
+    const weekStartsAt = Date.parse(`${meta.startDate}T00:00:00Z`) - 3 * DAY_MS;
+    if (Date.now() < weekStartsAt) return 'previous-season-results-kept';
+    await clearTournamentLiveData(tournamentId);
+    await clearStatOverrides(tournamentId);
+    await clearLockedOdds(tournamentId);
+    existing = null;
+  }
+  if (marker?.season !== season) await setLiveSeason(tournamentId, { season });
 
   // Permanently done — skip forever, all data is in Redis. EXCEPT: self-heal a FALSE
   // completion. ESPN pre-increments the round between rounds, which previously tripped the
@@ -403,10 +434,10 @@ async function refreshTournament(tournamentId: string): Promise<string> {
     const lockMs = meta.lockAtUtc ? new Date(meta.lockAtUtc).getTime() : 0;
     const ACTIVE_WINDOW_MS = 8 * 24 * 60 * 60 * 1000; // ~8 days covers the full tournament week
     const withinActiveWindow = lockMs > 0 && Date.now() >= lockMs && Date.now() - lockMs < ACTIVE_WINDOW_MS;
-    if (!withinActiveWindow || !meta.espnEventId) return 'tournament-complete-skipped';
+    if (!withinActiveWindow) return 'tournament-complete-skipped';
     let actuallyComplete = true;
     try {
-      const check = await fetchESPNTournament(meta.espnEventId);
+      const check = await fetchESPNTournament(meta.espnEventId, tournamentId);
       actuallyComplete = check.eventComplete;
     } catch {
       actuallyComplete = true; // event not on today's board / transient error → leave as complete
@@ -420,7 +451,7 @@ async function refreshTournament(tournamentId: string): Promise<string> {
   // Commissioner-set Pool Lock Time overrides the built-in lockAtUtc. Once past it, flip the
   // stored Lineup Lock immediately (idempotent) — don't wait for ESPN to show players started.
   const lockOverrides = await getLockTimeOverrides().catch((): Awaited<ReturnType<typeof getLockTimeOverrides>> => ({}));
-  const lockIso = lockOverrides[tournamentId as keyof typeof lockOverrides] ?? meta.lockAtUtc;
+  const lockIso = effectiveLockTime(lockOverrides[tournamentId as keyof typeof lockOverrides], meta.lockAtUtc);
   const pastLock = !!lockIso && Date.now() >= new Date(lockIso).getTime();
   if (pastLock) await autoLockPoolLineup(tournamentId as TournamentId).catch(() => {});
 
@@ -433,7 +464,6 @@ async function refreshTournament(tournamentId: string): Promise<string> {
 
   // ESPN is the only data source — one free fetch returns both the leaderboard and
   // every player's scorecards. (The paid Slash Golf/RapidAPI path was removed entirely.)
-  if (!meta.espnEventId) return 'no-espn-event-id';
   return refreshTournamentFromESPN(tournamentId, meta.espnEventId, existing);
 }
 

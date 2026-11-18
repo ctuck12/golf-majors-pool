@@ -212,3 +212,37 @@ export async function writeLeaderboardCache(
   const ttl = data.notStarted ? NOT_STARTED_TTL_SECONDS : undefined;
   await rset(leaderboardKey(tournamentId), data, ttl);
 }
+
+// ── Season rollover ────────────────────────────────────────────────────────
+// The live data above is stored per tournament, not per year. Last season's final leaderboard
+// stays on show (results view) until the new season's event week begins; then everything from
+// that event is cleared so the new one starts clean. `live-season:<id>` records which season the
+// stored data belongs to (missing = 2026, the first season) and the ESPN event id in use.
+
+export type LiveSeasonMarker = { season: number; espnEventId?: string };
+
+function liveSeasonKey(tournamentId: string) {
+  return `live-season:${tournamentId}`;
+}
+
+export async function getLiveSeason(tournamentId: string): Promise<LiveSeasonMarker | null> {
+  return rget<LiveSeasonMarker>(liveSeasonKey(tournamentId));
+}
+
+export async function setLiveSeason(tournamentId: string, marker: LiveSeasonMarker): Promise<void> {
+  await rset(liveSeasonKey(tournamentId), marker);
+}
+
+// Clears one tournament's leaderboard, scorecards, round leaders and low rounds.
+export async function clearTournamentLiveData(tournamentId: string): Promise<void> {
+  await redis.del(leaderboardKey(tournamentId), scorecardKey(tournamentId));
+  const [leaders, lows] = await Promise.all([getRoundLeaderStore(), getLowRoundStore()]);
+  if (tournamentId in leaders) {
+    delete leaders[tournamentId];
+    await rset(ROUND_LEADERS_KEY, leaders);
+  }
+  if (tournamentId in lows) {
+    delete lows[tournamentId];
+    await rset(LOW_ROUNDS_KEY, lows);
+  }
+}

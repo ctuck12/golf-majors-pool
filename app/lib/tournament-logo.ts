@@ -1,3 +1,5 @@
+import { currentTournamentMeta } from './tournament-config';
+
 // Lightweight, client-safe helper to pick the current/upcoming tournament and its
 // tab logo — used by the commissioner tool pages, which don't have the main app's
 // tournament state. Mirrors the schedule + tab-logo mapping in app/page.tsx.
@@ -27,29 +29,12 @@ export const KNOCKOUT_TAB_LOGOS: Record<string, string> = {
 
 export const TOURNAMENT_OPTIONS = SCHEDULE.map((t) => ({ id: t.id, name: t.name, color: t.color }));
 
-// First-tee times (UTC) match app/page.tsx TOURNAMENTS.
-// All tournament ids, in schedule order — used to store/read salary lists per tournament.
 export const ALL_TOURNAMENT_IDS = ['players', 'masters', 'pga', 'us-open', 'open'] as const;
 
-const FIRST_TEE_UTC: Record<string, string> = {
-  players: '2026-03-12T11:40:00Z',
-  masters: '2026-04-09T11:30:00Z',
-  pga: '2026-05-14T11:20:00Z',
-  'us-open': '2026-06-18T11:15:00Z',
-  open: '2026-07-16T05:35:00Z',
-};
 
-// Returns the tournament in progress or up next. A major stays "current" through the
-// Monday after it concludes (~5 days after first tee); once past that it rolls to the
-// next event. After the final major of the season it rolls back to the first.
+// Returns the tournament in progress or up next: the one whose current event (see
+// currentTournamentMeta) starts soonest. A major stays current until the Monday after it ends.
 export function getHeaderTournament(now: Date = new Date()): HeaderTournament {
-  const sorted = SCHEDULE.slice().sort(
-    (a, b) => new Date(FIRST_TEE_UTC[a.id]).getTime() - new Date(FIRST_TEE_UTC[b.id]).getTime(),
-  );
-  for (const t of sorted) {
-    const firstTee = new Date(FIRST_TEE_UTC[t.id]).getTime();
-    const concludeAt = firstTee + 5 * 24 * 60 * 60 * 1000;
-    if (now.getTime() <= concludeAt) return t;
-  }
-  return sorted[0];
+  const startOf = (id: string) => Date.parse(currentTournamentMeta(id, now)?.lockAtUtc ?? '') || Infinity;
+  return SCHEDULE.slice().sort((a, b) => startOf(a.id) - startOf(b.id))[0];
 }

@@ -1,7 +1,7 @@
 import { requireAdminRequest } from '@/app/lib/admin-auth';
 export const dynamic = 'force-dynamic';
 
-import { TOURNAMENT_META } from '@/app/lib/tournament-config';
+import { currentTournamentMeta } from '@/app/lib/tournament-config';
 import { autoLockPoolLineup, TOURNAMENT_IDS, type TournamentId } from '@/app/lib/pool-store';
 import redis from '@/app/lib/redis';
 
@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     return Response.json({ error: 'Unknown tournamentId.' }, { status: 400 });
   }
 
-  const meta = TOURNAMENT_META[tournamentId];
+  const meta = currentTournamentMeta(tournamentId);
   if (!meta) {
     return Response.json({ error: 'No meta for tournament.' }, { status: 400 });
   }
