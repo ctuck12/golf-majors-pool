@@ -50,3 +50,10 @@ export async function buyProduct(userId: string, productId: string): Promise<boo
     throw new Error((error as { message?: string }).message || 'The purchase did not go through.');
   }
 }
+
+// Opens Apple's sheet for redeeming an App Store offer code (the promo codes made in App Store
+// Connect). A redeemed code shows up as a purchase, which the paywall then offers as an unused pass.
+export async function redeemPromoCode(userId: string): Promise<void> {
+  const Purchases = await purchases(userId);
+  await Purchases.presentCodeRedemptionSheet();
+}

@@ -25,8 +25,11 @@ export type PublicUser = {
   rosters: Partial<Record<TournamentId, number[]>>;
   tieBreaks: Partial<Record<TournamentId, number>>;
   rosterSubmittedAt?: Partial<Record<TournamentId, string>>;
-  // Venmo username without the @ (null when not added yet).
+  // Venmo username without the @ (null when not added yet), and whether they said they don't use Venmo.
   venmo?: string | null;
+  venmoDeclined?: boolean;
+  // false until a new account enters the code emailed to it (undefined = not tracked, e.g. Redis).
+  emailVerified?: boolean;
   pastSeasons?: PastSeasonPicks;
 };
 
@@ -79,10 +82,8 @@ export type SessionPool = Omit<PublicPool, 'winnerScores'> & {
   seasonExpired: boolean;
   memberCount: number;
   commissioners: LeagueContact[];
-  // Venmo account entry fees go to (null until a commissioner adds theirs) and, for
-  // commissioners, which commissioner they picked to collect.
+  // The commissioner's Venmo, which entry fees go to (null until they add it).
   venmo?: LeagueVenmo | null;
-  venmoCollectorId?: string | null;
   // Commissioners only: winners already paid this season, per tournament.
   payoutsSent?: Partial<Record<TournamentId, PayoutSent[]>>;
 };

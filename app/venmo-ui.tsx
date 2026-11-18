@@ -3,7 +3,7 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { Check, ExternalLink, X } from 'lucide-react';
 import { isNativeApp } from './native-bridge';
-import type { LeagueVenmo, PayoutSent, TournamentId } from './lib/pool-store-shared';
+import type { PayoutSent, TournamentId } from './lib/pool-store-shared';
 import {
   formatMoney,
   formatVenmo,
@@ -377,16 +377,11 @@ export function VenmoPrompt({
 
 // ── Entry fees (commissioners) ───────────────────────────────────────────────
 
-type Commissioner = { id: string; name: string; venmo?: string | null };
-
 export function EntryFeesModal<P>({
   open,
   tournaments,
   entryFees,
-  commissioners,
-  collectorId,
-  leagueVenmo,
-  currentUserId,
+  commissionerVenmo,
   onClose,
   onPool,
   onAddVenmo,
@@ -394,10 +389,8 @@ export function EntryFeesModal<P>({
   open: boolean;
   tournaments: { id: TournamentId; label: string }[];
   entryFees: Partial<Record<TournamentId, number>>;
-  commissioners: Commissioner[];
-  collectorId: string | null;
-  leagueVenmo: LeagueVenmo | null;
-  currentUserId: string;
+  // The commissioner's own Venmo (members pay entry fees to it).
+  commissionerVenmo: string | null;
   onClose: () => void;
   onPool: (pool: P) => void;
   onAddVenmo: () => void;
@@ -405,20 +398,16 @@ export function EntryFeesModal<P>({
   const [fees, setFees] = useState<Record<string, string>>(() =>
     Object.fromEntries(tournaments.map((t) => [t.id, entryFees[t.id] ? String(entryFees[t.id]) : ''])),
   );
-  const [collector, setCollector] = useState<string>(leagueVenmo?.userId ?? collectorId ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
 
   if (!open) return null;
 
-  const withVenmo = commissioners.filter((c) => c.venmo);
-  const me = commissioners.find((c) => c.id === currentUserId);
-
   const save = async () => {
     setError('');
     setSaved(false);
-    const body: { fees: Record<string, number | null>; collectorId?: string } = { fees: {} };
+    const body: { fees: Record<string, number | null> } = { fees: {} };
     for (const t of tournaments) {
       const raw = fees[t.id]?.replace(/[$,\s]/g, '') ?? '';
       if (raw === '') {
@@ -432,7 +421,6 @@ export function EntryFeesModal<P>({
       }
       body.fees[t.id] = amount;
     }
-    if (collector) body.collectorId = collector;
     setBusy(true);
     try {
       const payload = await sendJson<{ pool: P }>('/api/commissioner/entry-fees', body, 'PATCH');
@@ -445,14 +433,23 @@ export function EntryFeesModal<P>({
     }
   };
 
-  const collectorHandle = withVenmo.find((c) => c.id === collector)?.venmo ?? leagueVenmo?.handle ?? null;
-
   return (
     <Modal title="Entry Fees & Venmo" onClose={onClose}>
       <div style={{ fontSize: 14, color: '#3d4b58', lineHeight: 1.5 }}>
         When a member submits their roster, Venmo opens with the entry fee and &ldquo;Golf Majors Pool ⛳&rdquo; already filled in
-        {collectorHandle ? <>, paying <b>{formatVenmo(collectorHandle)}</b></> : null}.
+        {commissionerVenmo ? <>, paying you at <b>{formatVenmo(commissionerVenmo)}</b></> : null}.
       </div>
+
+      {!commissionerVenmo ? (
+        <div style={{ background: '#fff7e6', border: '1px solid #f3d38b', borderRadius: 12, padding: 12, fontSize: 13.5, color: '#5c4310', lineHeight: 1.45 }}>
+          Add your Venmo so members can pay you in the app.
+          <div style={{ marginTop: 10 }}>
+            <button type="button" onClick={onAddVenmo} style={{ ...primaryButton(false, venmoBlue), padding: '9px 14px', fontSize: 14 }}>
+              Add your Venmo
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <div>
         <div style={sectionLabel}>Entry fee per tournament</div>
@@ -480,64 +477,6 @@ export function EntryFeesModal<P>({
         <div style={{ fontSize: 12.5, color: '#6b7b88', marginTop: 8, lineHeight: 1.4 }}>
           Leave a tournament blank and members just submit, without paying in the app.
         </div>
-      </div>
-
-      <div>
-        <div style={sectionLabel}>Members pay</div>
-        {withVenmo.length === 0 ? (
-          <div style={{ background: '#fff7e6', border: '1px solid #f3d38b', borderRadius: 12, padding: 12, fontSize: 13.5, color: '#5c4310', lineHeight: 1.45 }}>
-            No commissioner has added a Venmo yet, so members can&apos;t pay in the app.
-            {me && !me.venmo ? (
-              <div style={{ marginTop: 10 }}>
-                <button type="button" onClick={onAddVenmo} style={{ ...primaryButton(false, venmoBlue), padding: '9px 14px', fontSize: 14 }}>
-                  Add your Venmo
-                </button>
-              </div>
-            ) : null}
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gap: 8 }}>
-            {commissioners.map((c) => {
-              const selected = c.id === collector;
-              return (
-                <button
-                  key={c.id}
-                  type="button"
-                  disabled={!c.venmo}
-                  onClick={() => {
-                    setSaved(false);
-                    setCollector(c.id);
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    textAlign: 'left',
-                    border: selected ? `2px solid ${venmoBlue}` : '1px solid #d7e0e8',
-                    background: selected ? '#eef7ff' : '#fff',
-                    borderRadius: 12,
-                    padding: selected ? '9px 11px' : '10px 12px',
-                    cursor: c.venmo ? 'pointer' : 'default',
-                    opacity: c.venmo ? 1 : 0.6,
-                  }}
-                >
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: 'block', fontSize: 15, fontWeight: 800, color: '#0f1720' }}>{c.name}</span>
-                    <span style={{ display: 'block', fontSize: 13, color: c.venmo ? venmoBlue : '#6b7b88', fontWeight: 700 }}>
-                      {c.venmo ? formatVenmo(c.venmo) : 'No Venmo added yet'}
-                    </span>
-                  </span>
-                  {selected ? <Check size={18} color={venmoBlue} /> : null}
-                </button>
-              );
-            })}
-            {me && !me.venmo ? (
-              <button type="button" onClick={onAddVenmo} style={{ ...secondaryButton, justifySelf: 'start', padding: '8px 12px', fontSize: 13 }}>
-                Add your Venmo
-              </button>
-            ) : null}
-          </div>
-        )}
       </div>
 
       <ErrorText>{error}</ErrorText>

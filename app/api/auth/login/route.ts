@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { createSession, getSessionContext, loginUser, SESSION_COOKIE_NAME } from '../../../lib/pool-store';
+import { createEmailVerificationCode, createSession, getSessionContext, loginUser, SESSION_COOKIE_NAME } from '../../../lib/pool-store';
+import { isEmailConfigured, sendVerificationCodeEmail } from '../../../lib/email';
 
 export async function POST(request: Request) {
   try {
@@ -26,6 +27,15 @@ export async function POST(request: Request) {
     });
 
     const session = await getSessionContext(token);
+    // An account that hasn't confirmed its email yet (e.g. one a commissioner added) gets a code now.
+    if (session.user?.emailVerified === false && isEmailConfigured()) {
+      const code = await createEmailVerificationCode(session.user.id);
+      if (code) {
+        await sendVerificationCodeEmail({ to: session.user.email, displayName: session.user.displayName, code }).catch((err) => {
+          console.error('Could not send the confirmation code:', err);
+        });
+      }
+    }
     // The iPhone app can't read the cookie, so it gets the token in the body (it asks with this header).
     const sessionToken = request.headers.get('x-client-platform') === 'native' ? token : undefined;
     return NextResponse.json({ ...session, sessionToken });

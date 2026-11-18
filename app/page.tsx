@@ -6,6 +6,8 @@ import { isNativeApp, settleViewAfterKeyboard } from './native-bridge';
 import { Fragment, startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { LeagueGate, LeagueModal, type LeagueSummary } from './league-panel';
 import { PaywallModal, type PaywallMode } from './paywall';
+import { VenmoSetupStep, VerifyEmailGate } from './onboarding';
+import { AdminLeaguesModal } from './admin-leagues';
 import { EntryFeesModal, openVenmoPayment, PayWinnersModal, VenmoFallbackNotice, VenmoModal, VenmoPrompt } from './venmo-ui';
 import { ENTRY_FEE_NOTE, formatMoney, formatVenmo } from '@/app/lib/venmo';
 import { PLAYER_POOL_WITH_PGA_IDS } from '@/app/lib/player-pool';
@@ -917,6 +919,9 @@ type AuthUser = {
   tieBreaks: Partial<Record<TournamentId, number>>;
   rosterSubmittedAt?: Partial<Record<TournamentId, string>>;
   venmo?: string | null;
+  venmoDeclined?: boolean;
+  // false until a new account enters its emailed code.
+  emailVerified?: boolean;
   pastSeasons?: SeasonPicks['pastSeasons'];
 };
 
@@ -938,7 +943,6 @@ type PoolInfo = {
   // Entry fee per tournament and the Venmo that collects it (null until a commissioner adds one).
   entryFees?: Partial<Record<TournamentId, number>>;
   venmo?: { userId: string; name: string; handle: string } | null;
-  venmoCollectorId?: string | null;
   // Commissioners only: winners already paid this season.
   payoutsSent?: Partial<Record<TournamentId, { place: number; userId: string | null; amount: number; sentAt: string }[]>>;
 };
@@ -1914,7 +1918,8 @@ export default function Page() {
     setForgotMessage('');
   }, []);
   const [registerForm, setRegisterForm] = useState({
-    displayName: '',
+    firstName: '',
+    lastName: '',
     email: '',
     password: '',
     joinCode: '',
@@ -1988,7 +1993,10 @@ export default function Page() {
   // Venmo: editing your own, the commissioner's entry fees and pay-winners screens, and the
   // venmo.com fallback when the Venmo app doesn't open.
   const [venmoModalOpen, setVenmoModalOpen] = useState(false);
+  // Right after a new account confirms its email: the one-time "Add your Venmo" step.
+  const [showVenmoSetup, setShowVenmoSetup] = useState(false);
   const [entryFeesOpen, setEntryFeesOpen] = useState(false);
+  const [adminLeaguesOpen, setAdminLeaguesOpen] = useState(false);
   const [payWinnersOpen, setPayWinnersOpen] = useState(false);
   const [venmoFallbackUrl, setVenmoFallbackUrl] = useState<string | null>(null);
   const [showSubmittedPicksPopup, setShowSubmittedPicksPopup] = useState(false);
@@ -2078,6 +2086,8 @@ export default function Page() {
   // The app admin runs the app-wide tools for every league; a league's commissioners run its league
   // tools (members, picks open/lock, payouts, tiebreak).
   const isAppAdmin = sessionFlags.isAppAdmin;
+  // A new account that hasn't entered its emailed code yet (accounts from before codes count as confirmed).
+  const needsEmailCode = sessionUser?.emailVerified === false;
   const canManagePool = isAppAdmin || pool?.role === 'commissioner';
   const isFounderPool = pool?.id === FOUNDER_POOL_ID;
 
@@ -2630,7 +2640,7 @@ export default function Page() {
 
       applySession(payload);
       settleViewAfterKeyboard();
-      setRegisterForm({ displayName: '', email: '', password: '', joinCode: '' });
+      setRegisterForm({ firstName: '', lastName: '', email: '', password: '', joinCode: '' });
       setPendingJoinCode('');
     } catch (err) {
       setAuthError(err instanceof Error ? err.message : 'Unable to create account.');
@@ -3028,9 +3038,10 @@ export default function Page() {
     }
   };
 
-  // Promote a member to commissioner, or hand the role back. Refreshes the session so the
-  // league's commissioner list (and your own access, if you demoted yourself) stays current.
-  const handleToggleCommissionerRole = async (memberId: string, makeCommissioner: boolean) => {
+  // Hands the league's one commissioner role to another member (you become a member). Refreshes
+  // the session so your access and the league's contact update straight away.
+  const [confirmHandOverId, setConfirmHandOverId] = useState<string | null>(null);
+  const handleHandOverCommissioner = async (memberId: string, memberName: string) => {
     setCommissionerBusy(true);
     setCommissionerError('');
     setCommissionerSuccess('');
@@ -3039,11 +3050,12 @@ export default function Page() {
       await readJson<{ member: AuthUser }>(`/api/commissioner/members/${memberId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: makeCommissioner ? 'commissioner' : 'member' }),
+        body: JSON.stringify({ role: 'commissioner' }),
       });
       await refreshCurrentSession();
       setCommissionerMemberModalOpen(false);
-      setCommissionerSuccess(makeCommissioner ? 'Member is now a commissioner.' : 'Commissioner role removed.');
+      setConfirmHandOverId(null);
+      setCommissionerSuccess(`${memberName} is now the commissioner.`);
     } catch (err) {
       setCommissionerError(err instanceof Error ? err.message : 'Unable to change the role.');
     } finally {
@@ -4886,12 +4898,22 @@ export default function Page() {
                 style={{ display: 'grid', gap: 12, flex: 1 }}
               >
                 {authMode === 'register' ? (
-                  <input
-                    value={registerForm.displayName}
-                    onChange={(event) => setRegisterForm({ ...registerForm, displayName: event.target.value })}
-                    placeholder="Display name"
-                    style={fieldStyle()}
-                  />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <input
+                      value={registerForm.firstName}
+                      onChange={(event) => setRegisterForm({ ...registerForm, firstName: event.target.value })}
+                      placeholder="First name"
+                      autoComplete="given-name"
+                      style={{ ...fieldStyle(), minWidth: 0 }}
+                    />
+                    <input
+                      value={registerForm.lastName}
+                      onChange={(event) => setRegisterForm({ ...registerForm, lastName: event.target.value })}
+                      placeholder="Last name"
+                      autoComplete="family-name"
+                      style={{ ...fieldStyle(), minWidth: 0 }}
+                    />
+                  </div>
                 ) : null}
 
                 <input
@@ -5142,7 +5164,26 @@ export default function Page() {
           </div>
         ) : null}
 
-        {sessionUser && !pool && !sessionLoading ? (
+        {/* New accounts confirm their email first, then add their Venmo (once). */}
+        {sessionUser && needsEmailCode ? (
+          <VerifyEmailGate<SessionPayload>
+            email={sessionUser.email}
+            onSession={(payload) => {
+              applySession(payload);
+              settleViewAfterKeyboard();
+              if (!payload.user?.venmo && !payload.user?.venmoDeclined) setShowVenmoSetup(true);
+            }}
+            onSignOut={() => void handleLogout()}
+          />
+        ) : null}
+        {sessionUser && !needsEmailCode && showVenmoSetup ? (
+          <VenmoSetupStep<SessionPayload>
+            onSession={applySession}
+            onDone={() => { setShowVenmoSetup(false); settleViewAfterKeyboard(); }}
+          />
+        ) : null}
+
+        {sessionUser && !needsEmailCode && !showVenmoSetup && !pool && !sessionLoading ? (
           <LeagueGate<SessionPayload>
             displayName={sessionUser.displayName}
             canCreateLeague={sessionFlags.canCreateLeague}
@@ -5177,10 +5218,7 @@ export default function Page() {
             open
             tournaments={TOURNAMENTS.map((t) => ({ id: t.id as TournamentId, label: t.name }))}
             entryFees={pool.entryFees ?? {}}
-            commissioners={pool.commissioners ?? []}
-            collectorId={pool.venmoCollectorId ?? null}
-            leagueVenmo={pool.venmo ?? null}
-            currentUserId={sessionUser.id}
+            commissionerVenmo={sessionUser.venmo ?? null}
             onClose={() => setEntryFeesOpen(false)}
             onPool={(next) => setPool((current) => (current ? { ...current, ...next } : next))}
             onAddVenmo={() => { setEntryFeesOpen(false); setVenmoModalOpen(true); }}
@@ -5201,6 +5239,8 @@ export default function Page() {
             onPool={(next) => setPool((current) => (current ? { ...current, ...next } : next))}
           />
         ) : null}
+
+        {isAppAdmin ? <AdminLeaguesModal open={adminLeaguesOpen} onClose={() => setAdminLeaguesOpen(false)} /> : null}
 
         <VenmoFallbackNotice url={venmoFallbackUrl} onClose={() => setVenmoFallbackUrl(null)} />
 
@@ -5235,7 +5275,7 @@ export default function Page() {
           }}
         />
 
-        {sessionUser && pool ? (
+        {sessionUser && pool && !needsEmailCode && !showVenmoSetup ? (
         <>
         {/* A league whose season pass lapsed: members can't join or make picks until it's renewed. */}
         {pool.seasonExpired ? (
@@ -5266,7 +5306,7 @@ export default function Page() {
         ) : null}
         <VenmoPrompt
           userId={sessionUser.id}
-          hasVenmo={!!sessionUser.venmo}
+          hasVenmo={!!sessionUser.venmo || sessionUser.venmoDeclined === true}
           isCommissioner={pool.role === 'commissioner'}
           onAdd={() => setVenmoModalOpen(true)}
           compact={isMobile}
@@ -8512,6 +8552,7 @@ export default function Page() {
               <div style={{ fontSize: 13, fontWeight: 800, textTransform: 'uppercase', color: '#5b6b79', marginBottom: 14 }}>Pool Management Tools</div>
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))', gap: isMobile ? 10 : 14 }}>
                 {([
+                  { key: 'allLeagues', title: 'All Leagues', sub: 'Every league, its commissioner and plan', Icon: Users, open: () => setAdminLeaguesOpen(true), adminOnly: true },
                   { key: 'entryFees', title: 'Entry Fees & Venmo', sub: pool?.venmo ? `Members pay ${formatVenmo(pool.venmo.handle)}` : 'Set fees and who collects them', Icon: DollarSign, open: () => setEntryFeesOpen(true) },
                   { key: 'payouts' as const, title: 'Tournament Payouts', sub: 'Set 1st / 2nd / 3rd place amounts', Icon: Trophy },
                   { key: 'payWinners', title: 'Pay Winners', sub: 'Send winnings on Venmo once final', Icon: Send, open: () => setPayWinnersOpen(true) },
@@ -8519,10 +8560,12 @@ export default function Page() {
                   { key: 'markStatus' as const, title: 'Mark WD / DQ / MDF', sub: "Override a player's status", Icon: AlertCircle },
                   { key: 'roundLeader' as const, title: 'Round Leader Tools', sub: 'Clear a mis-captured round leader', Icon: RefreshCw },
                   { key: 'tiebreak' as const, title: 'Tiebreak Score', sub: 'Enter / override total strokes', Icon: Save },
-                ] as { key: string; title: string; sub: string; Icon: typeof Trophy; open?: () => void }[])
+                ] as { key: string; title: string; sub: string; Icon: typeof Trophy; open?: () => void; adminOnly?: boolean }[])
                   // League tools for every commissioner; the app-wide ones for the app admin. The Venmo
                   // tools need a league the user commissions (the admin can be in other leagues).
-                  .filter((t) => t.open ? pool?.role === 'commissioner' : isAppAdmin || t.key === 'payouts' || t.key === 'tiebreak')
+                  // League tools (payouts, tiebreak, Venmo) are for the league's commissioner; the
+                  // app-wide ones (All Leagues, WD/DQ, round leaders) for the app admin only.
+                  .filter((t) => (t.adminOnly || t.key === 'markStatus' || t.key === 'roundLeader') ? isAppAdmin : pool?.role === 'commissioner')
                   .map((t) => {
                   const Icon = t.Icon;
                   return (
@@ -9637,22 +9680,30 @@ export default function Page() {
                   </button>
                   ) : null}
                   {(() => {
+                    // One commissioner per league: they can hand the role to another member.
                     const memberIsCommissioner = (pool?.commissioners ?? []).some((c) => c.id === selectedCommissionerMember.id);
+                    if (memberIsCommissioner || pool?.role !== 'commissioner') return null;
+                    const confirming = confirmHandOverId === selectedCommissionerMember.id;
                     return (
                       <button
-                        onClick={() => void handleToggleCommissionerRole(selectedCommissionerMember.id, !memberIsCommissioner)}
+                        onClick={() => {
+                          if (!confirming) { setConfirmHandOverId(selectedCommissionerMember.id); return; }
+                          void handleHandOverCommissioner(selectedCommissionerMember.id, selectedCommissionerMember.displayName);
+                        }}
                         disabled={commissionerBusy}
                         style={{
-                          border: '1px solid #d7e0e8',
+                          border: confirming ? '1.5px solid #b45309' : '1px solid #d7e0e8',
                           borderRadius: 16,
-                          background: '#fff',
+                          background: confirming ? '#fff7ed' : '#fff',
                           padding: '16px 18px',
                           textAlign: 'left',
                           fontWeight: 800,
                           cursor: commissionerBusy ? 'wait' : 'pointer',
                         }}
                       >
-                        {memberIsCommissioner ? 'Remove Commissioner Role' : 'Make Commissioner'}
+                        {confirming
+                          ? `Tap again to make ${selectedCommissionerMember.displayName} the commissioner. You'll become a member and lose the commissioner tools.`
+                          : 'Make Commissioner (hand over the role)'}
                       </button>
                     );
                   })()}
