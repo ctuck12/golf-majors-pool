@@ -1,5 +1,5 @@
 import redis from '@/app/lib/redis';
-import { getTournamentMetaByEspnId } from '@/app/lib/tournament-config';
+import { metaForEspnEvent } from '@/app/lib/espn-event-ids';
 import { pgaTourTournId } from '@/app/lib/pga-scorecard-stats';
 
 const PGA_GQL = 'https://orchestrator.pgatour.com/graphql';
@@ -40,8 +40,8 @@ export function tournLbCacheKey(eventId: string, statKey: string): string {
 // long (7 days). While an event is LIVE its stats change every round, so cache briefly (~10 min) and
 // let the cron keep it fresh — otherwise the first warm of round 1 would freeze the card all weekend.
 // Live window: from ~1 day before lock through ~5 days after (covers Thu–Sun play + Monday finalize).
-export function tournLbTtl(eventId: string): number {
-  const meta = getTournamentMetaByEspnId(eventId);
+export async function tournLbTtl(eventId: string): Promise<number> {
+  const meta = await metaForEspnEvent(eventId);
   if (!meta?.lockAtUtc) return 604800;
   const lock = Date.parse(meta.lockAtUtc);
   if (isNaN(lock)) return 604800;
@@ -73,7 +73,7 @@ export async function buildPgaLeaderboard(eventId: string, statKey: string): Pro
 async function buildStatDetailsLeaderboard(eventId: string, statKey: string): Promise<TournLbResult> {
   const cfg = PGA_STATS[statKey];
   if (!cfg) return { entries: [], fieldAvg: null };
-  const meta = getTournamentMetaByEspnId(eventId);
+  const meta = await metaForEspnEvent(eventId);
   if (!meta) return { entries: [], fieldAvg: null };
   const pgaTournId = pgaTourTournId(meta.pgaTournCode, meta.year);
   const year = parseInt(meta.year, 10);
@@ -193,7 +193,7 @@ async function batchMap<T, R>(items: T[], size: number, fn: (item: T) => Promise
 // rank — matching the statDetails style). Falls back to the made-cut-only leaderboard if the field
 // feed is unavailable, so scrambling never regresses to empty.
 export async function buildFullFieldScramblingLeaderboard(eventId: string): Promise<TournLbResult> {
-  const meta = getTournamentMetaByEspnId(eventId);
+  const meta = await metaForEspnEvent(eventId);
   if (!meta) return { entries: [], fieldAvg: null };
   const pgaTournId = pgaTourTournId(meta.pgaTournCode, meta.year);
 
@@ -260,7 +260,7 @@ export async function getOrBuildPgaLeaderboard(eventId: string, statKey: string)
   } catch { /* fall through to build */ }
   const result = await buildPgaLeaderboard(eventId, statKey);
   if (result.entries.length > 0) {
-    try { await redis.setex(cacheKey, tournLbTtl(eventId), JSON.stringify(result)); } catch { /* ignore */ }
+    try { await redis.setex(cacheKey, await tournLbTtl(eventId), JSON.stringify(result)); } catch { /* ignore */ }
     return result;
   }
   return null;

@@ -178,8 +178,8 @@ export async function getEspnId(name: string): Promise<string | null> {
 async function getEventIdsForLeague(
   espnId: string,
   league: League,
+  season: number,
 ): Promise<Array<{ eventId: string; league: League }>> {
-  const season = getActiveSeason();
   const res = await fetch(
     `${ESPN_CORE}/${league}/seasons/${season}/athletes/${espnId}/eventlog`,
     { next: { revalidate: 3600 } },
@@ -231,12 +231,13 @@ export type SeasonResult = {
   tour: 'pga' | 'liv' | 'eur';
 };
 
-export async function fetchPlayerSeasonResults(name: string): Promise<SeasonResult[]> {
+// `season` defaults to the active golf season (it rolls over Nov 1).
+export async function fetchPlayerSeasonResults(name: string, season = getActiveSeason()): Promise<SeasonResult[]> {
   const espnId = await getEspnId(name);
   if (!espnId) return [];
 
   const allEvents = (
-    await Promise.all(LEAGUES.map((league) => getEventIdsForLeague(espnId, league)))
+    await Promise.all(LEAGUES.map((league) => getEventIdsForLeague(espnId, league, season)))
   ).flat();
 
   const seen = new Set<string>();

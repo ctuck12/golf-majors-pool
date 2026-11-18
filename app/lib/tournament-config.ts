@@ -106,6 +106,18 @@ export function effectiveLockTime(override: string | undefined, scheduledLockAtU
   return override && !scheduledLockAtUtc ? override : scheduledLockAtUtc;
 }
 
+// Every scheduled event whose ESPN id is known, oldest season first.
+export function scheduledEspnEvents(): { tournamentId: TournamentKey; season: number; espnEventId: string; lockAtUtc: string }[] {
+  const events: { tournamentId: TournamentKey; season: number; espnEventId: string; lockAtUtc: string }[] = [];
+  for (const season of POOL_SEASONS) {
+    for (const key of TOURNAMENT_KEYS) {
+      const meta = getTournamentMeta(key, season);
+      if (meta?.espnEventId) events.push({ tournamentId: key, season, espnEventId: meta.espnEventId, lockAtUtc: meta.lockAtUtc });
+    }
+  }
+  return events;
+}
+
 // Look up tournament meta by ESPN event ID (any season).
 export function getTournamentMetaByEspnId(espnEventId: string): TournamentMeta | undefined {
   for (const season of POOL_SEASONS) {

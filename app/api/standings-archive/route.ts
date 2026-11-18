@@ -2,10 +2,13 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest } from 'next/server';
 import redis from '@/app/lib/redis';
+import { cookies } from 'next/headers';
+import { DEFAULT_POOL_ID, getSessionContext, SESSION_COOKIE_NAME, archiveSeasonsFor, readStandingsArchive, saveStandingsArchive, userDataBackend } from '@/app/lib/pool-store';
 
-// Archive of the pool's OWN final standings, one snapshot per (tournament, season year).
-// The standings are computed on the client, so the client posts the final table here when a
-// tournament is complete; members can then view any banked year. First season = 2026.
+// "Past Results": each league's final standings, one snapshot per (tournament, season), kept in
+// Postgres. Standings are computed on the client, so a member's app posts the final table when a
+// tournament is complete. The founder league's 2026 history was first saved in Redis (one shared
+// set); it's read from there and copied into the database the first time it's opened.
 
 const TOURNAMENT_IDS = new Set(['players', 'masters', 'pga', 'us-open', 'open']);
 
@@ -13,41 +16,63 @@ type ArchiveGolfer = { name: string; score: string; points: number; position: st
 type ArchiveRow = { place: number; name: string; points: number; holesRemaining: number; tieBreak: number; golfers?: ArchiveGolfer[] };
 type ArchivePayouts = { first?: number; second?: number; third?: number };
 
-const rowKey = (tid: string, year: number) => `standings-archive:v1:${tid}:${year}`;
-const yearsKey = (tid: string) => `standings-archive-years:v1:${tid}`;
+const legacyRowKey = (tid: string, year: number) => `standings-archive:v1:${tid}:${year}`;
+const legacyYearsKey = (tid: string) => `standings-archive-years:v1:${tid}`;
 
-async function getYears(tid: string): Promise<number[]> {
+async function legacyYears(tid: string): Promise<number[]> {
   try {
-    const raw = await redis.get(yearsKey(tid));
+    const raw = await redis.get(legacyYearsKey(tid));
     if (!raw) return [];
     const arr = JSON.parse(raw as string) as number[];
-    return Array.isArray(arr) ? arr.filter((y) => typeof y === 'number').sort((a, b) => b - a) : [];
+    return Array.isArray(arr) ? arr.filter((y) => typeof y === 'number') : [];
   } catch { return []; }
+}
+
+async function currentLeague() {
+  const cookieStore = await cookies();
+  const session = await getSessionContext(cookieStore.get(SESSION_COOKIE_NAME)?.value);
+  return session.user && session.pool ? session.pool : null;
 }
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const tid = searchParams.get('tournamentId') ?? '';
   if (!TOURNAMENT_IDS.has(tid)) return Response.json({ error: 'unknown tournament' }, { status: 400 });
+  if (userDataBackend() !== 'postgres') return Response.json({ tournamentId: tid, years: [] });
+  const league = await currentLeague();
+  if (!league) return Response.json({ error: 'Sign in to see past results.' }, { status: 401 });
+  const isFounder = league.id === DEFAULT_POOL_ID;
 
   const yearParam = searchParams.get('year');
   if (!yearParam) {
-    // List the banked years for this tournament.
-    return Response.json({ tournamentId: tid, years: await getYears(tid) });
+    // List the saved seasons for this tournament.
+    const years = new Set(await archiveSeasonsFor(league.id, tid));
+    if (isFounder) for (const y of await legacyYears(tid)) years.add(y);
+    return Response.json({ tournamentId: tid, years: [...years].sort((a, b) => b - a) });
   }
   const year = parseInt(yearParam, 10);
   if (isNaN(year)) return Response.json({ error: 'bad year' }, { status: 400 });
   try {
-    const raw = await redis.get(rowKey(tid, year));
-    if (!raw) return Response.json({ tournamentId: tid, year, available: false, standings: [] });
-    const data = JSON.parse(raw as string) as { standings: ArchiveRow[]; savedAt: string; payouts?: ArchivePayouts };
-    return Response.json({ tournamentId: tid, year, available: true, standings: data.standings ?? [], payouts: data.payouts ?? null, savedAt: data.savedAt ?? null });
+    const saved = await readStandingsArchive(league.id, tid, year);
+    if (saved) return Response.json({ tournamentId: tid, year, available: true, ...saved });
+    if (isFounder) {
+      const raw = await redis.get(legacyRowKey(tid, year));
+      if (raw) {
+        const data = JSON.parse(raw as string) as { standings: ArchiveRow[]; savedAt: string; payouts?: ArchivePayouts };
+        await saveStandingsArchive(league.id, tid, year, data.standings ?? [], data.payouts ?? null);
+        return Response.json({ tournamentId: tid, year, available: true, standings: data.standings ?? [], payouts: data.payouts ?? null, savedAt: data.savedAt ?? null });
+      }
+    }
+    return Response.json({ tournamentId: tid, year, available: false, standings: [] });
   } catch {
     return Response.json({ tournamentId: tid, year, available: false, standings: [] });
   }
 }
 
 export async function POST(req: NextRequest) {
+  if (userDataBackend() !== 'postgres') return Response.json({ ok: true, skipped: 'no database' });
+  const league = await currentLeague();
+  if (!league) return Response.json({ error: 'Sign in first.' }, { status: 401 });
   let body: { tournamentId?: string; year?: number; standings?: ArchiveRow[]; payouts?: ArchivePayouts };
   try { body = await req.json(); } catch { return Response.json({ error: 'bad body' }, { status: 400 }); }
 
@@ -59,17 +84,6 @@ export async function POST(req: NextRequest) {
   // Require a real, non-trivial standings payload so a partial/empty client render can't clobber a
   // good archive.
   if (standings.length < 1) return Response.json({ error: 'empty standings' }, { status: 400 });
-
-  // Don't let a smaller payload overwrite a larger banked one (guards against a mid-load render).
-  try {
-    const existingRaw = await redis.get(rowKey(tid, year));
-    if (existingRaw) {
-      const existing = JSON.parse(existingRaw as string) as { standings?: ArchiveRow[] };
-      if ((existing.standings?.length ?? 0) > standings.length) {
-        return Response.json({ ok: true, skipped: 'existing archive is larger' });
-      }
-    }
-  } catch { /* ignore, proceed to write */ }
 
   const clean: ArchiveRow[] = standings.slice(0, 500).map((r) => ({
     place: Number(r.place) || 0,
@@ -92,12 +106,9 @@ export async function POST(req: NextRequest) {
     : undefined;
 
   try {
-    await redis.set(rowKey(tid, year), JSON.stringify({ standings: clean, payouts, savedAt: new Date().toISOString() }));
-    const years = await getYears(tid);
-    if (!years.includes(year)) {
-      years.push(year);
-      await redis.set(yearsKey(tid), JSON.stringify(years.sort((a, b) => b - a)));
-    }
+    // A smaller (partly loaded) snapshot never replaces a larger one.
+    const saved = await saveStandingsArchive(league.id, tid, year, clean, payouts ?? null);
+    if (!saved) return Response.json({ ok: true, skipped: 'existing archive is larger' });
   } catch {
     return Response.json({ error: 'store failed' }, { status: 500 });
   }

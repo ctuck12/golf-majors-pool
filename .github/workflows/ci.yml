@@ -1,0 +1,57 @@
+# Checks every push and pull request before it reaches production (Vercel deploys main on its own,
+# so a red check here is the warning to fix or revert). Typecheck, lint, build, then API smoke tests
+# against a throwaway Postgres + Redis.
+name: Checks
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      NODE_OPTIONS: --max-old-space-size=8192
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npx tsc --noEmit -p .
+      - name: Lint
+        run: npx eslint app
+      - name: Build
+        run: npm run build
+      - name: API smoke tests
+        env:
+          USER_DATA_BACKEND: postgres
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/ci
+          REDIS_URL: redis://localhost:6379
+          CRON_SECRET: ci-secret
+        run: |
+          npx next start -p 3000 > next.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://localhost:3000/api/auth/session > /dev/null && break; sleep 1; done
+          BASE_URL=http://localhost:3000 CRON_SECRET=ci-secret node tests/api-smoke.mjs || (tail -50 next.log; exit 1)

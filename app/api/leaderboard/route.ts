@@ -4,6 +4,7 @@ import { PLAYER_POOL_WITH_PGA_IDS } from '@/app/lib/player-pool';
 import { getDynamicPlayers } from '@/app/lib/dynamic-pool-store';
 import { parseMongo, type SlashGolfLeaderboardRow } from '@/app/lib/slashgolf';
 import { currentTournamentMeta, getTournamentMeta, type TournamentMeta } from '@/app/lib/tournament-config';
+import { espnEventIdFor } from '@/app/lib/espn-event-ids';
 import {
   getScorecardCache,
   getRoundLeaderStore,
@@ -568,6 +569,7 @@ export async function GET(request: Request) {
     fieldBonusEvents,
     coursePar: meta.par,
     season: dataSeason,
+    espnEventId: meta.espnEventId ?? (await espnEventIdFor(tournamentId, dataSeason)),
     fetchedAt: new Date().toISOString(),
     players,
     odds: odds.players,
