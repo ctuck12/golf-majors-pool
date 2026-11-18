@@ -93,6 +93,14 @@ export const setEntryPaymentStatus = async (userId: string, tournamentId: Tourna
   (await postgresOnly()).setEntryPaymentStatus(userId, tournamentId, memberId, status);
 export const claimReminder = async (userId: string, tournamentId: TournamentId, kind: 'pay' | 'picks') =>
   (await postgresOnly()).claimReminder(userId, tournamentId, kind);
+export const savePushToken = async (userId: string, token: string, platform: string) => (await postgresOnly()).savePushToken(userId, token, platform);
+export const removePushToken = async (userId: string, token: string) => (await postgresOnly()).removePushToken(userId, token);
+export const deletePushTokens = async (tokens: string[]) => (await postgresOnly()).deletePushTokens(tokens);
+export const pushTokensFor = async (userIds: string[]) => (await postgresOnly()).pushTokensFor(userIds);
+export const leagueMemberIds = async (leagueId: string, exceptUserId?: string) => (await postgresOnly()).leagueMemberIds(leagueId, exceptUserId);
+export const membersMissingPicks = async (tournamentId: TournamentId, season: number) => (await postgresOnly()).membersMissingPicks(tournamentId, season);
+export const membersWhoPicked = async (tournamentId: TournamentId, season: number, golferId: number) => (await postgresOnly()).membersWhoPicked(tournamentId, season, golferId);
+export const membersWithPicks = async (tournamentId: TournamentId, season: number) => (await postgresOnly()).membersWithPicks(tournamentId, season);
 export const setSeasonSettings = async (userId: string, fee: number | null, plan: PayoutPlan | null) =>
   (await postgresOnly()).setSeasonSettings(userId, fee, plan);
 export const readLeagueHistory = async (leagueId: string) => (await postgresOnly()).readLeagueHistory(leagueId);

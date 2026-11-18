@@ -10,6 +10,7 @@ import { VenmoMark } from './venmo-mark';
 import { PoolMessageModal } from './pool-message';
 import { PayoutPlanModal } from './payout-plan-ui';
 import { CommissionerGuide } from './commissioner-guide';
+import { PushPrompt } from './push-client';
 import { EntryFeeTracker } from './entry-fee-tracker';
 import { SeasonSettingsModal } from './season-settings';
 import { currentTournamentMeta, effectiveLockTime } from '@/app/lib/tournament-config';
@@ -1203,6 +1204,7 @@ export default function Page() {
           compact={isMobile}
           marginTop={isMobile ? 10 : 16}
         />
+        <PushPrompt compact={isMobile} marginTop={isMobile ? 10 : 16} onOpenTab={p.openTabFromPush} />
         {mainTab === 'Standings' ? (
           <section
             style={{

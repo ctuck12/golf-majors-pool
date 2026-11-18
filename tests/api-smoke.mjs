@@ -119,6 +119,14 @@ await check('entry fee tracking: member says paid, commissioner confirms', async
   assert.equal((await call('bob', '/api/commissioner/reminders', 'POST', { tournamentId: 'masters', kind: 'pay' })).status, 403);
 });
 
+await check('push notification tokens register and unregister', async () => {
+  const token = 'ab'.repeat(32);
+  assert.equal((await call('bob', '/api/push/register', 'POST', { token: 'not-a-token' })).status, 400);
+  assert.equal((await call('bob', '/api/push/register', 'POST', { token, platform: 'ios' })).status, 200);
+  assert.equal((await call('bob', '/api/push/register', 'DELETE', { token })).status, 200);
+  assert.equal((await call('nobody', '/api/push/register', 'POST', { token })).status, 401);
+});
+
 await check('one commissioner: hand over and back', async () => {
   let r = await call('admin', `/api/commissioner/members/${jar.bobId}`, 'PATCH', { role: 'commissioner' });
   assert.equal(r.status, 200, JSON.stringify(r.json));

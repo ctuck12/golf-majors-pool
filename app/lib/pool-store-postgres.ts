@@ -1348,6 +1348,68 @@ export async function readLeagueHistory(leagueId: string) {
   `;
 }
 
+// ── Push notification tokens and audiences ──────────────────────────────────
+
+export async function savePushToken(userId: string, token: string, platform: string) {
+  await db()`
+    insert into push_tokens (token, user_id, platform) values (${token}, ${userId}, ${platform})
+    on conflict (token) do update set user_id = excluded.user_id, platform = excluded.platform, updated_at = now()
+  `;
+}
+
+export async function removePushToken(userId: string, token: string) {
+  await db()`delete from push_tokens where token = ${token} and user_id = ${userId}`;
+}
+
+export async function deletePushTokens(tokens: string[]) {
+  if (tokens.length) await db()`delete from push_tokens where token in ${db()(tokens)}`;
+}
+
+export async function pushTokensFor(userIds: string[]) {
+  if (userIds.length === 0) return [];
+  const rows = await db()<{ token: string }[]>`select token from push_tokens where user_id in ${db()(userIds)}`;
+  return rows.map((row) => row.token);
+}
+
+// Everyone in a league except one person (e.g. the commissioner who opened picks).
+export async function leagueMemberIds(leagueId: string, exceptUserId?: string) {
+  const rows = await db()<{ user_id: string }[]>`select user_id from league_members where league_id = ${leagueId}`;
+  return rows.map((row) => row.user_id).filter((id) => id !== exceptUserId);
+}
+
+// Members of leagues with picks open for an event who haven't made picks yet.
+export async function membersMissingPicks(tournamentId: TournamentId, season: number) {
+  const rows = await db()<{ user_id: string }[]>`
+    select distinct m.user_id
+    from league_tournaments lt
+    join league_members m on m.league_id = lt.league_id
+    left join rosters r on r.league_id = m.league_id and r.user_id = m.user_id and r.tournament_id = lt.tournament_id
+      and r.season = ${season} and r.golfer_ids is not null and cardinality(r.golfer_ids) > 0
+    where lt.tournament_id = ${tournamentId} and lt.picks_open = true and coalesce(lt.state_season, 2026) = ${season}
+      and r.user_id is null
+  `;
+  return rows.map((row) => row.user_id);
+}
+
+// Members (in any league) who picked a golfer for an event.
+export async function membersWhoPicked(tournamentId: TournamentId, season: number, golferId: number) {
+  const rows = await db()<{ user_id: string }[]>`
+    select distinct user_id from rosters
+    where tournament_id = ${tournamentId} and season = ${season} and ${golferId} = any(golfer_ids)
+  `;
+  return rows.map((row) => row.user_id);
+}
+
+// Everyone with picks in for an event, in any league.
+export async function membersWithPicks(tournamentId: TournamentId, season: number) {
+  const rows = await db()<{ user_id: string }[]>`
+    select distinct r.user_id from rosters r
+    join league_members m on m.league_id = r.league_id and m.user_id = r.user_id
+    where r.tournament_id = ${tournamentId} and r.season = ${season} and r.golfer_ids is not null and cardinality(r.golfer_ids) > 0
+  `;
+  return rows.map((row) => row.user_id);
+}
+
 // How members pay when it isn't through the commissioner's Venmo (null clears it).
 export async function setPaymentNote(requestingUserId: string, note: string | null) {
   const clean = note?.trim().slice(0, 200) || null;

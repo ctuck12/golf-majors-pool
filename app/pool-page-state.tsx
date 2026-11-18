@@ -10,7 +10,8 @@ import { ENTRY_FEE_NOTE } from '@/app/lib/venmo';
 import { currentTournamentMeta, effectiveLockTime, getTournamentMeta, latestStartedSeason, picksSeason } from '@/app/lib/tournament-config';
 import { History, Lock, Save } from 'lucide-react';
 import { buildPlaceholderScoreBreakdown } from './lib/scoring';
-import { SALARY_CAP, REQUIRED_GOLFERS, espnEventIdFor, COMMISSIONER_DISPLAY_NAME, FOUNDER_POOL_ID, TOURNAMENTS, PLAYER_FLAGS, canonicalName, cutShowAt, cutHideAt, pgaPhoto, playerPhotoSrc, photoOnError, PLAYER_POOL, ORIGINAL_WORLD_RANK_BY_ID, DEFAULT_ROSTERS, REPORT_TOURNAMENTS, POOL_SEASONS, rosterInSeason, tieBreakInSeason, withSeasonPicks, STATIC_ENTRIES, NO_SESSION_FLAGS, buildPricedPlayers, normalizeName, formatRosterField, parseRosterField, clearStoredMainTab, readStoredSession, writeStoredSession, clearStoredSession, purgeStoredAccounts, readRoster, saveGuestRoster, readFeedCache, writeFeedCache, getCurrentRoundLabel, centralInputToUtc, getTournamentEventWindow, getDisplayTournamentWindow, getTournamentCardStatuses, getDefaultTournamentId, formatTournamentStartDate, readJson, resetViewAfterMainTabChange, formatTeeTime, teeTimeIsPast, type TournamentId, type MainTab, type ReportType, type FeedRow, type FullFieldPlayer, type ScorecardData, type ArchivedStandingRow, type ArchivedStandingsData, type FeedResponse, type AuthUser, type PoolInfo, type PoolEntry, type CommissionerMember, type AuthMode, type StandingEntry, type SessionPayload, type SessionFlags, setCommissionerPreTournamentView, setLockTimeOverrides } from './pool-data';
+import { unregisterPushToken, usePushRegistration } from './push-client';
+import { MAIN_TABS, SALARY_CAP, REQUIRED_GOLFERS, espnEventIdFor, COMMISSIONER_DISPLAY_NAME, FOUNDER_POOL_ID, TOURNAMENTS, PLAYER_FLAGS, canonicalName, cutShowAt, cutHideAt, pgaPhoto, playerPhotoSrc, photoOnError, PLAYER_POOL, ORIGINAL_WORLD_RANK_BY_ID, DEFAULT_ROSTERS, REPORT_TOURNAMENTS, POOL_SEASONS, rosterInSeason, tieBreakInSeason, withSeasonPicks, STATIC_ENTRIES, NO_SESSION_FLAGS, buildPricedPlayers, normalizeName, formatRosterField, parseRosterField, clearStoredMainTab, readStoredSession, writeStoredSession, clearStoredSession, purgeStoredAccounts, readRoster, saveGuestRoster, readFeedCache, writeFeedCache, getCurrentRoundLabel, centralInputToUtc, getTournamentEventWindow, getDisplayTournamentWindow, getTournamentCardStatuses, getDefaultTournamentId, formatTournamentStartDate, readJson, resetViewAfterMainTabChange, formatTeeTime, teeTimeIsPast, type TournamentId, type MainTab, type ReportType, type FeedRow, type FullFieldPlayer, type ScorecardData, type ArchivedStandingRow, type ArchivedStandingsData, type FeedResponse, type AuthUser, type PoolInfo, type PoolEntry, type CommissionerMember, type AuthMode, type StandingEntry, type SessionPayload, type SessionFlags, setCommissionerPreTournamentView, setLockTimeOverrides } from './pool-data';
 
 export type SalaryMaps = { salaries: Record<number, number>; worldRanks: Record<number, number> };
 
@@ -1043,6 +1044,8 @@ export function usePoolPage() {
     setAuthError('');
 
     try {
+      // Stop this phone's notifications for the account signing out (needs the session still).
+      await unregisterPushToken();
       await readJson<{ ok: boolean }>('/api/auth/logout', { method: 'POST' });
       setSessionUser(null);
       setPool(null);
@@ -2812,6 +2815,13 @@ export function usePoolPage() {
 
   const headerTabActiveColor = '#63d9ea';
 
+  // Push notifications in the iPhone app: keep this device registered, and open the tab a tapped
+  // notification points to.
+  const openTabFromPush = (tab: string) => {
+    if ((MAIN_TABS as readonly string[]).includes(tab)) handleMainTabChange(tab as MainTab);
+  };
+  usePushRegistration(sessionUser?.id ?? null, openTabFromPush);
+
   return {
     showPayWinnersPrompt,
     initialTournament,
@@ -3241,6 +3251,7 @@ export function usePoolPage() {
     myPaymentStatus,
     showMyPaymentStatus,
     reportMyPayment,
+    openTabFromPush,
     paysEntryFeeInApp,
     openEntryFeePayment,
     submittedEntries,

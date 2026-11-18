@@ -1,5 +1,7 @@
 import { cookies } from 'next/headers';
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
+import { pushPicksOpen } from '../../../lib/push-triggers';
+import { picksSeason } from '../../../lib/tournament-config';
 import {
   getSessionContext,
   SESSION_COOKIE_NAME,
@@ -44,6 +46,10 @@ export async function PATCH(request: Request) {
     }
     if (typeof body.picksOpen === 'boolean') {
       pool = await updatePoolPicksOpen(session.user.id, body.tournamentId, body.picksOpen);
+      if (body.picksOpen && session.pool) {
+        const input = { leagueId: session.pool.id, leagueName: session.pool.name, tournamentId: body.tournamentId, season: picksSeason(body.tournamentId), commissionerId: session.user.id };
+        after(() => pushPicksOpen(input).catch(() => {}));
+      }
     }
     return NextResponse.json({ pool });
   } catch (error) {

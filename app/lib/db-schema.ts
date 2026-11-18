@@ -229,6 +229,15 @@ create table if not exists league_reminders_sent (
   primary key (league_id, tournament_id, season, kind)
 );
 
+-- iPhone push notification tokens (one row per device; a device moves to whoever signs in on it).
+create table if not exists push_tokens (
+  token text primary key,
+  user_id text not null references users(id) on delete cascade,
+  platform text not null default 'ios',
+  updated_at timestamptz not null default now()
+);
+create index if not exists push_tokens_user on push_tokens (user_id);
+
 -- Each league's final standings per tournament and season ("Past Results"). Saved when a member
 -- views a finished tournament; the larger snapshot wins.
 create table if not exists league_standings_archive (
@@ -261,4 +270,5 @@ alter table league_standings_archive enable row level security;
 alter table redis_backups enable row level security;
 alter table league_entry_payments enable row level security;
 alter table league_reminders_sent enable row level security;
+alter table push_tokens enable row level security;
 `;
