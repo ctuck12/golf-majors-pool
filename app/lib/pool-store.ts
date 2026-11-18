@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { ensureSchema } from './db';
 import type { PassAction } from './league-passes';
+import type { PayoutPlan } from './payout-plan';
 import * as postgresStore from './pool-store-postgres';
 import * as redisStore from './pool-store-redis';
 import { normalizeEmail, type LeagueRole, type MemberUpdates, type TournamentId, type TournamentPayouts } from './pool-store-shared';
@@ -86,6 +87,12 @@ async function postgresOnly() {
   return postgresStore;
 }
 
+export const setPaymentNote = async (userId: string, note: string | null) =>
+  (await postgresOnly()).setPaymentNote(userId, note);
+export const setLeaguePayoutPlan = async (userId: string, plan: PayoutPlan | null) =>
+  (await postgresOnly()).setLeaguePayoutPlan(userId, plan);
+export const clearPoolPayouts = async (userId: string, tournamentId: TournamentId) =>
+  (await postgresOnly()).clearPoolPayouts(userId, tournamentId);
 export const createLeague = async (userId: string, input: { name: string; plan: string; memberLimit: number | null }) =>
   (await postgresOnly()).createLeague(userId, input);
 export const switchActiveLeague = async (userId: string, leagueId: string) =>

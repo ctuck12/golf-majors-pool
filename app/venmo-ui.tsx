@@ -47,7 +47,7 @@ const inputStyle: CSSProperties = {
   color: '#0f1720',
 };
 
-const primaryButton = (busy = false, color = navy): CSSProperties => ({
+export const primaryButton = (busy = false, color = navy): CSSProperties => ({
   border: 'none',
   borderRadius: 12,
   padding: '12px 16px',
@@ -59,7 +59,7 @@ const primaryButton = (busy = false, color = navy): CSSProperties => ({
   opacity: busy ? 0.7 : 1,
 });
 
-const secondaryButton: CSSProperties = {
+export const secondaryButton: CSSProperties = {
   border: '1px solid #d7e0e8',
   borderRadius: 12,
   padding: '11px 16px',
@@ -70,7 +70,7 @@ const secondaryButton: CSSProperties = {
   cursor: 'pointer',
 };
 
-const sectionLabel: CSSProperties = {
+export const sectionLabel: CSSProperties = {
   fontSize: 11,
   textTransform: 'uppercase',
   fontWeight: 800,
@@ -163,7 +163,7 @@ export function VenmoFallbackNotice({ url, onClose }: { url: string | null; onCl
 
 // ── Shared modal frame ───────────────────────────────────────────────────────
 
-function Modal({ title, onClose, children, zIndex = 1050 }: { title: ReactNode; onClose: () => void; children: ReactNode; zIndex?: number }) {
+export function Modal({ title, onClose, children, zIndex = 1050 }: { title: ReactNode; onClose: () => void; children: ReactNode; zIndex?: number }) {
   return (
     <div
       onClick={onClose}
@@ -197,7 +197,7 @@ function Modal({ title, onClose, children, zIndex = 1050 }: { title: ReactNode; 
   );
 }
 
-function ErrorText({ children }: { children: ReactNode }) {
+export function ErrorText({ children }: { children: ReactNode }) {
   if (!children) return null;
   return <div style={{ fontSize: 13, color: '#a61b1b', lineHeight: 1.4 }}>{children}</div>;
 }
@@ -383,6 +383,7 @@ export function EntryFeesModal<P>({
   tournaments,
   entryFees,
   commissionerVenmo,
+  paymentNote,
   onClose,
   onPool,
   onAddVenmo,
@@ -390,6 +391,8 @@ export function EntryFeesModal<P>({
   open: boolean;
   tournaments: { id: TournamentId; label: string }[];
   entryFees: Partial<Record<TournamentId, number>>;
+  // How members pay when the commissioner has no Venmo (e.g. "Cash or Zelle to Clayton").
+  paymentNote: string | null;
   // The commissioner's own Venmo (members pay entry fees to it).
   commissionerVenmo: string | null;
   onClose: () => void;
@@ -399,6 +402,7 @@ export function EntryFeesModal<P>({
   const [fees, setFees] = useState<Record<string, string>>(() =>
     Object.fromEntries(tournaments.map((t) => [t.id, entryFees[t.id] ? String(entryFees[t.id]) : ''])),
   );
+  const [note, setNote] = useState(paymentNote ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
@@ -408,7 +412,7 @@ export function EntryFeesModal<P>({
   const save = async () => {
     setError('');
     setSaved(false);
-    const body: { fees: Record<string, number | null> } = { fees: {} };
+    const body: { fees: Record<string, number | null>; paymentNote: string } = { fees: {}, paymentNote: note };
     for (const t of tournaments) {
       const raw = fees[t.id]?.replace(/[$,\s]/g, '') ?? '';
       if (raw === '') {
@@ -448,6 +452,24 @@ export function EntryFeesModal<P>({
             <button type="button" onClick={onAddVenmo} style={{ ...primaryButton(false, venmoBlue), padding: '9px 14px', fontSize: 14, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               Add your <VenmoMark />
             </button>
+          </div>
+        </div>
+      ) : null}
+
+      {!commissionerVenmo ? (
+        <div>
+          <label htmlFor="payment-note" style={{ ...sectionLabel, display: 'block' }}>Don&apos;t use Venmo? How members pay you</label>
+          <textarea
+            id="payment-note"
+            value={note}
+            maxLength={200}
+            rows={2}
+            onChange={(event) => { setSaved(false); setNote(event.target.value); }}
+            placeholder="e.g. Cash, or Zelle to Clayton at 555-123-4567"
+            style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.4 }}
+          />
+          <div style={{ fontSize: 12.5, color: '#6b7b88', marginTop: 6, lineHeight: 1.4 }}>
+            Members see this when they submit their picks, and it goes in your tournament-week text.
           </div>
         </div>
       ) : null}
@@ -555,7 +577,7 @@ export function PayWinnersModal<P>({
         </div>
       ) : rows.length === 0 ? (
         <div style={{ fontSize: 14, color: '#3d4b58', lineHeight: 1.5 }}>
-          No payouts are set for {tournamentLabel}. Set the 1st, 2nd and 3rd place amounts in <b>Tournament Payouts</b>, then come back here.
+          No payouts are set for {tournamentLabel}. Set them up in <b>Payouts</b>, then come back here.
         </div>
       ) : (
         <>
@@ -584,7 +606,7 @@ export function PayWinnersModal<P>({
                 {row.sent ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13.5, fontWeight: 800, color: '#0f7a3d' }}>
-                      <Check size={16} /> {row.userId === currentUserId ? 'Paid' : <>Opened in <VenmoMark tone="blue" /></>} {new Date(row.sent.sentAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      <Check size={16} /> Paid {new Date(row.sent.sentAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                     </span>
                     <span style={{ flex: 1 }} />
                     {row.userId !== currentUserId ? (
@@ -611,14 +633,24 @@ export function PayWinnersModal<P>({
                     That&apos;s you: mark as paid
                   </button>
                 ) : (
-                  <button
-                    type="button"
-                    disabled={busyPlace === row.place}
-                    onClick={() => pay(row)}
-                    style={{ ...primaryButton(busyPlace === row.place, venmoBlue), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-                  >
-                    Pay {formatMoney(row.amount)} on <VenmoMark /> <ExternalLink size={15} />
-                  </button>
+                  <div style={{ display: 'grid', gap: 8 }}>
+                    <button
+                      type="button"
+                      disabled={busyPlace === row.place}
+                      onClick={() => pay(row)}
+                      style={{ ...primaryButton(busyPlace === row.place, venmoBlue), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                    >
+                      Pay {formatMoney(row.amount)} on <VenmoMark /> <ExternalLink size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busyPlace === row.place}
+                      onClick={() => void record(row.place, row.userId, row.amount, true)}
+                      style={{ background: 'none', border: 'none', padding: 2, color: '#2f5f96', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}
+                    >
+                      Paid another way (cash, Zelle…): mark as paid
+                    </button>
+                  </div>
                 )}
               </div>
             ))}

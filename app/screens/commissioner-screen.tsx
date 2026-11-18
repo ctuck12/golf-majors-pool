@@ -4,7 +4,7 @@ import { type ReactNode } from 'react';
 import { VenmoMark } from '../venmo-mark';
 import { formatVenmo } from '@/app/lib/venmo';
 import { currentTournamentMeta, effectiveLockTime } from '@/app/lib/tournament-config';
-import { AlertCircle, ArrowLeft, Calendar, CircleUserRound, CheckCircle2, DollarSign, Eye, EyeOff, Globe, Lock, Pencil, RefreshCw, Save, Search, Send, Trophy, Users, Wallet } from 'lucide-react';
+import { AlertCircle, ArrowLeft, BookOpen, ChevronRight, Calendar, CircleUserRound, CheckCircle2, DollarSign, Eye, EyeOff, Globe, Lock, MessageSquareText, Pencil, RefreshCw, Save, Search, Send, Trophy, Users, Wallet } from 'lucide-react';
 import { SALARY_CAP, REQUIRED_GOLFERS, totalParFor, TOURNAMENTS, getFlagSrc, getCountryLabel, TOURNAMENT_TAB_LOGOS, TOURNAMENT_EVENT_LOGOS, eventLogoStyle, KNOCKOUT_TAB_LOGOS, pgaPhoto, playerPhotoSrc, photoOnError, MOBILE_TWO_LINE_NAMES, MOBILE_CUSTOM_SPLITS, utcToCentralInput, shouldShowPreTournamentView, formatRefresh, fieldStyle } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
 
@@ -54,14 +54,15 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
     setEntryFeesOpen,
     setAdminLeaguesOpen,
     setPayWinnersOpen,
+    setPoolMessageOpen,
+    setPayoutPlanOpen,
+    setGuideOpen,
     commissionerPlayerSearch,
     setCommissionerPlayerSearch,
     setCommissionerRosterMemberId,
     commissionerRosterSelection,
     commissionerTieBreakInput,
     setCommissionerTieBreakInput,
-    payoutForm,
-    setPayoutForm,
     winnerScoreInput,
     setWinnerScoreInput,
     clearLeaderBusy,
@@ -97,7 +98,6 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
     handleCreateMember,
     handleToggleLineupLock,
     handleTogglePicksOpen,
-    handleSavePayouts,
     handleClearRoundLeader,
     handleMarkPlayerStatus,
     handleSaveWinnerScore,
@@ -125,10 +125,31 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
     entriesWarningPalette,
     salaryColor,
   } = p;
+  const guideStepsLeft = [!!(sessionUser?.venmo || pool?.paymentNote), !!Object.keys(pool?.entryFees ?? {}).length, !!pool?.payoutPlan, (pool?.memberCount ?? 0) > 1].filter((done) => !done).length;
   return (
     <main style={{ marginTop: isMobile ? 12 : 24, display: 'grid', gap: isMobile ? 12 : 20 }}>
             {commissionerConsoleView === 'dashboard' ? (
               <>
+              {pool?.role === 'commissioner' ? (
+                <button
+                  type="button"
+                  onClick={() => setGuideOpen(true)}
+                  style={{ width: '100%', textAlign: 'left', border: 'none', borderRadius: 16, padding: isMobile ? '13px 14px' : '16px 18px', background: 'linear-gradient(135deg, #173b63 0%, #2f5f96 100%)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 10px 24px rgba(23,59,99,0.25)' }}
+                >
+                  <div style={{ width: isMobile ? 36 : 42, height: isMobile ? 36 : 42, borderRadius: 11, background: 'rgba(255,255,255,0.16)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                    <BookOpen size={isMobile ? 19 : 22} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: isMobile ? 15 : 16, fontWeight: 900 }}>
+                      Commissioner Guide{guideStepsLeft > 0 ? <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 900, background: '#F4BC41', color: '#173b63', borderRadius: 999, padding: '2px 8px', verticalAlign: 'middle' }}>START HERE</span> : null}
+                    </div>
+                    <div style={{ marginTop: 2, fontSize: isMobile ? 12 : 13, color: 'rgba(255,255,255,0.82)' }}>
+                      {guideStepsLeft > 0 ? `${guideStepsLeft} setup ${guideStepsLeft === 1 ? 'step' : 'steps'} left · how it all works · our blueprint` : 'Setup, tournament week, payouts and our blueprint'}
+                    </div>
+                  </div>
+                  <ChevronRight size={18} style={{ flexShrink: 0, opacity: 0.8 }} />
+                </button>
+              ) : null}
             <section
               style={{
                 background: '#fff',
@@ -479,8 +500,9 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))', gap: isMobile ? 10 : 14 }}>
                 {([
                   { key: 'allLeagues', title: 'All Leagues', sub: 'Every league, its commissioner and plan', Icon: Users, open: () => setAdminLeaguesOpen(true), adminOnly: true },
+                  { key: 'poolMessage', title: 'Message Your Pool', sub: `Tournament-week text for ${entriesTournament.name}`, Icon: MessageSquareText, open: () => setPoolMessageOpen(true) },
                   { key: 'entryFees', title: <>Entry Fees &amp; <VenmoMark tone="blue" /></>, sub: pool?.venmo ? `Members pay ${formatVenmo(pool.venmo.handle)}` : 'Set fees and who collects them', Icon: DollarSign, open: () => setEntryFeesOpen(true) },
-                  { key: 'payouts' as const, title: 'Tournament Payouts', sub: 'Set 1st / 2nd / 3rd place amounts', Icon: Trophy },
+                  { key: 'payouts', title: 'Payouts', sub: pool?.payoutPlan ? 'Worked out from the pot automatically' : 'Set how the pot is split', Icon: Trophy, open: () => setPayoutPlanOpen(true) },
                   { key: 'payWinners', title: 'Pay Winners', sub: <>Send winnings on <VenmoMark tone="blue" /> once final</>, Icon: Send, open: () => setPayWinnersOpen(true) },
                   { key: 'myVenmo', title: 'Your Venmo', sub: sessionUser?.venmo ? formatVenmo(sessionUser.venmo) : 'Add your Venmo', Icon: Wallet, open: () => setVenmoModalOpen(true) },
                   { key: 'markStatus' as const, title: 'Mark WD / DQ / MDF', sub: "Override a player's status", Icon: AlertCircle },
@@ -537,30 +559,6 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                     <button onClick={() => { setPoolToolModal(null); setPoolToolConfirm(null); }} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: 8, width: 30, height: 30, cursor: 'pointer', fontSize: 15, flexShrink: 0 }}>&#10005;</button>
                   </div>
                   <div style={{ padding: 20, display: 'grid', gap: 14 }}>
-
-                    {poolToolModal === 'payouts' && (
-                      <>
-                        <div style={{ fontSize: 13, color: '#5b6b79', lineHeight: 1.5 }}>Set the 1st, 2nd, and 3rd place payout amounts for the upcoming or active tournament. Leave a place at 0 if it doesn&apos;t pay (for example, winner takes all).</div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-                          {([['1st place', 'first'], ['2nd place', 'second'], ['3rd place', 'third']] as const).map(([label, key]) => (
-                            <label key={key} style={{ display: 'grid', gap: 6 }}>
-                              <span style={{ fontSize: 12, textTransform: 'uppercase', fontWeight: 800, color: '#5b6b79' }}>{label}</span>
-                              <input type="number" min="0" step="1" value={payoutForm[key]} onChange={(e) => setPayoutForm((c) => ({ ...c, [key]: e.target.value }))} placeholder="0" style={fieldStyle()} />
-                            </label>
-                          ))}
-                        </div>
-                        <button
-                          onClick={() => setPoolToolConfirm({ title: 'Save payouts?', message: `Save payouts for ${commissionerTournamentLabel} — 1st: ${payoutForm.first || 0}, 2nd: ${payoutForm.second || 0}, 3rd: ${payoutForm.third || 0}?`, confirmLabel: 'Save payouts', onConfirm: () => { void handleSavePayouts(); setPoolToolModal(null); setPoolToolConfirm(null); } })}
-                          disabled={!canManagePool || commissionerBusy}
-                          style={{ border: 'none', borderRadius: 12, padding: '12px 16px', background: entriesTournamentSolid, color: '#fff', fontWeight: 900, cursor: (!canManagePool || commissionerBusy) ? 'not-allowed' : 'pointer', opacity: (!canManagePool || commissionerBusy) ? 0.5 : 1 }}
-                        >
-                          Save payouts
-                        </button>
-                        {(commissionerError || commissionerSuccess) && (
-                          <div style={{ fontSize: 13, fontWeight: 600, color: commissionerError ? '#dc2626' : '#16a34a' }}>{commissionerError || commissionerSuccess}</div>
-                        )}
-                      </>
-                    )}
 
                     {poolToolModal === 'tiebreak' && (
                       <>

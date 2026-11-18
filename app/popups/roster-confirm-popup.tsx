@@ -16,6 +16,7 @@ export function RosterConfirmPopup({ p }: { p: PoolPage }) {
     hasSubmittedRoster,
     entryFee,
     entryFeeVenmo,
+    pool,
     paysEntryFeeInApp,
     openEntryFeePayment,
     orderedRosterPlayers,
@@ -91,7 +92,9 @@ export function RosterConfirmPopup({ p }: { p: PoolPage }) {
                 )}
                 {!hasSubmittedRoster && entryFee > 0 && !entryFeeVenmo && (
                   <div style={{ fontSize: 11.5, color: entriesTournamentId === 'open' ? entriesTournamentBg : '#5b6b79', lineHeight: 1.5, marginBottom: 10 }}>
-                    *Your commissioner hasn&apos;t added their <VenmoMark tone="blue" /> yet, so pay the {formatMoney(entryFee)} entry fee to them directly.
+                    {pool?.paymentNote
+                      ? <>*After you submit, pay the {formatMoney(entryFee)}{' '}entry fee: {pool.paymentNote}</>
+                      : <>*After you submit, pay the {formatMoney(entryFee)}{' '}entry fee to your commissioner directly.</>}
                   </div>
                 )}
 

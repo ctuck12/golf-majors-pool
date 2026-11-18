@@ -1,3 +1,4 @@
+import type { PayoutPlan } from './payout-plan';
 import { scryptSync } from 'node:crypto';
 import { PLAYER_POOL_WITH_PGA_IDS } from './player-pool';
 
@@ -61,7 +62,16 @@ export type PublicPool = {
   winnerScores: Partial<Record<TournamentId, number>>;
   // Entry fee per tournament, set by the league's commissioners.
   entryFees?: Partial<Record<TournamentId, number>>;
+  // How the league splits the pot (null: the commissioner types in amounts per tournament).
+  payoutPlan?: PayoutPlan | null;
+  // Per tournament: the event the payouts are for, its entries and pot, and whether the
+  // commissioner typed the amounts in (manual) rather than the plan working them out.
+  payoutInfo?: Partial<Record<TournamentId, PayoutInfo>>;
+  // How to pay the entry fee when it isn't through the commissioner's Venmo.
+  paymentNote?: string | null;
 };
+
+export type PayoutInfo = { season: number; entries: number; pot: number; manual: boolean };
 
 export type LeagueContact = { id: string; name: string; email: string; venmo?: string | null };
 
