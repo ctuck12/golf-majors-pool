@@ -104,6 +104,21 @@ await check('payout plan: checked, saved, and works out the amounts', async () =
   assert.equal(r.json.pool.paymentNote, 'Cash or Zelle');
 });
 
+await check('entry fee tracking: member says paid, commissioner confirms', async () => {
+  let r = await call('bob', '/api/entry-payments', 'POST', { tournamentId: 'masters', paid: true });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  assert.equal(r.json.pool.entryPayments.masters[jar.bobId], 'reported');
+  r = await call('admin', '/api/auth/session');
+  assert.equal(r.json.pool.entryPayments.masters[jar.bobId], 'reported');
+  r = await call('admin', '/api/commissioner/entry-payments', 'PATCH', { tournamentId: 'masters', userId: jar.bobId, status: 'confirmed' });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  // Taking back "I paid" doesn't undo the commissioner's confirmation.
+  r = await call('bob', '/api/entry-payments', 'POST', { tournamentId: 'masters', paid: false });
+  assert.equal(r.json.pool.entryPayments.masters[jar.bobId], 'confirmed');
+  assert.equal((await call('bob', '/api/commissioner/entry-payments', 'PATCH', { tournamentId: 'masters', userId: jar.bobId, status: null })).status, 403);
+  assert.equal((await call('bob', '/api/commissioner/reminders', 'POST', { tournamentId: 'masters', kind: 'pay' })).status, 403);
+});
+
 await check('one commissioner: hand over and back', async () => {
   let r = await call('admin', `/api/commissioner/members/${jar.bobId}`, 'PATCH', { role: 'commissioner' });
   assert.equal(r.status, 200, JSON.stringify(r.json));

@@ -921,6 +921,8 @@ export type PoolInfo = {
   payoutInfo?: Partial<Record<TournamentId, PayoutInfo>>;
   // How to pay the entry fee when it isn't through the commissioner's Venmo.
   paymentNote?: string | null;
+  // Entry fee status per tournament, by member id (members get only their own).
+  entryPayments?: Partial<Record<TournamentId, Record<string, 'reported' | 'confirmed'>>>;
   // Commissioners only: winners already paid this season.
   payoutsSent?: Partial<Record<TournamentId, { place: number; userId: string | null; amount: number; sentAt: string }[]>>;
 };

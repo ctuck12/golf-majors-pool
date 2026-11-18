@@ -4,7 +4,7 @@ import type { PassAction } from './league-passes';
 import type { PayoutPlan } from './payout-plan';
 import * as postgresStore from './pool-store-postgres';
 import * as redisStore from './pool-store-redis';
-import { normalizeEmail, type LeagueRole, type MemberUpdates, type TournamentId, type TournamentPayouts } from './pool-store-shared';
+import { normalizeEmail, type PaymentStatus, type LeagueRole, type MemberUpdates, type TournamentId, type TournamentPayouts } from './pool-store-shared';
 import redis from './redis';
 
 export {
@@ -87,6 +87,12 @@ async function postgresOnly() {
   return postgresStore;
 }
 
+export const reportEntryPayment = async (userId: string, tournamentId: TournamentId, paid: boolean) =>
+  (await postgresOnly()).reportEntryPayment(userId, tournamentId, paid);
+export const setEntryPaymentStatus = async (userId: string, tournamentId: TournamentId, memberId: string, status: PaymentStatus | null) =>
+  (await postgresOnly()).setEntryPaymentStatus(userId, tournamentId, memberId, status);
+export const claimReminder = async (userId: string, tournamentId: TournamentId, kind: 'pay' | 'picks') =>
+  (await postgresOnly()).claimReminder(userId, tournamentId, kind);
 export const setPaymentNote = async (userId: string, note: string | null) =>
   (await postgresOnly()).setPaymentNote(userId, note);
 export const setLeaguePayoutPlan = async (userId: string, plan: PayoutPlan | null) =>

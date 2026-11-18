@@ -350,6 +350,7 @@ export function usePoolPage() {
   const [poolMessageOpen, setPoolMessageOpen] = useState(false);
   const [payoutPlanOpen, setPayoutPlanOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [feeTrackerOpen, setFeeTrackerOpen] = useState(false);
   const [venmoFallbackUrl, setVenmoFallbackUrl] = useState<string | null>(null);
   const [showSubmittedPicksPopup, setShowSubmittedPicksPopup] = useState(false);
   // Submitted Picks popup ordering: alphabetical by default, or newest submission first.
@@ -1871,9 +1872,23 @@ export function usePoolPage() {
   const entryFee = pool?.entryFees?.[entriesTournamentId] ?? 0;
   const entryFeeVenmo = pool?.venmo ?? null;
   const paysEntryFeeInApp = entryFee > 0 && !!entryFeeVenmo && entryFeeVenmo.userId !== sessionUser?.id;
+  // The member's entry fee status for this event: null (not paid), 'reported' or 'confirmed'.
+  const myPaymentStatus = sessionUser ? (pool?.entryPayments?.[entriesTournamentId]?.[sessionUser.id] ?? null) : null;
+  const showMyPaymentStatus = hasSubmittedRoster && entryFee > 0 && pool?.role !== 'commissioner' && entryFeeVenmo?.userId !== sessionUser?.id;
+  const reportMyPayment = async (paid: boolean) => {
+    try {
+      const res = await fetch('/api/entry-payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tournamentId: entriesTournamentId, paid }) });
+      const payload = (await res.json().catch(() => ({}))) as { pool?: PoolInfo };
+      if (res.ok && payload.pool) setPool((current) => (current ? { ...current, ...payload.pool } : payload.pool!));
+    } catch {
+      // Offline: the member can tap "I already paid" later.
+    }
+  };
   const openEntryFeePayment = () => {
     if (!entryFeeVenmo || entryFee <= 0) return;
     openVenmoPayment({ recipient: entryFeeVenmo.handle, amount: entryFee, note: ENTRY_FEE_NOTE }, setVenmoFallbackUrl);
+    // Venmo opened with everything filled in: count it as "says paid" until the commissioner checks.
+    void reportMyPayment(true);
   };
   const submittedEntries = poolEntries.filter((entry) => (entry.rosters[entriesTournamentId] ?? []).length === REQUIRED_GOLFERS);
   const otherSubmittedEntriesCount = sessionUser
@@ -3049,6 +3064,8 @@ export function usePoolPage() {
     setPayoutPlanOpen,
     guideOpen,
     setGuideOpen,
+    feeTrackerOpen,
+    setFeeTrackerOpen,
     venmoFallbackUrl,
     setVenmoFallbackUrl,
     showSubmittedPicksPopup,
@@ -3218,6 +3235,9 @@ export function usePoolPage() {
     hasSubmittedRoster,
     entryFee,
     entryFeeVenmo,
+    myPaymentStatus,
+    showMyPaymentStatus,
+    reportMyPayment,
     paysEntryFeeInApp,
     openEntryFeePayment,
     submittedEntries,

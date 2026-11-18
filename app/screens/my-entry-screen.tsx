@@ -3,6 +3,7 @@
 import { latestStartedSeason, picksSeason } from '@/app/lib/tournament-config';
 import { ArrowLeft, CircleUserRound, CheckCircle2, History, MoreVertical, Pencil, Search } from 'lucide-react';
 import { SALARY_CAP, REQUIRED_GOLFERS, totalParFor, TOURNAMENTS, TOURNAMENT_PICKS_HEADER, PICKS_HEADER_LOGO_H, TOURNAMENT_ENTRIES_INTRO, TOURNAMENT_TAB_LOGOS, TOURNAMENT_EVENT_LOGOS, eventLogoStyle, PICK_HISTORY_NAMES, pgaPhoto, playerPhotoSrc, photoOnError, MOBILE_TWO_LINE_NAMES, MOBILE_CUSTOM_SPLITS, rosterInSeason, fieldStyle } from '../pool-data';
+import { EntryFeeStatus } from '../entry-fee-status';
 import type { PoolPage } from '../pool-page-state';
 
 // Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
@@ -56,6 +57,13 @@ export function MyEntryScreen({ p }: { p: PoolPage }) {
     entriesTournamentDisplayName,
     entriesWarningPalette,
     salaryColor,
+    showMyPaymentStatus,
+    myPaymentStatus,
+    entryFee,
+    paysEntryFeeInApp,
+    openEntryFeePayment,
+    reportMyPayment,
+    pool,
   } = p;
   return (
     <main style={{ marginTop: isMobile ? 14 : 24, display: 'grid', gap: isMobile ? 12 : 20 }}>
@@ -225,6 +233,17 @@ export function MyEntryScreen({ p }: { p: PoolPage }) {
                           <Pencil size={isMobile ? 13 : 14} />
                           Edit Picks
                         </button>
+                        {showMyPaymentStatus ? (
+                          <EntryFeeStatus
+                            fee={entryFee}
+                            status={myPaymentStatus}
+                            canPayInApp={paysEntryFeeInApp}
+                            paymentNote={pool?.paymentNote ?? null}
+                            onPay={openEntryFeePayment}
+                            onReport={reportMyPayment}
+                            compact={isMobile}
+                          />
+                        ) : null}
                       </div>
                     ) : (
                       <button

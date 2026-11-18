@@ -69,9 +69,14 @@ export type PublicPool = {
   payoutInfo?: Partial<Record<TournamentId, PayoutInfo>>;
   // How to pay the entry fee when it isn't through the commissioner's Venmo.
   paymentNote?: string | null;
+  // Entry fee status per tournament (for the event on show), by member id. Members get only theirs.
+  entryPayments?: Partial<Record<TournamentId, Record<string, PaymentStatus>>>;
 };
 
-export type PayoutInfo = { season: number; entries: number; pot: number; manual: boolean };
+// 'reported': the member says they paid; 'confirmed': the commissioner checked it.
+export type PaymentStatus = 'reported' | 'confirmed';
+
+export type PayoutInfo = { season: number; entries: number; pot: number; manual: boolean; entrants?: string[] };
 
 export type LeagueContact = { id: string; name: string; email: string; venmo?: string | null };
 

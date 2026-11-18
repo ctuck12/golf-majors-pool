@@ -10,6 +10,7 @@ import { VenmoMark } from './venmo-mark';
 import { PoolMessageModal } from './pool-message';
 import { PayoutPlanModal } from './payout-plan-ui';
 import { CommissionerGuide } from './commissioner-guide';
+import { EntryFeeTracker } from './entry-fee-tracker';
 import { currentTournamentMeta, effectiveLockTime } from '@/app/lib/tournament-config';
 import { EntryFeesModal, PayWinnersModal, VenmoFallbackNotice, VenmoModal, VenmoPrompt } from './venmo-ui';
 import { formatVenmo } from '@/app/lib/venmo';
@@ -145,6 +146,8 @@ export default function Page() {
     setPayoutPlanOpen,
     guideOpen,
     setGuideOpen,
+    feeTrackerOpen,
+    setFeeTrackerOpen,
     lockTimeOverrides,
     venmoFallbackUrl,
     setVenmoFallbackUrl,
@@ -1035,6 +1038,21 @@ export default function Page() {
             currentUserId={sessionUser?.id ?? ''}
             onClose={() => setPayWinnersOpen(false)}
             onPool={(next) => setPool((current) => (current ? { ...current, ...next } : next))}
+          />
+        ) : null}
+
+        {feeTrackerOpen && pool && pool.role === 'commissioner' && sessionUser ? (
+          <EntryFeeTracker<PoolInfo>
+            tournamentId={entriesTournamentId}
+            tournamentLabel={TOURNAMENTS.find((t) => t.id === entriesTournamentId)?.name ?? 'This tournament'}
+            fee={pool.entryFees?.[entriesTournamentId] ?? 0}
+            members={poolEntries.map((entry) => ({ id: entry.id, name: entry.name }))}
+            commissionerId={sessionUser.id}
+            entrants={pool.payoutInfo?.[entriesTournamentId]?.entrants ?? []}
+            payments={pool.entryPayments?.[entriesTournamentId] ?? {}}
+            onPool={(next) => setPool((current) => (current ? { ...current, ...next } : next))}
+            onOpenEntryFees={() => { setFeeTrackerOpen(false); setEntryFeesOpen(true); }}
+            onClose={() => setFeeTrackerOpen(false)}
           />
         ) : null}
 
