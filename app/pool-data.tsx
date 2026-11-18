@@ -859,6 +859,8 @@ export type ArchivedStandingsData = { available?: boolean; standings?: ArchivedS
 
 export type FeedResponse = {
   fetchedAt: string;
+  // When the cached leaderboard was saved (for a finished event, about when it went final).
+  cachedAt?: string;
   // The season the data is from, and its ESPN event id (found by name for a new season).
   season?: number;
   espnEventId?: string;
