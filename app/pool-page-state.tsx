@@ -2250,6 +2250,31 @@ export function usePoolPage() {
     })
     .map((entry, index) => ({ ...entry, place: index + 1 }));
 
+  // The commissioner's "Pay Winners" button in the standings header of a finished tournament. It
+  // shows until every place that pays has been paid from the Pay Winners screen, or for 48 hours
+  // after the results went final (Pay Winners stays in the commissioner tools after that).
+  const PAY_WINNERS_PROMPT_MS = 48 * 60 * 60 * 1000;
+  const payingPlaces = [selectedTournamentPayouts?.first, selectedTournamentPayouts?.second, selectedTournamentPayouts?.third]
+    .map((amount, index) => ({ place: index + 1, amount: amount ?? 0 }))
+    .filter(({ place, amount }) => amount > 0 && standings.length >= place)
+    .map(({ place }) => place);
+  const paidPlaces = new Set((pool?.payoutsSent?.[selectedTournament] ?? []).map((sent) => sent.place));
+  const allWinnersPaid = payingPlaces.length > 0 && payingPlaces.every((place) => paidPlaces.has(place));
+  // When the results went final: when live scoring saved the final leaderboard, else Sunday night
+  // of the event week.
+  const resultsFinalAt = (() => {
+    const saved = feed?.cachedAt ? Date.parse(feed.cachedAt) : NaN;
+    if (!Number.isNaN(saved)) return saved;
+    return standingsMeta ? Date.parse(`${standingsMeta.startDate}T23:00:00Z`) + 3 * 24 * 60 * 60 * 1000 : 0;
+  })();
+  const showPayWinnersPrompt =
+    isTournamentFinal &&
+    !showFutureTournamentView &&
+    pool?.role === 'commissioner' &&
+    payingPlaces.length > 0 &&
+    !allWinnersPaid &&
+    nowTick < resultsFinalAt + PAY_WINNERS_PROMPT_MS;
+
   // Bank the pool's final standings once a tournament is complete, so members can view them under
   // "Past Results" in future seasons. Fires once per tournament/year per session; the server keeps
   // the larger snapshot if a partial render ever posts.
@@ -2769,6 +2794,7 @@ export function usePoolPage() {
   const headerTabActiveColor = '#63d9ea';
 
   return {
+    showPayWinnersPrompt,
     initialTournament,
     mainTab,
     setMainTab,

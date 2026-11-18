@@ -34,7 +34,6 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
     currentFullLeaderboardRows,
     saveMessage,
     sessionUser,
-    pool,
     setShowRosterConfirm,
     setPayWinnersOpen,
     setShowSubmittedPicksPopup,
@@ -85,6 +84,7 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
     formatPayoutAmount,
     entriesTournamentBg,
     entriesTournamentSolid,
+    showPayWinnersPrompt,
   } = p;
   return (
     <main
@@ -135,7 +135,16 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                       {showFinalTournamentView ? tournament.name : `${tournament.name} Pool Standings`}
                     </h2>
                   )}
-                  {isTournamentFinal && !showFutureTournamentView && standingsMeta?.courseName ? (() => {
+                  {showPayWinnersPrompt ? (
+                    // Commissioner only, in place of the course name so the header doesn't grow.
+                    <button
+                      type="button"
+                      onClick={() => setPayWinnersOpen(true)}
+                      style={{ display: 'block', marginTop: 3, border: 'none', borderRadius: 999, padding: '0 12px', height: isMobile ? 15 : 17, background: '#008CFF', color: '#fff', fontSize: isMobile ? 10.5 : 11.5, lineHeight: isMobile ? '15px' : '17px', fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap', letterSpacing: '0.02em' }}
+                    >
+                      Pay Winners
+                    </button>
+                  ) : isTournamentFinal && !showFutureTournamentView && standingsMeta?.courseName ? (() => {
                     const cn = standingsMeta.courseName;
                     const fs = isMobile ? (cn.length > 23 ? 11.5 : cn.length > 18 ? 12.5 : 13.5) : (cn.length > 26 ? 13.5 : 14.5);
                     return <div style={{ marginTop: 3, fontSize: fs, lineHeight: isMobile ? '15px' : '17px', fontStyle: 'italic', fontWeight: 400, color: '#0f1720', whiteSpace: 'nowrap' }}>{cn}</div>;
@@ -170,15 +179,6 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                         <div style={{ fontSize: isMobile ? 11 : 12, fontWeight: 800, color: (selectedTournament === 'players' || selectedTournament === 'masters' || selectedTournament === 'pga' || selectedTournament === 'us-open') ? '#c0392b' : '#0f1720', letterSpacing: '0.1em', textTransform: 'uppercase', textAlign: 'right' }}>
                           Final Results
                         </div>
-                      ) : null}
-                      {isTournamentFinal && !showFutureTournamentView && pool?.role === 'commissioner' ? (
-                        <button
-                          type="button"
-                          onClick={() => setPayWinnersOpen(true)}
-                          style={{ border: 'none', borderRadius: 999, padding: isMobile ? '5px 10px' : '6px 12px', background: '#008CFF', color: '#fff', fontSize: isMobile ? 11 : 12, fontWeight: 900, cursor: 'pointer' }}
-                        >
-                          Pay Winners
-                        </button>
                       ) : null}
                   </div>
                 ) : !showFutureTournamentView && !showFinalTournamentView ? (
