@@ -10,6 +10,9 @@ import { VenmoMark } from './venmo-mark';
 import { PoolMessageModal } from './pool-message';
 import { PayoutPlanModal } from './payout-plan-ui';
 import { CommissionerGuide } from './commissioner-guide';
+import { PushPrompt } from './push-client';
+import { EntryFeeTracker } from './entry-fee-tracker';
+import { SeasonSettingsModal } from './season-settings';
 import { currentTournamentMeta, effectiveLockTime } from '@/app/lib/tournament-config';
 import { EntryFeesModal, PayWinnersModal, VenmoFallbackNotice, VenmoModal, VenmoPrompt } from './venmo-ui';
 import { formatVenmo } from '@/app/lib/venmo';
@@ -145,6 +148,10 @@ export default function Page() {
     setPayoutPlanOpen,
     guideOpen,
     setGuideOpen,
+    feeTrackerOpen,
+    setFeeTrackerOpen,
+    seasonSettingsOpen,
+    setSeasonSettingsOpen,
     lockTimeOverrides,
     venmoFallbackUrl,
     setVenmoFallbackUrl,
@@ -1038,6 +1045,31 @@ export default function Page() {
           />
         ) : null}
 
+        {seasonSettingsOpen && pool && pool.role === 'commissioner' ? (
+          <SeasonSettingsModal<PoolInfo>
+            fee={pool.seasonFee ?? null}
+            plan={pool.seasonPayoutPlan ?? null}
+            memberCount={pool.memberCount ?? 0}
+            onPool={(next) => setPool((current) => (current ? { ...current, ...next } : next))}
+            onClose={() => setSeasonSettingsOpen(false)}
+          />
+        ) : null}
+
+        {feeTrackerOpen && pool && pool.role === 'commissioner' && sessionUser ? (
+          <EntryFeeTracker<PoolInfo>
+            tournamentId={entriesTournamentId}
+            tournamentLabel={TOURNAMENTS.find((t) => t.id === entriesTournamentId)?.name ?? 'This tournament'}
+            fee={pool.entryFees?.[entriesTournamentId] ?? 0}
+            members={poolEntries.map((entry) => ({ id: entry.id, name: entry.name }))}
+            commissionerId={sessionUser.id}
+            entrants={pool.payoutInfo?.[entriesTournamentId]?.entrants ?? []}
+            payments={pool.entryPayments?.[entriesTournamentId] ?? {}}
+            onPool={(next) => setPool((current) => (current ? { ...current, ...next } : next))}
+            onOpenEntryFees={() => { setFeeTrackerOpen(false); setEntryFeesOpen(true); }}
+            onClose={() => setFeeTrackerOpen(false)}
+          />
+        ) : null}
+
         {guideOpen && pool && pool.role === 'commissioner' ? (
           <CommissionerGuide<PoolInfo>
             status={{
@@ -1172,6 +1204,7 @@ export default function Page() {
           compact={isMobile}
           marginTop={isMobile ? 10 : 16}
         />
+        <PushPrompt compact={isMobile} marginTop={isMobile ? 10 : 16} onOpenTab={p.openTabFromPush} />
         {mainTab === 'Standings' ? (
           <section
             style={{
@@ -1311,6 +1344,14 @@ export default function Page() {
           const reportIcon = (opt: ReportType) => {
             const p = { width: 15, height: 15, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
             switch (opt) {
+              case 'Season Standings':
+                return <svg {...p}><path d="M8 21h8" /><path d="M12 17v4" /><path d="M7 4h10v5a5 5 0 0 1-10 0V4Z" /><path d="M17 5h3v2a3 3 0 0 1-3 3" /><path d="M7 5H4v2a3 3 0 0 0 3 3" /></svg>;
+              case 'Hall of Champions':
+                return <svg {...p}><circle cx="12" cy="8" r="6" /><path d="M15.48 12.89 17 22l-5-3-5 3 1.52-9.11" /></svg>;
+              case 'Value Picks':
+                return <svg {...p}><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>;
+              case 'Head-to-Head':
+                return <svg {...p}><path d="M14.5 17.5 3 6V3h3l11.5 11.5" /><path d="m13 19 6-6" /><path d="m16 16 4 4" /><path d="m19 21 2-2" /><path d="M14.5 6.5 18 3h3v3l-3.5 3.5" /><path d="m5 14 4 4" /><path d="m7 17-3 3" /><path d="m3 19 2 2" /></svg>;
               case 'Player Pick Summary':
                 return <svg {...p}><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></svg>;
               case 'Pool Member Pick History':

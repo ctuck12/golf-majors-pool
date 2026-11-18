@@ -2,6 +2,7 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { db, type Sql, type TxSql } from './db';
 import { normalizeVenmoUsername } from './venmo';
 import { computePayouts, type PayoutPlan } from './payout-plan';
+import type { PaymentStatus } from './pool-store-shared';
 import { latestStartedSeason, picksSeason } from './tournament-config';
 import { currentSeason, parsePassProduct, tierForLimit, tierInfo, type LeagueTier, type PassAction } from './league-passes';
 import { fetchPassPurchases } from './revenuecat';
@@ -148,7 +149,7 @@ async function loadPool(sql: AnySql, league: { id: string; name: string; join_co
     select tournament_id, picks_open, lineup_locked, payout_first, payout_second, payout_third, winner_score, entry_fee, state_season, payouts_season
     from league_tournaments where league_id = ${league.id}
   `;
-  const [planRow] = await sql<{ payout_plan: PayoutPlan | null; payment_note: string | null }[]>`select payout_plan, payment_note from leagues where id = ${league.id}`;
+  const [planRow] = await sql<{ payout_plan: PayoutPlan | null; payment_note: string | null; season_fee: number | null; season_payout_plan: PayoutPlan | null }[]>`select payout_plan, payment_note, season_fee, season_payout_plan from leagues where id = ${league.id}`;
   const payoutPlan = planRow?.payout_plan ?? null;
   // Entries per tournament and season: members who have picks in.
   const counts = await sql<{ tournament_id: string; season: number; entries: number }[]>`
@@ -160,6 +161,15 @@ async function loadPool(sql: AnySql, league: { id: string; name: string; join_co
   `;
   const entriesFor = (tid: string, season: number) =>
     counts.find((row) => row.tournament_id === tid && row.season === season)?.entries ?? 0;
+  const entrantRows = await sql<{ tournament_id: string; season: number; user_id: string }[]>`
+    select r.tournament_id, r.season, r.user_id
+    from rosters r
+    join league_members m on m.league_id = r.league_id and m.user_id = r.user_id
+    where r.league_id = ${league.id} and r.golfer_ids is not null and cardinality(r.golfer_ids) > 0
+  `;
+  const paymentRows = await sql<{ tournament_id: string; season: number; user_id: string; status: PaymentStatus }[]>`
+    select tournament_id, season, user_id, status from league_entry_payments where league_id = ${league.id}
+  `;
 
   const pool: PublicPool = {
     id: league.id,
@@ -172,6 +182,9 @@ async function loadPool(sql: AnySql, league: { id: string; name: string; join_co
     entryFees: {},
     payoutPlan,
     payoutInfo: {},
+    entryPayments: {},
+    seasonFee: planRow?.season_fee ?? null,
+    seasonPayoutPlan: planRow?.season_payout_plan ?? null,
     paymentNote: planRow?.payment_note ?? null,
   };
 
@@ -204,7 +217,11 @@ async function loadPool(sql: AnySql, league: { id: string; name: string; join_co
       const amounts = computePayouts(payoutPlan, pot, fee);
       if (amounts.first + amounts.second + amounts.third > 0) pool.payouts[tid] = amounts;
     }
-    pool.payoutInfo![tid] = { season, entries, pot, manual };
+    const entrants = entrantRows.filter((r) => r.tournament_id === tid && r.season === season).map((r) => r.user_id);
+    pool.payoutInfo![tid] = { season, entries, pot, manual, entrants };
+    const payments: Record<string, PaymentStatus> = {};
+    for (const r of paymentRows) if (r.tournament_id === tid && r.season === season) payments[r.user_id] = r.status;
+    pool.entryPayments![tid] = payments;
   }
 
   return pool;
@@ -539,6 +556,14 @@ export async function getSessionContext(token: string | undefined): Promise<Sess
       payoutPlan: pool.payoutPlan ?? null,
       payoutInfo: pool.payoutInfo,
       paymentNote: pool.paymentNote ?? null,
+      seasonFee: pool.seasonFee ?? null,
+      seasonPayoutPlan: pool.seasonPayoutPlan ?? null,
+      // Members see only their own entry fee status; the commissioner sees everyone's.
+      entryPayments: isCommissioner
+        ? pool.entryPayments
+        : Object.fromEntries(
+            Object.entries(pool.entryPayments ?? {}).map(([tid, byUser]) => [tid, byUser[user.id] ? { [user.id]: byUser[user.id] } : {}]),
+          ),
       entryFees: pool.entryFees,
       role: league.role,
       plan: league.plan,
@@ -1296,12 +1321,175 @@ export async function updateEntryFees(requestingUserId: string, fees: Partial<Re
   });
 }
 
+// The season championship's buy-in (null/0: none) and payout plan. Commissioner only.
+export async function setSeasonSettings(requestingUserId: string, fee: number | null, plan: PayoutPlan | null) {
+  if (fee !== null && (!Number.isFinite(fee) || fee < 0 || fee > 10000)) throw new Error('Enter a season buy-in between $0 and $10,000.');
+  return db().begin(async (sql) => {
+    const league = await requireCommissionerLeague(sql, requestingUserId);
+    await sql`
+      update leagues set season_fee = ${fee ? Math.round(fee * 100) / 100 : null}, season_payout_plan = ${plan ? sql.json(plan as never) : null}
+      where id = ${league.id}
+    `;
+    return loadPool(sql, league);
+  });
+}
+
+// Every finished tournament this league has saved, without the golfer detail (for the season
+// standings and the Hall of Champions).
+export async function readLeagueHistory(leagueId: string) {
+  return db()<{ tournament_id: string; season: number; standings: { id?: string; name: string; place: number; points: number }[]; payouts: unknown }[]>`
+    select tournament_id, season,
+      coalesce((select jsonb_agg(jsonb_build_object('id', e->'id', 'name', e->'name', 'place', e->'place', 'points', e->'points'))
+        from jsonb_array_elements(standings) e), '[]'::jsonb) as standings,
+      payouts
+    from league_standings_archive
+    where league_id = ${leagueId}
+    order by season desc, tournament_id
+  `;
+}
+
+// ── Push notification tokens and audiences ──────────────────────────────────
+
+export async function savePushToken(userId: string, token: string, platform: string) {
+  await db()`
+    insert into push_tokens (token, user_id, platform) values (${token}, ${userId}, ${platform})
+    on conflict (token) do update set user_id = excluded.user_id, platform = excluded.platform, updated_at = now()
+  `;
+}
+
+export async function removePushToken(userId: string, token: string) {
+  await db()`delete from push_tokens where token = ${token} and user_id = ${userId}`;
+}
+
+export async function deletePushTokens(tokens: string[]) {
+  if (tokens.length) await db()`delete from push_tokens where token in ${db()(tokens)}`;
+}
+
+export async function pushTokensFor(userIds: string[]) {
+  if (userIds.length === 0) return [];
+  const rows = await db()<{ token: string }[]>`select token from push_tokens where user_id in ${db()(userIds)}`;
+  return rows.map((row) => row.token);
+}
+
+// Everyone in a league except one person (e.g. the commissioner who opened picks).
+export async function leagueMemberIds(leagueId: string, exceptUserId?: string) {
+  const rows = await db()<{ user_id: string }[]>`select user_id from league_members where league_id = ${leagueId}`;
+  return rows.map((row) => row.user_id).filter((id) => id !== exceptUserId);
+}
+
+// Members of leagues with picks open for an event who haven't made picks yet.
+export async function membersMissingPicks(tournamentId: TournamentId, season: number) {
+  const rows = await db()<{ user_id: string }[]>`
+    select distinct m.user_id
+    from league_tournaments lt
+    join league_members m on m.league_id = lt.league_id
+    left join rosters r on r.league_id = m.league_id and r.user_id = m.user_id and r.tournament_id = lt.tournament_id
+      and r.season = ${season} and r.golfer_ids is not null and cardinality(r.golfer_ids) > 0
+    where lt.tournament_id = ${tournamentId} and lt.picks_open = true and coalesce(lt.state_season, 2026) = ${season}
+      and r.user_id is null
+  `;
+  return rows.map((row) => row.user_id);
+}
+
+// Members (in any league) who picked a golfer for an event.
+export async function membersWhoPicked(tournamentId: TournamentId, season: number, golferId: number) {
+  const rows = await db()<{ user_id: string }[]>`
+    select distinct user_id from rosters
+    where tournament_id = ${tournamentId} and season = ${season} and ${golferId} = any(golfer_ids)
+  `;
+  return rows.map((row) => row.user_id);
+}
+
+// Everyone with picks in for an event, in any league.
+export async function membersWithPicks(tournamentId: TournamentId, season: number) {
+  const rows = await db()<{ user_id: string }[]>`
+    select distinct r.user_id from rosters r
+    join league_members m on m.league_id = r.league_id and m.user_id = r.user_id
+    where r.tournament_id = ${tournamentId} and r.season = ${season} and r.golfer_ids is not null and cardinality(r.golfer_ids) > 0
+  `;
+  return rows.map((row) => row.user_id);
+}
+
 // How members pay when it isn't through the commissioner's Venmo (null clears it).
 export async function setPaymentNote(requestingUserId: string, note: string | null) {
   const clean = note?.trim().slice(0, 200) || null;
   await db().begin(async (sql) => {
     const league = await requireCommissionerLeague(sql, requestingUserId);
     await sql`update leagues set payment_note = ${clean} where id = ${league.id}`;
+  });
+}
+
+// A member says they paid (or takes it back). A confirmed payment stays confirmed.
+export async function reportEntryPayment(userId: string, tournamentId: TournamentId, paid: boolean) {
+  await db().begin(async (sql) => {
+    const league = await requireActiveLeague(sql, userId);
+    const season = await overrideSeason(sql, league.id, tournamentId);
+    if (paid) {
+      await sql`
+        insert into league_entry_payments (league_id, tournament_id, season, user_id, status)
+        values (${league.id}, ${tournamentId}, ${season}, ${userId}, 'reported')
+        on conflict do nothing
+      `;
+    } else {
+      await sql`
+        delete from league_entry_payments
+        where league_id = ${league.id} and tournament_id = ${tournamentId} and season = ${season} and user_id = ${userId} and status = 'reported'
+      `;
+    }
+  });
+}
+
+// The commissioner marks a member paid (confirmed), back to "says paid", or not paid (null).
+export async function setEntryPaymentStatus(requestingUserId: string, tournamentId: TournamentId, memberId: string, status: PaymentStatus | null) {
+  return db().begin(async (sql) => {
+    const league = await requireCommissionerLeague(sql, requestingUserId);
+    const [member] = await sql`select 1 from league_members where league_id = ${league.id} and user_id = ${memberId}`;
+    if (!member) throw new Error('That member is not in your league.');
+    const season = await overrideSeason(sql, league.id, tournamentId);
+    if (status) {
+      await sql`
+        insert into league_entry_payments (league_id, tournament_id, season, user_id, status)
+        values (${league.id}, ${tournamentId}, ${season}, ${memberId}, ${status})
+        on conflict (league_id, tournament_id, season, user_id) do update set status = excluded.status, updated_at = now()
+      `;
+    } else {
+      await sql`
+        delete from league_entry_payments
+        where league_id = ${league.id} and tournament_id = ${tournamentId} and season = ${season} and user_id = ${memberId}
+      `;
+    }
+    return loadPool(sql, league);
+  });
+}
+
+export const REMINDER_COOLDOWN_HOURS = 6;
+
+// Who a reminder goes to: 'pay' = members with picks in who haven't paid; 'picks' = members
+// without picks. Never the commissioner. Claims the send (one per kind every few hours), so it
+// throws if one went out recently.
+export async function claimReminder(requestingUserId: string, tournamentId: TournamentId, kind: 'pay' | 'picks') {
+  return db().begin(async (sql) => {
+    const league = await requireCommissionerLeague(sql, requestingUserId);
+    const season = kind === 'picks' ? picksSeason(tournamentId) : await overrideSeason(sql, league.id, tournamentId);
+    const claimed = await sql`
+      insert into league_reminders_sent (league_id, tournament_id, season, kind) values (${league.id}, ${tournamentId}, ${season}, ${kind})
+      on conflict (league_id, tournament_id, season, kind) do update set sent_at = now()
+        where league_reminders_sent.sent_at < now() - make_interval(hours => ${REMINDER_COOLDOWN_HOURS})
+      returning 1
+    `;
+    if (claimed.length === 0) throw new Error(`A reminder went out in the last ${REMINDER_COOLDOWN_HOURS} hours. Try again later.`);
+    const recipients = await sql<{ email: string; display_name: string }[]>`
+      select u.email, u.display_name
+      from league_members m
+      join users u on u.id = m.user_id
+      left join rosters r on r.league_id = m.league_id and r.user_id = m.user_id and r.tournament_id = ${tournamentId}
+        and r.season = ${season} and r.golfer_ids is not null and cardinality(r.golfer_ids) > 0
+      left join league_entry_payments p on p.league_id = m.league_id and p.user_id = m.user_id and p.tournament_id = ${tournamentId} and p.season = ${season}
+      where m.league_id = ${league.id} and m.role <> 'commissioner'
+        and ${kind === 'picks' ? sql`r.user_id is null` : sql`r.user_id is not null and p.user_id is null`}
+    `;
+    const [fee] = await sql<{ entry_fee: number | null }[]>`select entry_fee from league_tournaments where league_id = ${league.id} and tournament_id = ${tournamentId}`;
+    return { leagueName: league.name, entryFee: fee?.entry_fee ?? 0, recipients };
   });
 }
 

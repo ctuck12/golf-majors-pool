@@ -758,8 +758,8 @@ export type TournamentId = (typeof TOURNAMENTS)[number]['id'];
 export type MainTab = 'Standings' | 'My Entries' | 'Details' | 'Reports' | 'Commissioner Hub';
 export const MAIN_TABS: MainTab[] = ['Standings', 'My Entries', 'Details', 'Reports', 'Commissioner Hub'];
 
-export type ReportType = 'Player Pick Summary' | 'Pool Member Pick History' | 'Pool Member Pick Summary' | 'Player Performance Summary' | 'Pool Standings History';
-export const REPORT_OPTIONS: ReportType[] = ['Player Pick Summary', 'Pool Member Pick History', 'Pool Member Pick Summary', 'Player Performance Summary', 'Pool Standings History'];
+export type ReportType = 'Season Standings' | 'Hall of Champions' | 'Value Picks' | 'Head-to-Head' | 'Player Pick Summary' | 'Pool Member Pick History' | 'Pool Member Pick Summary' | 'Player Performance Summary' | 'Pool Standings History';
+export const REPORT_OPTIONS: ReportType[] = ['Season Standings', 'Hall of Champions', 'Value Picks', 'Head-to-Head', 'Player Pick Summary', 'Pool Member Pick History', 'Pool Member Pick Summary', 'Player Performance Summary', 'Pool Standings History'];
 export const REPORT_TOURNAMENTS: { id: TournamentId; label: string }[] = [
   { id: 'players', label: 'The Players' },
   { id: 'masters', label: 'The Masters' },
@@ -921,6 +921,10 @@ export type PoolInfo = {
   payoutInfo?: Partial<Record<TournamentId, PayoutInfo>>;
   // How to pay the entry fee when it isn't through the commissioner's Venmo.
   paymentNote?: string | null;
+  seasonFee?: number | null;
+  seasonPayoutPlan?: PayoutPlan | null;
+  // Entry fee status per tournament, by member id (members get only their own).
+  entryPayments?: Partial<Record<TournamentId, Record<string, 'reported' | 'confirmed'>>>;
   // Commissioners only: winners already paid this season.
   payoutsSent?: Partial<Record<TournamentId, { place: number; userId: string | null; amount: number; sentAt: string }[]>>;
 };

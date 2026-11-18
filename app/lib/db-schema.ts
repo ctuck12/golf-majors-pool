@@ -194,6 +194,9 @@ alter table league_tournaments add column if not exists payouts_season integer;
 -- How members pay the entry fee when the commissioner doesn't use Venmo (e.g. "Cash or Zelle to
 -- Clayton"). Shown at Submit and in the tournament-week text.
 alter table leagues add column if not exists payment_note text;
+-- Season championship: an optional season buy-in and how that pot is split (a payout plan).
+alter table leagues add column if not exists season_fee double precision;
+alter table leagues add column if not exists season_payout_plan jsonb;
 do $$
 declare applied integer;
 begin
@@ -204,6 +207,36 @@ begin
       where id = 'golf-majors-pool' and payout_plan is null;
   end if;
 end $$;
+
+-- Entry fee tracking: a member says they paid (Submit & Pay, or "I paid"), the commissioner
+-- confirms it. One row per member per event; no row means not paid.
+create table if not exists league_entry_payments (
+  league_id text not null references leagues(id) on delete cascade,
+  tournament_id text not null,
+  season integer not null,
+  user_id text not null references users(id) on delete cascade,
+  status text not null check (status in ('reported', 'confirmed')),
+  updated_at timestamptz not null default now(),
+  primary key (league_id, tournament_id, season, user_id)
+);
+-- Reminder emails a commissioner sent, so they can't be sent again within a few hours.
+create table if not exists league_reminders_sent (
+  league_id text not null references leagues(id) on delete cascade,
+  tournament_id text not null,
+  season integer not null,
+  kind text not null,
+  sent_at timestamptz not null default now(),
+  primary key (league_id, tournament_id, season, kind)
+);
+
+-- iPhone push notification tokens (one row per device; a device moves to whoever signs in on it).
+create table if not exists push_tokens (
+  token text primary key,
+  user_id text not null references users(id) on delete cascade,
+  platform text not null default 'ios',
+  updated_at timestamptz not null default now()
+);
+create index if not exists push_tokens_user on push_tokens (user_id);
 
 -- Each league's final standings per tournament and season ("Past Results"). Saved when a member
 -- views a finished tournament; the larger snapshot wins.
@@ -235,4 +268,7 @@ alter table league_payouts_sent enable row level security;
 alter table app_migrations enable row level security;
 alter table league_standings_archive enable row level security;
 alter table redis_backups enable row level security;
+alter table league_entry_payments enable row level security;
+alter table league_reminders_sent enable row level security;
+alter table push_tokens enable row level security;
 `;

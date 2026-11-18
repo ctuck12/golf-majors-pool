@@ -104,6 +104,29 @@ await check('payout plan: checked, saved, and works out the amounts', async () =
   assert.equal(r.json.pool.paymentNote, 'Cash or Zelle');
 });
 
+await check('entry fee tracking: member says paid, commissioner confirms', async () => {
+  let r = await call('bob', '/api/entry-payments', 'POST', { tournamentId: 'masters', paid: true });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  assert.equal(r.json.pool.entryPayments.masters[jar.bobId], 'reported');
+  r = await call('admin', '/api/auth/session');
+  assert.equal(r.json.pool.entryPayments.masters[jar.bobId], 'reported');
+  r = await call('admin', '/api/commissioner/entry-payments', 'PATCH', { tournamentId: 'masters', userId: jar.bobId, status: 'confirmed' });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  // Taking back "I paid" doesn't undo the commissioner's confirmation.
+  r = await call('bob', '/api/entry-payments', 'POST', { tournamentId: 'masters', paid: false });
+  assert.equal(r.json.pool.entryPayments.masters[jar.bobId], 'confirmed');
+  assert.equal((await call('bob', '/api/commissioner/entry-payments', 'PATCH', { tournamentId: 'masters', userId: jar.bobId, status: null })).status, 403);
+  assert.equal((await call('bob', '/api/commissioner/reminders', 'POST', { tournamentId: 'masters', kind: 'pay' })).status, 403);
+});
+
+await check('push notification tokens register and unregister', async () => {
+  const token = 'ab'.repeat(32);
+  assert.equal((await call('bob', '/api/push/register', 'POST', { token: 'not-a-token' })).status, 400);
+  assert.equal((await call('bob', '/api/push/register', 'POST', { token, platform: 'ios' })).status, 200);
+  assert.equal((await call('bob', '/api/push/register', 'DELETE', { token })).status, 200);
+  assert.equal((await call('nobody', '/api/push/register', 'POST', { token })).status, 401);
+});
+
 await check('one commissioner: hand over and back', async () => {
   let r = await call('admin', `/api/commissioner/members/${jar.bobId}`, 'PATCH', { role: 'commissioner' });
   assert.equal(r.status, 200, JSON.stringify(r.json));
@@ -124,6 +147,23 @@ await check('Past Results are kept per league', async () => {
   assert.equal(r.status, 200);
   r = await call('carl', '/api/standings-archive?tournamentId=masters&year=2026');
   assert.notEqual(r.json?.available, true, "another league's results must not show");
+});
+
+await check('season championship and league history', async () => {
+  const plan = { places: [{ mode: 'percent', value: 70 }, { mode: 'rest', value: 0 }], roundTo: 5 };
+  let r = await call('admin', '/api/commissioner/season', 'PATCH', { fee: 20, plan });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  assert.equal(r.json.pool.seasonFee, 20);
+  assert.deepEqual(r.json.pool.seasonPayoutPlan, plan);
+  assert.equal((await call('bob', '/api/commissioner/season', 'PATCH', { fee: null, plan: null })).status, 403);
+  r = await call('bob', '/api/standings-archive', 'POST', { tournamentId: 'pga', year: 2026, standings: [{ id: jar.bobId, place: 1, name: 'Bob Birdie', points: 90, holesRemaining: 0, tieBreak: 280, golfers: [] }] });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  r = await call('bob', '/api/league-history');
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  const pga = r.json.events.find((e) => e.tournamentId === 'pga' && e.season === 2026);
+  assert.equal(pga.standings[0].id, jar.bobId, 'member ids are kept in Past Results');
+  assert.ok(r.json.events.some((e) => e.tournamentId === 'masters'));
+  assert.equal(pga.standings[0].golfers, undefined, 'history leaves out golfer detail');
 });
 
 await check('a member can leave; the commissioner must hand over first', async () => {

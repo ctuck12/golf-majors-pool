@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 
+import { pushFromScoreRefresh } from '@/app/lib/push-triggers';
 import { parseMongo, type SlashGolfLeaderboardRow } from '@/app/lib/slashgolf';
 import { fetchESPNTournament } from '@/app/lib/espn';
 import { currentTournamentMeta, effectiveLockTime } from '@/app/lib/tournament-config';
@@ -499,6 +500,8 @@ export async function GET(request: Request) {
       } catch (err) {
         results[id] = `error: ${err instanceof Error ? err.message : String(err)}`;
       }
+      // Push notifications: picks lock soon, a picked golfer takes the lead, final results.
+      await pushFromScoreRefresh(id as TournamentId, results[id]).catch(() => {});
       // Email the admin if this tournament's live scores keep failing during its event.
       await trackScoreHealth(id, TOURNAMENT_NAMES[id] ?? id, currentTournamentMeta(id), results[id]).catch(() => {});
     }),

@@ -100,3 +100,46 @@ export async function sendAdminAlertEmail(input: { to: string[]; subject: string
       .join('')}</div>`,
   });
 }
+
+// A commissioner's nudge to their league: make your picks, or pay your entry fee.
+export async function sendReminderEmail(input: {
+  to: string;
+  displayName: string;
+  kind: 'pay' | 'picks';
+  leagueName: string;
+  tournamentName: string;
+  entryFee: number;
+  commissionerName: string;
+}) {
+  const first = input.displayName.split(' ')[0] || input.displayName;
+  const fee = input.entryFee > 0 ? `$${Number.isInteger(input.entryFee) ? input.entryFee : input.entryFee.toFixed(2)} ` : '';
+  const subject = input.kind === 'picks' ? `Your ${input.tournamentName} picks are due` : `Reminder: your ${input.tournamentName} entry fee`;
+  const lines =
+    input.kind === 'picks'
+      ? [
+          `Hi ${first},`,
+          `Picks are open for ${input.tournamentName} in ${input.leagueName}, and you haven't made yours yet. Pick your 6 golfers in the app before the first tee time on Thursday.`,
+        ]
+      : [
+          `Hi ${first},`,
+          `Your ${input.tournamentName} picks are in for ${input.leagueName}, but your ${fee}entry fee hasn't been marked as paid yet. Open the app and pay from your entry, or tap "I already paid" if you have.`,
+        ];
+  const footer = `Sent by ${input.commissionerName}, your commissioner.`;
+  const link = appBaseUrl();
+  await sendEmail({
+    to: input.to,
+    subject,
+    text: [...lines, link, footer].join('\n\n'),
+    html: `
+      <div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#0f1720">
+        <div style="background:#0a1628;border-radius:16px;padding:12px 16px;margin:0 0 24px;text-align:center">
+          <img src="${appBaseUrl()}/email/logo-header.jpg" width="400" height="171" alt="Golf Majors Pool" style="display:block;width:100%;max-width:400px;height:auto;margin:0 auto;border:0">
+        </div>
+        ${lines.map((line) => `<p style="margin:0 0 14px;line-height:1.5">${escapeHtml(line)}</p>`).join('')}
+        <p style="margin:24px 0">
+          <a href="${link}" style="background:#315f95;color:#fff;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:12px;display:inline-block">${input.kind === 'picks' ? 'Make my picks' : 'Open Golf Majors Pool'}</a>
+        </p>
+        <p style="font-size:13px;color:#5b6b79">${escapeHtml(footer)}</p>
+      </div>`,
+  });
+}

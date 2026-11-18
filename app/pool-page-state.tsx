@@ -10,7 +10,8 @@ import { ENTRY_FEE_NOTE } from '@/app/lib/venmo';
 import { currentTournamentMeta, effectiveLockTime, getTournamentMeta, latestStartedSeason, picksSeason } from '@/app/lib/tournament-config';
 import { History, Lock, Save } from 'lucide-react';
 import { buildPlaceholderScoreBreakdown } from './lib/scoring';
-import { SALARY_CAP, REQUIRED_GOLFERS, espnEventIdFor, COMMISSIONER_DISPLAY_NAME, FOUNDER_POOL_ID, TOURNAMENTS, PLAYER_FLAGS, canonicalName, cutShowAt, cutHideAt, pgaPhoto, playerPhotoSrc, photoOnError, PLAYER_POOL, ORIGINAL_WORLD_RANK_BY_ID, DEFAULT_ROSTERS, REPORT_TOURNAMENTS, POOL_SEASONS, rosterInSeason, tieBreakInSeason, withSeasonPicks, STATIC_ENTRIES, NO_SESSION_FLAGS, buildPricedPlayers, normalizeName, formatRosterField, parseRosterField, clearStoredMainTab, readStoredSession, writeStoredSession, clearStoredSession, purgeStoredAccounts, readRoster, saveGuestRoster, readFeedCache, writeFeedCache, getCurrentRoundLabel, centralInputToUtc, getTournamentEventWindow, getDisplayTournamentWindow, getTournamentCardStatuses, getDefaultTournamentId, formatTournamentStartDate, readJson, resetViewAfterMainTabChange, formatTeeTime, teeTimeIsPast, type TournamentId, type MainTab, type ReportType, type FeedRow, type FullFieldPlayer, type ScorecardData, type ArchivedStandingRow, type ArchivedStandingsData, type FeedResponse, type AuthUser, type PoolInfo, type PoolEntry, type CommissionerMember, type AuthMode, type StandingEntry, type SessionPayload, type SessionFlags, setCommissionerPreTournamentView, setLockTimeOverrides } from './pool-data';
+import { unregisterPushToken, usePushRegistration } from './push-client';
+import { MAIN_TABS, SALARY_CAP, REQUIRED_GOLFERS, espnEventIdFor, COMMISSIONER_DISPLAY_NAME, FOUNDER_POOL_ID, TOURNAMENTS, PLAYER_FLAGS, canonicalName, cutShowAt, cutHideAt, pgaPhoto, playerPhotoSrc, photoOnError, PLAYER_POOL, ORIGINAL_WORLD_RANK_BY_ID, DEFAULT_ROSTERS, REPORT_TOURNAMENTS, POOL_SEASONS, rosterInSeason, tieBreakInSeason, withSeasonPicks, STATIC_ENTRIES, NO_SESSION_FLAGS, buildPricedPlayers, normalizeName, formatRosterField, parseRosterField, clearStoredMainTab, readStoredSession, writeStoredSession, clearStoredSession, purgeStoredAccounts, readRoster, saveGuestRoster, readFeedCache, writeFeedCache, getCurrentRoundLabel, centralInputToUtc, getTournamentEventWindow, getDisplayTournamentWindow, getTournamentCardStatuses, getDefaultTournamentId, formatTournamentStartDate, readJson, resetViewAfterMainTabChange, formatTeeTime, teeTimeIsPast, type TournamentId, type MainTab, type ReportType, type FeedRow, type FullFieldPlayer, type ScorecardData, type ArchivedStandingRow, type ArchivedStandingsData, type FeedResponse, type AuthUser, type PoolInfo, type PoolEntry, type CommissionerMember, type AuthMode, type StandingEntry, type SessionPayload, type SessionFlags, setCommissionerPreTournamentView, setLockTimeOverrides } from './pool-data';
 
 export type SalaryMaps = { salaries: Record<number, number>; worldRanks: Record<number, number> };
 
@@ -350,6 +351,8 @@ export function usePoolPage() {
   const [poolMessageOpen, setPoolMessageOpen] = useState(false);
   const [payoutPlanOpen, setPayoutPlanOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [feeTrackerOpen, setFeeTrackerOpen] = useState(false);
+  const [seasonSettingsOpen, setSeasonSettingsOpen] = useState(false);
   const [venmoFallbackUrl, setVenmoFallbackUrl] = useState<string | null>(null);
   const [showSubmittedPicksPopup, setShowSubmittedPicksPopup] = useState(false);
   // Submitted Picks popup ordering: alphabetical by default, or newest submission first.
@@ -1041,6 +1044,8 @@ export function usePoolPage() {
     setAuthError('');
 
     try {
+      // Stop this phone's notifications for the account signing out (needs the session still).
+      await unregisterPushToken();
       await readJson<{ ok: boolean }>('/api/auth/logout', { method: 'POST' });
       setSessionUser(null);
       setPool(null);
@@ -1871,9 +1876,23 @@ export function usePoolPage() {
   const entryFee = pool?.entryFees?.[entriesTournamentId] ?? 0;
   const entryFeeVenmo = pool?.venmo ?? null;
   const paysEntryFeeInApp = entryFee > 0 && !!entryFeeVenmo && entryFeeVenmo.userId !== sessionUser?.id;
+  // The member's entry fee status for this event: null (not paid), 'reported' or 'confirmed'.
+  const myPaymentStatus = sessionUser ? (pool?.entryPayments?.[entriesTournamentId]?.[sessionUser.id] ?? null) : null;
+  const showMyPaymentStatus = hasSubmittedRoster && entryFee > 0 && pool?.role !== 'commissioner' && entryFeeVenmo?.userId !== sessionUser?.id;
+  const reportMyPayment = async (paid: boolean) => {
+    try {
+      const res = await fetch('/api/entry-payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tournamentId: entriesTournamentId, paid }) });
+      const payload = (await res.json().catch(() => ({}))) as { pool?: PoolInfo };
+      if (res.ok && payload.pool) setPool((current) => (current ? { ...current, ...payload.pool } : payload.pool!));
+    } catch {
+      // Offline: the member can tap "I already paid" later.
+    }
+  };
   const openEntryFeePayment = () => {
     if (!entryFeeVenmo || entryFee <= 0) return;
     openVenmoPayment({ recipient: entryFeeVenmo.handle, amount: entryFee, note: ENTRY_FEE_NOTE }, setVenmoFallbackUrl);
+    // Venmo opened with everything filled in: count it as "says paid" until the commissioner checks.
+    void reportMyPayment(true);
   };
   const submittedEntries = poolEntries.filter((entry) => (entry.rosters[entriesTournamentId] ?? []).length === REQUIRED_GOLFERS);
   const otherSubmittedEntriesCount = sessionUser
@@ -2295,7 +2314,7 @@ export function usePoolPage() {
       body: JSON.stringify({
         tournamentId: selectedTournament,
         year,
-        standings: standings.map((e) => ({ place: e.place, name: e.name, points: e.rosterPoints, holesRemaining: e.holesRemaining, tieBreak: e.tieBreakValue, golfers: e.golfers.map((g) => ({ name: g.name, score: g.score, points: g.points, position: g.position, salary: g.salary })) })),
+        standings: standings.map((e) => ({ id: e.id, place: e.place, name: e.name, points: e.rosterPoints, holesRemaining: e.holesRemaining, tieBreak: e.tieBreakValue, golfers: e.golfers.map((g) => ({ name: g.name, score: g.score, points: g.points, position: g.position, salary: g.salary })) })),
         payouts: selectedTournamentPayouts ? { first: selectedTournamentPayouts.first, second: selectedTournamentPayouts.second, third: selectedTournamentPayouts.third } : undefined,
       }),
     }).catch(() => { archivedThisSession.current.delete(key); });
@@ -2796,6 +2815,13 @@ export function usePoolPage() {
 
   const headerTabActiveColor = '#63d9ea';
 
+  // Push notifications in the iPhone app: keep this device registered, and open the tab a tapped
+  // notification points to.
+  const openTabFromPush = (tab: string) => {
+    if ((MAIN_TABS as readonly string[]).includes(tab)) handleMainTabChange(tab as MainTab);
+  };
+  usePushRegistration(sessionUser?.id ?? null, openTabFromPush);
+
   return {
     showPayWinnersPrompt,
     initialTournament,
@@ -3049,6 +3075,10 @@ export function usePoolPage() {
     setPayoutPlanOpen,
     guideOpen,
     setGuideOpen,
+    feeTrackerOpen,
+    setFeeTrackerOpen,
+    seasonSettingsOpen,
+    setSeasonSettingsOpen,
     venmoFallbackUrl,
     setVenmoFallbackUrl,
     showSubmittedPicksPopup,
@@ -3218,6 +3248,10 @@ export function usePoolPage() {
     hasSubmittedRoster,
     entryFee,
     entryFeeVenmo,
+    myPaymentStatus,
+    showMyPaymentStatus,
+    reportMyPayment,
+    openTabFromPush,
     paysEntryFeeInApp,
     openEntryFeePayment,
     submittedEntries,
