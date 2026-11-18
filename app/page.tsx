@@ -9,6 +9,7 @@ import { AdminLeaguesModal } from './admin-leagues';
 import { VenmoMark } from './venmo-mark';
 import { PoolMessageModal } from './pool-message';
 import { PayoutPlanModal } from './payout-plan-ui';
+import { CommissionerGuide } from './commissioner-guide';
 import { currentTournamentMeta, effectiveLockTime } from '@/app/lib/tournament-config';
 import { EntryFeesModal, PayWinnersModal, VenmoFallbackNotice, VenmoModal, VenmoPrompt } from './venmo-ui';
 import { formatVenmo } from '@/app/lib/venmo';
@@ -142,6 +143,8 @@ export default function Page() {
     setPoolMessageOpen,
     payoutPlanOpen,
     setPayoutPlanOpen,
+    guideOpen,
+    setGuideOpen,
     lockTimeOverrides,
     venmoFallbackUrl,
     setVenmoFallbackUrl,
@@ -1032,6 +1035,28 @@ export default function Page() {
             currentUserId={sessionUser?.id ?? ''}
             onClose={() => setPayWinnersOpen(false)}
             onPool={(next) => setPool((current) => (current ? { ...current, ...next } : next))}
+          />
+        ) : null}
+
+        {guideOpen && pool && pool.role === 'commissioner' ? (
+          <CommissionerGuide<PoolInfo>
+            status={{
+              hasVenmo: !!sessionUser?.venmo,
+              hasPaymentNote: !!pool.paymentNote,
+              hasEntryFees: Object.keys(pool.entryFees ?? {}).length > 0,
+              hasPayoutPlan: !!pool.payoutPlan,
+              memberCount: pool.memberCount ?? 0,
+              nextTournamentLabel: TOURNAMENTS.find((t) => t.id === entriesTournamentId)?.name ?? 'Next tournament',
+              nextPicksOpen: pool.picksOpen?.[entriesTournamentId] === true,
+            }}
+            tournaments={TOURNAMENTS.map((t) => t.id as TournamentId)}
+            onPool={(next) => setPool((current) => (current ? { ...current, ...next } : next))}
+            onClose={() => setGuideOpen(false)}
+            openVenmo={() => { setGuideOpen(false); setVenmoModalOpen(true); }}
+            openEntryFees={() => { setGuideOpen(false); setEntryFeesOpen(true); }}
+            openPayouts={() => { setGuideOpen(false); setPayoutPlanOpen(true); }}
+            openInvite={() => { setGuideOpen(false); setLeagueModalOpen(true); }}
+            openMessage={() => { setGuideOpen(false); setPoolMessageOpen(true); }}
           />
         ) : null}
 

@@ -84,7 +84,7 @@ export function buildPoolMessage(input: PoolMessageInput) {
   lines.push(`⛳ It's ${input.tournamentName} week! ⛳`);
   lines.push('');
   lines.push(
-    `Picks are open for ${input.leagueName}. Choose ${input.rosterSize} golfers under the ${formatMoney(input.salaryCap)} salary cap and enter your tiebreaker (the winning score).`,
+    `Picks are open for ${input.leagueName}. Choose ${input.rosterSize} golfers under the ${formatMoney(input.salaryCap)} salary cap and guess the winner's total strokes for the tiebreaker.`,
   );
   lines.push('');
   if (input.lockAtIso) {
