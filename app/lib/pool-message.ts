@@ -5,6 +5,14 @@ import { formatMoney, formatVenmo } from './venmo';
 
 export const PUBLIC_SITE = 'https://www.golfmajorspool.com';
 
+// The App Store page, once the app is live: https://apps.apple.com/app/id<Apple ID>, where the
+// Apple ID is the number under App Store Connect → the app → App Information. Until then the
+// download link opens the website.
+export const APP_STORE_URL: string | null = null;
+
+// The link in the text: the App Store on an iPhone (once the app is live), the website otherwise.
+export const DOWNLOAD_LINK = `${PUBLIC_SITE}/download`;
+
 export type PoolMessageInput = {
   tournamentName: string; // e.g. "The Masters Tournament"
   leagueName: string;
@@ -28,16 +36,14 @@ export function formatLockTime(iso: string, timeZone?: string) {
   return `${day} at ${time}`;
 }
 
+// Which places get paid, not the amounts: those depend on how many enter.
 function payoutLine(payouts: PoolMessageInput['payouts']) {
   if (!payouts) return null;
-  const places = [
-    ['1st', payouts.first],
-    ['2nd', payouts.second],
-    ['3rd', payouts.third],
-  ].filter(([, amount]) => Number(amount) > 0) as [string, number][];
-  if (places.length === 0) return null;
-  if (places.length === 1 && places[0][0] === '1st') return `🏆 Winner takes all: ${formatMoney(places[0][1])}`;
-  return `🏆 Payouts: ${places.map(([place, amount]) => `${place} ${formatMoney(amount)}`).join(' · ')}`;
+  const paid = (['1st', '2nd', '3rd'] as const).filter((_, i) => Number([payouts.first, payouts.second, payouts.third][i]) > 0);
+  if (paid.length === 0) return null;
+  if (paid.length === 1 && paid[0] === '1st') return '🏆 Winner takes all';
+  if (paid.every((place, i) => place === ['1st', '2nd', '3rd'][i])) return `🏆 Top ${paid.length} get paid`;
+  return `🏆 ${paid.slice(0, -1).join(', ')} and ${paid[paid.length - 1]} place get paid`;
 }
 
 export function buildPoolMessage(input: PoolMessageInput) {
@@ -60,10 +66,11 @@ export function buildPoolMessage(input: PoolMessageInput) {
   }
   const payouts = payoutLine(input.payouts);
   if (payouts) lines.push(payouts);
-  lines.push(`📲 Make your picks: ${PUBLIC_SITE}`);
+  lines.push('');
+  lines.push(`📲 Make your picks in the Golf Majors Pool app. Download it here: ${DOWNLOAD_LINK}`);
   if (input.joinCode) {
     lines.push('');
-    lines.push(`New to the pool? Sign up with league code ${input.joinCode} or this link: ${PUBLIC_SITE}/?join=${encodeURIComponent(input.joinCode)}`);
+    lines.push(`New to the pool? Download the app, sign up and enter league code ${input.joinCode}.`);
   }
   lines.push('');
   lines.push('Good luck! 🏌️');
