@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 
-import { TOURNAMENT_META } from '@/app/lib/tournament-config';
+import { currentTournamentMeta } from '@/app/lib/tournament-config';
 import { getScorecardCache, readLeaderboardCache, normName } from '@/app/lib/scorecard-store';
 
 export async function GET(request: Request) {
@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   // Client-side clock hint: use this round number when it's ahead of what ESPN reports
   const clientRound = parseInt(searchParams.get('round') ?? '') || null;
 
-  const meta = TOURNAMENT_META[tournamentId];
+  const meta = currentTournamentMeta(tournamentId);
   if (!meta) return Response.json({ error: 'Unknown tournament' }, { status: 400 });
 
   const [cache, lbCache] = await Promise.all([

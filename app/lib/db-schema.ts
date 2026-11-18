@@ -136,6 +136,24 @@ begin
   end if;
 end $$;
 
+-- Seasons: picks are kept per season (rows from before this column are 2026's, the first
+-- season), and a tournament's picks-open / lineup-lock / winner-score belong to one season's
+-- event (state_season; null = 2026). Payouts and entry fees carry over from season to season.
+alter table rosters add column if not exists season integer not null default 2026;
+do $$
+begin
+  perform pg_advisory_xact_lock(2027001);
+  if exists (
+    select 1 from pg_constraint
+    where conrelid = 'rosters'::regclass and contype = 'p' and pg_get_constraintdef(oid) not like '%season%'
+  ) then
+    alter table rosters drop constraint rosters_pkey;
+    alter table rosters add constraint rosters_pkey primary key (league_id, user_id, tournament_id, season);
+  end if;
+end $$;
+alter table rosters alter column season drop default;
+alter table league_tournaments add column if not exists state_season integer;
+
 alter table users enable row level security;
 alter table sessions enable row level security;
 alter table leagues enable row level security;

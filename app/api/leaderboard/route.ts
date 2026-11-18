@@ -3,13 +3,14 @@ export const dynamic = 'force-dynamic';
 import { PLAYER_POOL_WITH_PGA_IDS } from '@/app/lib/player-pool';
 import { getDynamicPlayers } from '@/app/lib/dynamic-pool-store';
 import { parseMongo, type SlashGolfLeaderboardRow } from '@/app/lib/slashgolf';
-import { TOURNAMENT_META } from '@/app/lib/tournament-config';
+import { currentTournamentMeta, getTournamentMeta, type TournamentMeta } from '@/app/lib/tournament-config';
 import {
   getScorecardCache,
   getRoundLeaderStore,
   getRoundLeadersAwarded,
   getLowRoundStore,
   getTournamentLowRoundScore,
+  getLiveSeason,
   readLeaderboardCache,
   normName,
 } from '@/app/lib/scorecard-store';
@@ -71,13 +72,10 @@ function computeOriginalScore(row: SlashGolfLeaderboardRow): string | undefined 
 
 // ── Odds ──────────────────────────────────────────────────────────────────
 
-const TOURNAMENT_ODDS_LOCK_AT: Record<string, string> = {
-  players: '2026-03-09T08:00:00-05:00',
-  masters: '2026-04-06T08:00:00-05:00',
-  pga: '2026-05-11T08:00:00-05:00',
-  'us-open': '2026-06-15T08:00:00-05:00',
-  open: '2026-07-13T08:00:00-05:00',
-};
+// Odds lock at 8 AM Central on the Monday of tournament week.
+function oddsLockAt(meta: TournamentMeta) {
+  return Date.parse(`${meta.startDate}T13:00:00Z`) - 3 * 24 * 60 * 60 * 1000;
+}
 
 const TOURNAMENT_ODDS_PAGES: Record<string, string> = {
   players: 'https://www.oddschecker.com/us/golf/the-players-championship/winner',
@@ -169,9 +167,10 @@ async function saveLockedOddsSnapshot(tournamentId: string, snapshot: LockedOdds
 async function getOdds(
   tournamentId: string,
   watchedPlayers: string[],
+  meta: TournamentMeta,
 ): Promise<{ source: string; players: OddsRow[] }> {
-  const oddsLockAt = TOURNAMENT_ODDS_LOCK_AT[tournamentId];
-  const shouldLock = oddsLockAt ? Date.now() >= new Date(oddsLockAt).getTime() : false;
+  const lockedAt = new Date(oddsLockAt(meta)).toISOString();
+  const shouldLock = Date.now() >= oddsLockAt(meta);
 
   if (shouldLock) {
     const store = await readLockedOddsStore();
@@ -205,10 +204,10 @@ async function getOdds(
   if (shouldLock && live.players.length) {
     await saveLockedOddsSnapshot(tournamentId, {
       fetchedAt: new Date().toISOString(),
-      lockedAt: oddsLockAt,
+      lockedAt,
       players: live.players,
     });
-    return { source: `Locked Monday odds (${oddsLockAt})`, players: live.players };
+    return { source: `Locked Monday odds (${lockedAt})`, players: live.players };
   }
 
   return live;
@@ -277,14 +276,18 @@ const EDGE_CACHE_HEADERS = { 'Cache-Control': 'public, s-maxage=25, stale-while-
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const tournamentId = searchParams.get('tournamentId') ?? 'pga';
-  const meta = TOURNAMENT_META[tournamentId];
+  const current = currentTournamentMeta(tournamentId);
 
-  if (!meta) {
+  if (!current) {
     return Response.json({ error: 'Unknown tournament id.' }, { status: 400 });
   }
 
   // ── 1. Read leaderboard from Redis (cron keeps it fresh) ──────────────
-  const cached = await readLeaderboardCache(tournamentId);
+  const [cached, liveSeason] = await Promise.all([readLeaderboardCache(tournamentId), getLiveSeason(tournamentId)]);
+  // The stored data is last season's until the cron rolls this tournament over (Monday of the new
+  // event's week), so its par and odds come from that season.
+  const dataSeason = liveSeason?.season ?? (cached ? 2026 : Number(current.year));
+  const meta: TournamentMeta = getTournamentMeta(tournamentId, dataSeason) ?? current;
 
   if (!cached) {
     return Response.json({
@@ -515,7 +518,7 @@ export async function GET(request: Request) {
   }
 
   // ── 4. Odds ───────────────────────────────────────────────────────────
-  const odds = await getOdds(tournamentId, watchedPlayerNames);
+  const odds = await getOdds(tournamentId, watchedPlayerNames, meta);
 
   // ── 5. Full field (all players in the cached leaderboard, not just pool) ──
   const fullField = searchParams.get('fullField') === 'true';
@@ -564,6 +567,7 @@ export async function GET(request: Request) {
     tournamentLowRoundScore: tournamentLowRound,
     fieldBonusEvents,
     coursePar: meta.par,
+    season: dataSeason,
     fetchedAt: new Date().toISOString(),
     players,
     odds: odds.players,

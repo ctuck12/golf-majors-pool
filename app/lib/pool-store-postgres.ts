@@ -1,6 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { db, type Sql, type TxSql } from './db';
 import { normalizeVenmoUsername } from './venmo';
+import { latestStartedSeason, picksSeason } from './tournament-config';
 import { currentSeason, parsePassProduct, tierForLimit, tierInfo, type LeagueTier, type PassAction } from './league-passes';
 import { fetchPassPurchases } from './revenuecat';
 import {
@@ -19,6 +20,7 @@ import {
   type LeagueSummary,
   type LeagueVenmo,
   type MemberUpdates,
+  type PastSeasonPicks,
   type PayoutSent,
   type PublicPool,
   type PublicPoolEntry,
@@ -62,6 +64,7 @@ type RosterData = {
   rosters: Partial<Record<TournamentId, number[]>>;
   tieBreaks: Partial<Record<TournamentId, number>>;
   rosterSubmittedAt: Partial<Record<TournamentId, string>>;
+  pastSeasons: PastSeasonPicks;
 };
 
 const PG_UNIQUE_VIOLATION = '23505';
@@ -76,7 +79,7 @@ function isTournamentId(value: string): value is TournamentId {
 }
 
 function emptyRosterData(): RosterData {
-  return { rosters: {}, tieBreaks: {}, rosterSubmittedAt: {} };
+  return { rosters: {}, tieBreaks: {}, rosterSubmittedAt: {}, pastSeasons: {} };
 }
 
 function toPublicUser(user: UserRow, poolIds: string[], data: RosterData): PublicUser {
@@ -88,6 +91,7 @@ function toPublicUser(user: UserRow, poolIds: string[], data: RosterData): Publi
     poolIds,
     rosters: data.rosters,
     tieBreaks: data.tieBreaks,
+    ...(Object.keys(data.pastSeasons).length ? { pastSeasons: data.pastSeasons } : {}),
     rosterSubmittedAt: resolveRosterSubmittedAt({
       displayName: user.display_name,
       createdAt: user.created_at.toISOString(),
@@ -132,8 +136,9 @@ async function loadPool(sql: AnySql, league: { id: string; name: string; join_co
     payout_third: number | null;
     winner_score: number | null;
     entry_fee: number | null;
+    state_season: number | null;
   }[]>`
-    select tournament_id, picks_open, lineup_locked, payout_first, payout_second, payout_third, winner_score, entry_fee
+    select tournament_id, picks_open, lineup_locked, payout_first, payout_second, payout_third, winner_score, entry_fee, state_season
     from league_tournaments where league_id = ${league.id}
   `;
 
@@ -151,8 +156,10 @@ async function loadPool(sql: AnySql, league: { id: string; name: string; join_co
   for (const row of rows) {
     if (!isTournamentId(row.tournament_id)) continue;
     const tid = row.tournament_id;
-    if (row.lineup_locked !== null) pool.lineupLocks[tid] = row.lineup_locked;
-    if (row.picks_open !== null) pool.picksOpen[tid] = row.picks_open;
+    // Picks open / lineup lock / winner score only count for the season they were set in.
+    const currentState = (row.state_season ?? 2026) === picksSeason(tid);
+    if (currentState && row.lineup_locked !== null) pool.lineupLocks[tid] = row.lineup_locked;
+    if (currentState && row.picks_open !== null) pool.picksOpen[tid] = row.picks_open;
     if (row.payout_first !== null || row.payout_second !== null || row.payout_third !== null) {
       pool.payouts[tid] = {
         first: row.payout_first ?? 0,
@@ -160,7 +167,7 @@ async function loadPool(sql: AnySql, league: { id: string; name: string; join_co
         third: row.payout_third ?? 0,
       };
     }
-    if (row.winner_score !== null) pool.winnerScores[tid] = row.winner_score;
+    if (currentState && row.winner_score !== null) pool.winnerScores[tid] = row.winner_score;
     if (row.entry_fee !== null && row.entry_fee > 0) pool.entryFees![tid] = row.entry_fee;
   }
 
@@ -174,19 +181,27 @@ async function loadRosterData(sql: AnySql, leagueId: string, userIds: string[]) 
   const rows = await sql<{
     user_id: string;
     tournament_id: string;
+    season: number;
     golfer_ids: number[] | null;
     tie_break: number | null;
     submitted_at: Date | null;
   }[]>`
-    select user_id, tournament_id, golfer_ids, tie_break, submitted_at
+    select user_id, tournament_id, season, golfer_ids, tie_break, submitted_at
     from rosters
     where league_id = ${leagueId} and user_id in ${sql(userIds)}
   `;
 
+  const now = new Date();
   for (const row of rows) {
     const data = byUser.get(row.user_id);
     if (!data || !isTournamentId(row.tournament_id)) continue;
     const tid = row.tournament_id;
+    if (row.season !== picksSeason(tid, now)) {
+      const past = (data.pastSeasons[row.season] ??= { rosters: {}, tieBreaks: {} });
+      if (row.golfer_ids !== null) past.rosters[tid] = row.golfer_ids;
+      if (row.tie_break !== null) past.tieBreaks[tid] = row.tie_break;
+      continue;
+    }
     if (row.golfer_ids !== null) data.rosters[tid] = row.golfer_ids;
     if (row.tie_break !== null) data.tieBreaks[tid] = row.tie_break;
     if (row.submitted_at !== null) data.rosterSubmittedAt[tid] = row.submitted_at.toISOString();
@@ -378,15 +393,20 @@ function leagueVenmo(members: MemberRow[], collectorId: string | null): LeagueVe
   return collector ? { userId: collector.id, name: collector.display_name, handle: collector.venmo! } : null;
 }
 
+// Winners are paid for a tournament's most recent event that has started.
+function payoutSeason(tournamentId: string) {
+  return latestStartedSeason(tournamentId) ?? picksSeason(tournamentId);
+}
+
 async function loadPayoutsSent(sql: AnySql, leagueId: string) {
-  const rows = await sql<{ tournament_id: string; place: number; user_id: string | null; amount: number; sent_at: Date }[]>`
-    select tournament_id, place, user_id, amount, sent_at from league_payouts_sent
-    where league_id = ${leagueId} and season = ${currentSeason()}
+  const rows = await sql<{ tournament_id: string; season: number; place: number; user_id: string | null; amount: number; sent_at: Date }[]>`
+    select tournament_id, season, place, user_id, amount, sent_at from league_payouts_sent
+    where league_id = ${leagueId}
     order by place asc
   `;
   const byTournament: Partial<Record<TournamentId, PayoutSent[]>> = {};
   for (const row of rows) {
-    if (!isTournamentId(row.tournament_id)) continue;
+    if (!isTournamentId(row.tournament_id) || row.season !== payoutSeason(row.tournament_id)) continue;
     (byTournament[row.tournament_id] ??= []).push({
       place: row.place,
       userId: row.user_id,
@@ -445,6 +465,7 @@ export async function getSessionContext(token: string | undefined): Promise<Sess
       name: member.display_name,
       rosters: maskRosters(data.rosters, member.id === user.id),
       tieBreaks: data.tieBreaks,
+      ...(Object.keys(data.pastSeasons).length ? { pastSeasons: data.pastSeasons } : {}),
       ...(isCommissioner ? { venmo: member.venmo ?? null } : {}),
       rosterSubmittedAt: resolveRosterSubmittedAt({
         displayName: member.display_name,
@@ -540,9 +561,9 @@ export async function saveRosterForUser(userId: string, tournamentId: Tournament
 
   // Stamp the first complete submission only, so later edits keep the original order.
   await sql`
-    insert into rosters (league_id, user_id, tournament_id, golfer_ids, submitted_at)
-    values (${league.id}, ${userId}, ${tournamentId}, ${sql.array(sanitizedRoster, 23)}, now())
-    on conflict (league_id, user_id, tournament_id) do update set
+    insert into rosters (league_id, user_id, tournament_id, season, golfer_ids, submitted_at)
+    values (${league.id}, ${userId}, ${tournamentId}, ${picksSeason(tournamentId)}, ${sql.array(sanitizedRoster, 23)}, now())
+    on conflict (league_id, user_id, tournament_id, season) do update set
       golfer_ids = excluded.golfer_ids,
       submitted_at = coalesce(rosters.submitted_at, excluded.submitted_at),
       updated_at = now()
@@ -555,9 +576,9 @@ export async function saveTieBreakForUser(userId: string, tournamentId: Tourname
   const sql = db();
   const league = await requireActiveLeague(sql, userId);
   await sql`
-    insert into rosters (league_id, user_id, tournament_id, tie_break)
-    values (${league.id}, ${userId}, ${tournamentId}, ${tieBreak})
-    on conflict (league_id, user_id, tournament_id) do update set
+    insert into rosters (league_id, user_id, tournament_id, season, tie_break)
+    values (${league.id}, ${userId}, ${tournamentId}, ${picksSeason(tournamentId)}, ${tieBreak})
+    on conflict (league_id, user_id, tournament_id, season) do update set
       tie_break = excluded.tie_break,
       updated_at = now()
   `;
@@ -700,9 +721,9 @@ export async function updatePoolMember(requestingUserId: string, memberId: strin
           // Only a complete roster gets a submission stamp; an existing stamp is kept either way.
           const stamp = roster.length === 6 ? new Date() : null;
           await sql`
-            insert into rosters (league_id, user_id, tournament_id, golfer_ids, submitted_at)
-            values (${league.id}, ${memberId}, ${tournamentId}, ${sql.array(roster, 23)}, ${stamp})
-            on conflict (league_id, user_id, tournament_id) do update set
+            insert into rosters (league_id, user_id, tournament_id, season, golfer_ids, submitted_at)
+            values (${league.id}, ${memberId}, ${tournamentId}, ${picksSeason(tournamentId)}, ${sql.array(roster, 23)}, ${stamp})
+            on conflict (league_id, user_id, tournament_id, season) do update set
               golfer_ids = excluded.golfer_ids,
               submitted_at = coalesce(rosters.submitted_at, excluded.submitted_at),
               updated_at = now()
@@ -716,9 +737,9 @@ export async function updatePoolMember(requestingUserId: string, memberId: strin
           const value = updates.tieBreaks[tournamentId];
           if (value !== null && typeof value !== 'number') continue;
           await sql`
-            insert into rosters (league_id, user_id, tournament_id, tie_break)
-            values (${league.id}, ${memberId}, ${tournamentId}, ${value})
-            on conflict (league_id, user_id, tournament_id) do update set
+            insert into rosters (league_id, user_id, tournament_id, season, tie_break)
+            values (${league.id}, ${memberId}, ${tournamentId}, ${picksSeason(tournamentId)}, ${value})
+            on conflict (league_id, user_id, tournament_id, season) do update set
               tie_break = excluded.tie_break,
               updated_at = now()
           `;
@@ -779,9 +800,15 @@ async function updateLeagueTournament(
 ) {
   return db().begin(async (sql) => {
     const league = await requireActiveLeague(sql, requestingUserId);
+    const season = picksSeason(tournamentId);
     await sql`
-      insert into league_tournaments (league_id, tournament_id) values (${league.id}, ${tournamentId})
+      insert into league_tournaments (league_id, tournament_id, state_season) values (${league.id}, ${tournamentId}, ${season})
       on conflict do nothing
+    `;
+    // A new season's event starts with picks closed, unlocked and no winner score.
+    await sql`
+      update league_tournaments set picks_open = null, lineup_locked = null, winner_score = null, state_season = ${season}
+      where league_id = ${league.id} and tournament_id = ${tournamentId} and coalesce(state_season, 2026) <> ${season}
     `;
     await apply(sql, league.id);
     return loadPool(sql, league);
@@ -812,18 +839,24 @@ export async function updatePoolPicksOpen(requestingUserId: string, tournamentId
 
 // Locks this tournament's lineups in every league (tee times are the same for everyone).
 export async function autoLockPoolLineup(tournamentId: TournamentId): Promise<void> {
+  const season = picksSeason(tournamentId);
   await db()`
-    insert into league_tournaments (league_id, tournament_id, lineup_locked)
-    select id, ${tournamentId}, true from leagues
-    on conflict (league_id, tournament_id) do update set lineup_locked = true
+    insert into league_tournaments (league_id, tournament_id, lineup_locked, state_season)
+    select id, ${tournamentId}, true, ${season} from leagues
+    on conflict (league_id, tournament_id) do update set
+      lineup_locked = true,
+      picks_open = case when coalesce(league_tournaments.state_season, 2026) = ${season} then league_tournaments.picks_open else null end,
+      winner_score = case when coalesce(league_tournaments.state_season, 2026) = ${season} then league_tournaments.winner_score else null end,
+      state_season = ${season}
     where league_tournaments.lineup_locked is distinct from true
+      or coalesce(league_tournaments.state_season, 2026) <> ${season}
   `;
 }
 
 export async function getSelectedPlayerIdsForTournament(tournamentId: TournamentId): Promise<Set<number>> {
   const rows = await db()<{ id: number }[]>`
     select distinct unnest(golfer_ids) as id from rosters
-    where tournament_id = ${tournamentId} and golfer_ids is not null
+    where tournament_id = ${tournamentId} and season = ${picksSeason(tournamentId)} and golfer_ids is not null
   `;
   return new Set(rows.map((row) => row.id));
 }
@@ -1207,7 +1240,7 @@ export async function setPayoutSent(
   }
   await db().begin(async (sql) => {
     const league = await requireCommissionerLeague(sql, requestingUserId);
-    const season = currentSeason();
+    const season = payoutSeason(input.tournamentId);
     if (!input.sent) {
       await sql`
         delete from league_payouts_sent

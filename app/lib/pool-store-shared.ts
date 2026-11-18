@@ -27,6 +27,7 @@ export type PublicUser = {
   rosterSubmittedAt?: Partial<Record<TournamentId, string>>;
   // Venmo username without the @ (null when not added yet).
   venmo?: string | null;
+  pastSeasons?: PastSeasonPicks;
 };
 
 export type PublicPoolEntry = {
@@ -37,7 +38,15 @@ export type PublicPoolEntry = {
   rosterSubmittedAt?: Partial<Record<TournamentId, string>>;
   // The member's Venmo, shown to the league's commissioners only (for paying out winnings).
   venmo?: string | null;
+  pastSeasons?: PastSeasonPicks;
 };
+
+// rosters / tieBreaks / rosterSubmittedAt above are each tournament's CURRENT season (the event
+// picks are being made for, or the one being played). Earlier seasons' picks are here by year.
+export type PastSeasonPicks = Record<number, {
+  rosters: Partial<Record<TournamentId, number[]>>;
+  tieBreaks: Partial<Record<TournamentId, number>>;
+}>;
 
 export type PublicPool = {
   id: string;

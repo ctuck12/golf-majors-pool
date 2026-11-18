@@ -2,6 +2,7 @@ import redis from './redis';
 import { PLAYER_POOL_WITH_PGA_IDS } from './player-pool';
 import { canonicalNameKey, detectPlayerTags } from './name-match';
 import { applyNameAlias } from './name-aliases';
+import { picksSeason } from './tournament-config';
 
 // Commissioner-editable salary + world-rank pick list.
 //
@@ -14,7 +15,10 @@ import { applyNameAlias } from './name-aliases';
 // Salary lists are stored PER TOURNAMENT (v3) so uploading a new tournament's list no longer
 // overwrites a previous one — historical standings keep the salaries each golfer had at that event.
 // (v2 was a single global key; it's abandoned, so the current tournament's list is re-uploaded once.)
-const salaryKey = (tournamentId: string) => `salary-overrides:v3:${tournamentId}`;
+// From 2027 each season has its own list (2026's keep their original key), so a new season's pick
+// sheet never shows last season's salaries and past standings keep theirs.
+const salaryKey = (tournamentId: string, season: number) =>
+  season <= 2026 ? `salary-overrides:v3:${tournamentId}` : `salary-overrides:v3:${tournamentId}:${season}`;
 
 export type OverrideEntry = { salary: number; worldRank: number | null };
 
@@ -120,9 +124,10 @@ export function parseSalaryPaste(text: string, extra?: Array<{ id: number; name:
   return { map, matched, unmatched, skipped, amateurs, clubPros };
 }
 
-export async function getManualSalaries(tournamentId: string): Promise<ManualSalaries | null> {
+// `season` defaults to the season the tournament's picks are for right now.
+export async function getManualSalaries(tournamentId: string, season = picksSeason(tournamentId)): Promise<ManualSalaries | null> {
   try {
-    const raw = await redis.get(salaryKey(tournamentId));
+    const raw = await redis.get(salaryKey(tournamentId, season));
     if (!raw) return null;
     const parsed = JSON.parse(raw as string) as ManualSalaries;
     return parsed && parsed.map && Object.keys(parsed.map).length > 0 ? parsed : null;
@@ -133,23 +138,31 @@ export async function getManualSalaries(tournamentId: string): Promise<ManualSal
 
 // Read every tournament's saved salary list at once (for the public pick-sheet read, which needs to
 // show the right salaries whichever tournament the user is viewing).
-export async function getAllManualSalaries(tournamentIds: readonly string[]): Promise<Record<string, ManualSalaries>> {
+export async function getAllManualSalaries(
+  tournamentIds: readonly string[],
+  seasonFor: (tournamentId: string) => number = (tid) => picksSeason(tid),
+): Promise<Record<string, ManualSalaries>> {
   const out: Record<string, ManualSalaries> = {};
   await Promise.all(
     tournamentIds.map(async (tid) => {
-      const s = await getManualSalaries(tid);
+      const s = await getManualSalaries(tid, seasonFor(tid));
       if (s) out[tid] = s;
     }),
   );
   return out;
 }
 
-export async function saveManualSalaries(tournamentId: string, map: Record<number, OverrideEntry>, updatedAt: string): Promise<ManualSalaries> {
+export async function saveManualSalaries(
+  tournamentId: string,
+  map: Record<number, OverrideEntry>,
+  updatedAt: string,
+  season = picksSeason(tournamentId),
+): Promise<ManualSalaries> {
   const payload: ManualSalaries = { map, updatedAt, count: Object.keys(map).length };
-  await redis.set(salaryKey(tournamentId), JSON.stringify(payload));
+  await redis.set(salaryKey(tournamentId, season), JSON.stringify(payload));
   return payload;
 }
 
-export async function clearManualSalaries(tournamentId: string): Promise<void> {
-  await redis.del(salaryKey(tournamentId));
+export async function clearManualSalaries(tournamentId: string, season = picksSeason(tournamentId)): Promise<void> {
+  await redis.del(salaryKey(tournamentId, season));
 }

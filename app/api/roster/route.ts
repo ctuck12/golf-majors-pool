@@ -8,7 +8,7 @@ import {
   TOURNAMENT_IDS,
   type TournamentId,
 } from '../../lib/pool-store';
-import { TOURNAMENT_META } from '../../lib/tournament-config';
+import { currentTournamentMeta, effectiveLockTime } from '../../lib/tournament-config';
 import { getLockTimeOverrides } from '../../lib/lock-time-store';
 function isTournamentId(value: string): value is TournamentId {
   return TOURNAMENT_IDS.includes(value as TournamentId);
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Picks are locked for this tournament.' }, { status: 403 });
     }
     const lockOverrides = await getLockTimeOverrides().catch(() => ({} as Awaited<ReturnType<typeof getLockTimeOverrides>>));
-    const lockAtIso = lockOverrides[tournamentId] ?? TOURNAMENT_META[tournamentId]?.lockAtUtc;
+    const lockAtIso = effectiveLockTime(lockOverrides[tournamentId], currentTournamentMeta(tournamentId)?.lockAtUtc);
     if (lockAtIso && Date.now() >= new Date(lockAtIso).getTime()) {
       return NextResponse.json({ error: 'Picks are locked for this tournament.' }, { status: 403 });
     }

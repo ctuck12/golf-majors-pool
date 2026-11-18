@@ -40,6 +40,8 @@ type EspnCompetitor = {
 type EspnScoreboardResponse = {
   events?: Array<{
     id: string;
+    name?: string;
+    shortName?: string;
     competitions?: Array<{
       competitors?: EspnCompetitor[];
       status?: EspnStatus;
@@ -194,7 +196,19 @@ function parseStoredRounds(linescores: EspnRoundLinescore[] | undefined) {
 
 // ── Main fetch ─────────────────────────────────────────────────────────────
 
-export async function fetchESPNTournament(espnEventId: string): Promise<ESPNTournamentResult> {
+// How each tournament is named on ESPN's scoreboard, for finding a new season's event before its
+// ESPN id is in the schedule. "The Open" must not match the U.S. Open.
+const ESPN_EVENT_NAMES: Record<string, (name: string) => boolean> = {
+  players: (n) => /players championship/i.test(n),
+  masters: (n) => /\bmasters\b/i.test(n),
+  pga: (n) => /\bpga championship\b/i.test(n),
+  'us-open': (n) => /\bu\.?\s?s\.? open\b/i.test(n),
+  open: (n) => /(^|\s)the open\b|\bopen championship\b|british open/i.test(n) && !/\bu\.?\s?s\.? open\b/i.test(n),
+};
+
+// espnEventId may be undefined for a season whose ESPN id isn't known yet: the event is then
+// found on today's scoreboard by the tournament's name.
+export async function fetchESPNTournament(espnEventId: string | undefined, tournamentId?: string): Promise<ESPNTournamentResult> {
   const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
   const res = await fetch(
     `https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?dates=${today}`,
@@ -203,8 +217,11 @@ export async function fetchESPNTournament(espnEventId: string): Promise<ESPNTour
   if (!res.ok) throw new Error(`ESPN scoreboard ${res.status}: ${await res.text()}`);
 
   const data = (await res.json()) as EspnScoreboardResponse;
-  const event = data.events?.find((e) => e.id === espnEventId);
-  if (!event) throw new Error(`400: event ${espnEventId} not in ESPN scoreboard for ${today}`);
+  const matchesName = tournamentId ? ESPN_EVENT_NAMES[tournamentId] : undefined;
+  const event = espnEventId
+    ? data.events?.find((e) => e.id === espnEventId)
+    : data.events?.find((e) => !!matchesName && matchesName(`${e.name ?? ''} ${e.shortName ?? ''}`));
+  if (!event) throw new Error(`400: event ${espnEventId ?? tournamentId} not in ESPN scoreboard for ${today}`);
 
   const competition = event.competitions?.[0];
   const competitors = competition?.competitors ?? [];
