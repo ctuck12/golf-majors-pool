@@ -2,10 +2,13 @@
 //   npm run build:mobile            → build + `cap sync ios`
 //   npm run build:mobile -- --no-sync
 import { execSync } from 'node:child_process';
+import { applyTournamentArt } from './tournament-art.mjs';
 
 const run = (command, env = {}) =>
   execSync(command, { stdio: 'inherit', env: { ...process.env, ...env } });
 
+// TOURNAMENT_ART=alternate swaps in the backup tournament logos (see scripts/tournament-art.mjs).
+applyTournamentArt();
 run('npx next build', { BUILD_TARGET: 'mobile' });
 
 if (!process.argv.includes('--no-sync')) {
