@@ -11,7 +11,7 @@ import {
   type LeagueTier,
   type PassAction,
 } from './lib/league-passes';
-import { buyProduct, loadProducts, purchasesAvailable, type StoreProduct } from './purchases';
+import { buyProduct, loadProducts, purchasesAvailable, redeemPromoCode, type StoreProduct } from './purchases';
 
 // The league pass paywall: create a league, upgrade its member limit, or renew it for a new
 // season. Order of events: the server checks the pass can be used, Apple's payment sheet takes
@@ -90,6 +90,33 @@ export function PaywallModal<T extends SessionLike>({
   const [error, setError] = useState('');
 
   const options = mode ? optionsFor(mode) : [];
+
+  const loadPasses = () =>
+    fetch('/api/leagues/passes')
+      .then((res) => res.json())
+      .then((data: { season?: number; unused?: UnusedPass[] }) => {
+        setSeason(data.season ?? null);
+        setUnused(data.unused ?? []);
+        return data.unused ?? [];
+      });
+
+  // Promo codes are App Store offer codes: Apple's sheet redeems them, then the pass appears here.
+  const [promoNote, setPromoNote] = useState('');
+  const openPromoCode = async () => {
+    setError('');
+    setPromoNote('');
+    try {
+      await redeemPromoCode(userId);
+      setPromoNote('Once Apple confirms your code, your pass appears above. Tap "Use" to apply it.');
+      for (let attempt = 0; attempt < 10; attempt++) {
+        await wait(3000);
+        const passes = await loadPasses().catch(() => []);
+        if (passes.length > unused.length) break;
+      }
+    } catch (err) {
+      setError((err as Error).message || "Couldn't open the promo code screen.");
+    }
+  };
 
   useEffect(() => {
     if (!open || !mode) return;
@@ -248,6 +275,11 @@ export function PaywallModal<T extends SessionLike>({
                 style={{ border: 'none', borderRadius: 14, padding: '13px 16px', background: navy, color: '#fff', fontSize: 15, fontWeight: 800, cursor: !selected || busy || nameMissing ? 'not-allowed' : 'pointer', opacity: !selected || nameMissing ? 0.5 : busy ? 0.7 : 1 }}>
                 {busy && busy === selected ? 'Processing…' : mode.kind === 'create' ? 'Pay and create league' : mode.kind === 'upgrade' ? 'Pay and upgrade' : 'Pay and renew'}
               </button>
+              <button type="button" onClick={() => void openPromoCode()}
+                style={{ background: 'none', border: 'none', padding: 0, color: '#2f5f96', fontWeight: 800, fontSize: 14, cursor: 'pointer', textAlign: 'center' }}>
+                Have a promo code?
+              </button>
+              {promoNote ? <div style={{ fontSize: 13, color: '#1f8d4e', lineHeight: 1.5 }}>{promoNote}</div> : null}
               <div style={{ fontSize: 12, color: '#5b6b79', lineHeight: 1.5 }}>
                 One-time purchase through Apple, for this league and season only. Nothing renews automatically. The app never collects or pays out prize money.
               </div>

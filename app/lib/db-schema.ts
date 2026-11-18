@@ -154,6 +154,38 @@ end $$;
 alter table rosters alter column season drop default;
 alter table league_tournaments add column if not exists state_season integer;
 
+-- One commissioner per league. Leagues that had several keep one (the creator, else the app
+-- admin in the founder league, else whoever joined first); the others become members.
+with ranked as (
+  select m.league_id, m.user_id,
+    row_number() over (
+      partition by m.league_id
+      order by (m.user_id = l.created_by) desc nulls last, (lower(u.email) = 'ctuck12@gmail.com') desc, m.joined_at asc, m.user_id asc
+    ) as rn
+  from league_members m
+  join leagues l on l.id = m.league_id
+  join users u on u.id = m.user_id
+  where m.role = 'commissioner'
+)
+update league_members m set role = 'member'
+from ranked r
+where r.league_id = m.league_id and r.user_id = m.user_id and r.rn > 1;
+create unique index if not exists league_members_one_commissioner on league_members(league_id) where role = 'commissioner';
+
+-- Accounts confirm their email with a code (accounts from before this are counted as confirmed),
+-- and can say they don't use Venmo so they aren't asked again.
+alter table users add column if not exists email_verified_at timestamptz;
+alter table users add column if not exists venmo_declined boolean not null default false;
+do $$
+declare applied integer;
+begin
+  insert into app_migrations (name) values ('existing-accounts-email-verified') on conflict do nothing;
+  get diagnostics applied = row_count;
+  if applied = 1 then
+    update users set email_verified_at = created_at where email_verified_at is null;
+  end if;
+end $$;
+
 alter table users enable row level security;
 alter table sessions enable row level security;
 alter table leagues enable row level security;

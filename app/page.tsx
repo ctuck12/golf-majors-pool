@@ -3,9 +3,12 @@
 // Inside the iPhone app, sends this page's /api calls to the live site (no-op on the web).
 import { isNativeApp, settleViewAfterKeyboard } from './native-bridge';
 
-import { Fragment, startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { Fragment, startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { LeagueGate, LeagueModal, type LeagueSummary } from './league-panel';
 import { PaywallModal, type PaywallMode } from './paywall';
+import { VenmoSetupStep, VerifyEmailGate } from './onboarding';
+import { AdminLeaguesModal } from './admin-leagues';
+import { VenmoMark } from './venmo-mark';
 import { EntryFeesModal, openVenmoPayment, PayWinnersModal, VenmoFallbackNotice, VenmoModal, VenmoPrompt } from './venmo-ui';
 import { ENTRY_FEE_NOTE, formatMoney, formatVenmo } from '@/app/lib/venmo';
 import { PLAYER_POOL_WITH_PGA_IDS } from '@/app/lib/player-pool';
@@ -917,6 +920,9 @@ type AuthUser = {
   tieBreaks: Partial<Record<TournamentId, number>>;
   rosterSubmittedAt?: Partial<Record<TournamentId, string>>;
   venmo?: string | null;
+  venmoDeclined?: boolean;
+  // false until a new account enters its emailed code.
+  emailVerified?: boolean;
   pastSeasons?: SeasonPicks['pastSeasons'];
 };
 
@@ -938,7 +944,6 @@ type PoolInfo = {
   // Entry fee per tournament and the Venmo that collects it (null until a commissioner adds one).
   entryFees?: Partial<Record<TournamentId, number>>;
   venmo?: { userId: string; name: string; handle: string } | null;
-  venmoCollectorId?: string | null;
   // Commissioners only: winners already paid this season.
   payoutsSent?: Partial<Record<TournamentId, { place: number; userId: string | null; amount: number; sentAt: string }[]>>;
 };
@@ -1914,7 +1919,8 @@ export default function Page() {
     setForgotMessage('');
   }, []);
   const [registerForm, setRegisterForm] = useState({
-    displayName: '',
+    firstName: '',
+    lastName: '',
     email: '',
     password: '',
     joinCode: '',
@@ -1988,7 +1994,10 @@ export default function Page() {
   // Venmo: editing your own, the commissioner's entry fees and pay-winners screens, and the
   // venmo.com fallback when the Venmo app doesn't open.
   const [venmoModalOpen, setVenmoModalOpen] = useState(false);
+  // Right after a new account confirms its email: the one-time "Add your Venmo" step.
+  const [showVenmoSetup, setShowVenmoSetup] = useState(false);
   const [entryFeesOpen, setEntryFeesOpen] = useState(false);
+  const [adminLeaguesOpen, setAdminLeaguesOpen] = useState(false);
   const [payWinnersOpen, setPayWinnersOpen] = useState(false);
   const [venmoFallbackUrl, setVenmoFallbackUrl] = useState<string | null>(null);
   const [showSubmittedPicksPopup, setShowSubmittedPicksPopup] = useState(false);
@@ -2078,6 +2087,8 @@ export default function Page() {
   // The app admin runs the app-wide tools for every league; a league's commissioners run its league
   // tools (members, picks open/lock, payouts, tiebreak).
   const isAppAdmin = sessionFlags.isAppAdmin;
+  // A new account that hasn't entered its emailed code yet (accounts from before codes count as confirmed).
+  const needsEmailCode = sessionUser?.emailVerified === false;
   const canManagePool = isAppAdmin || pool?.role === 'commissioner';
   const isFounderPool = pool?.id === FOUNDER_POOL_ID;
 
@@ -2630,7 +2641,7 @@ export default function Page() {
 
       applySession(payload);
       settleViewAfterKeyboard();
-      setRegisterForm({ displayName: '', email: '', password: '', joinCode: '' });
+      setRegisterForm({ firstName: '', lastName: '', email: '', password: '', joinCode: '' });
       setPendingJoinCode('');
     } catch (err) {
       setAuthError(err instanceof Error ? err.message : 'Unable to create account.');
@@ -3028,9 +3039,10 @@ export default function Page() {
     }
   };
 
-  // Promote a member to commissioner, or hand the role back. Refreshes the session so the
-  // league's commissioner list (and your own access, if you demoted yourself) stays current.
-  const handleToggleCommissionerRole = async (memberId: string, makeCommissioner: boolean) => {
+  // Hands the league's one commissioner role to another member (you become a member). Refreshes
+  // the session so your access and the league's contact update straight away.
+  const [confirmHandOverId, setConfirmHandOverId] = useState<string | null>(null);
+  const handleHandOverCommissioner = async (memberId: string, memberName: string) => {
     setCommissionerBusy(true);
     setCommissionerError('');
     setCommissionerSuccess('');
@@ -3039,11 +3051,12 @@ export default function Page() {
       await readJson<{ member: AuthUser }>(`/api/commissioner/members/${memberId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: makeCommissioner ? 'commissioner' : 'member' }),
+        body: JSON.stringify({ role: 'commissioner' }),
       });
       await refreshCurrentSession();
       setCommissionerMemberModalOpen(false);
-      setCommissionerSuccess(makeCommissioner ? 'Member is now a commissioner.' : 'Commissioner role removed.');
+      setConfirmHandOverId(null);
+      setCommissionerSuccess(`${memberName} is now the commissioner.`);
     } catch (err) {
       setCommissionerError(err instanceof Error ? err.message : 'Unable to change the role.');
     } finally {
@@ -4647,7 +4660,9 @@ export default function Page() {
                       onClick={() => { setAccountMenuOpen(false); setVenmoModalOpen(true); }}
                       style={{ marginTop: 8, padding: 0, background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 800, color: '#008CFF', textAlign: 'left' }}
                     >
-                      {sessionUser.venmo ? `Venmo: ${formatVenmo(sessionUser.venmo)} · Edit` : '+ Add your Venmo'}
+                      {sessionUser.venmo
+                        ? <><VenmoMark tone="blue" /> {formatVenmo(sessionUser.venmo)} · Edit</>
+                        : <>+ Add your <VenmoMark tone="blue" /></>}
                     </button>
                   ) : null}
 
@@ -4886,12 +4901,22 @@ export default function Page() {
                 style={{ display: 'grid', gap: 12, flex: 1 }}
               >
                 {authMode === 'register' ? (
-                  <input
-                    value={registerForm.displayName}
-                    onChange={(event) => setRegisterForm({ ...registerForm, displayName: event.target.value })}
-                    placeholder="Display name"
-                    style={fieldStyle()}
-                  />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <input
+                      value={registerForm.firstName}
+                      onChange={(event) => setRegisterForm({ ...registerForm, firstName: event.target.value })}
+                      placeholder="First name"
+                      autoComplete="given-name"
+                      style={{ ...fieldStyle(), minWidth: 0 }}
+                    />
+                    <input
+                      value={registerForm.lastName}
+                      onChange={(event) => setRegisterForm({ ...registerForm, lastName: event.target.value })}
+                      placeholder="Last name"
+                      autoComplete="family-name"
+                      style={{ ...fieldStyle(), minWidth: 0 }}
+                    />
+                  </div>
                 ) : null}
 
                 <input
@@ -5142,7 +5167,26 @@ export default function Page() {
           </div>
         ) : null}
 
-        {sessionUser && !pool && !sessionLoading ? (
+        {/* New accounts confirm their email first, then add their Venmo (once). */}
+        {sessionUser && needsEmailCode ? (
+          <VerifyEmailGate<SessionPayload>
+            email={sessionUser.email}
+            onSession={(payload) => {
+              applySession(payload);
+              settleViewAfterKeyboard();
+              if (!payload.user?.venmo && !payload.user?.venmoDeclined) setShowVenmoSetup(true);
+            }}
+            onSignOut={() => void handleLogout()}
+          />
+        ) : null}
+        {sessionUser && !needsEmailCode && showVenmoSetup ? (
+          <VenmoSetupStep<SessionPayload>
+            onSession={applySession}
+            onDone={() => { setShowVenmoSetup(false); settleViewAfterKeyboard(); }}
+          />
+        ) : null}
+
+        {sessionUser && !needsEmailCode && !showVenmoSetup && !pool && !sessionLoading ? (
           <LeagueGate<SessionPayload>
             displayName={sessionUser.displayName}
             canCreateLeague={sessionFlags.canCreateLeague}
@@ -5177,10 +5221,7 @@ export default function Page() {
             open
             tournaments={TOURNAMENTS.map((t) => ({ id: t.id as TournamentId, label: t.name }))}
             entryFees={pool.entryFees ?? {}}
-            commissioners={pool.commissioners ?? []}
-            collectorId={pool.venmoCollectorId ?? null}
-            leagueVenmo={pool.venmo ?? null}
-            currentUserId={sessionUser.id}
+            commissionerVenmo={sessionUser.venmo ?? null}
             onClose={() => setEntryFeesOpen(false)}
             onPool={(next) => setPool((current) => (current ? { ...current, ...next } : next))}
             onAddVenmo={() => { setEntryFeesOpen(false); setVenmoModalOpen(true); }}
@@ -5201,6 +5242,8 @@ export default function Page() {
             onPool={(next) => setPool((current) => (current ? { ...current, ...next } : next))}
           />
         ) : null}
+
+        {isAppAdmin ? <AdminLeaguesModal open={adminLeaguesOpen} onClose={() => setAdminLeaguesOpen(false)} /> : null}
 
         <VenmoFallbackNotice url={venmoFallbackUrl} onClose={() => setVenmoFallbackUrl(null)} />
 
@@ -5235,7 +5278,7 @@ export default function Page() {
           }}
         />
 
-        {sessionUser && pool ? (
+        {sessionUser && pool && !needsEmailCode && !showVenmoSetup ? (
         <>
         {/* A league whose season pass lapsed: members can't join or make picks until it's renewed. */}
         {pool.seasonExpired ? (
@@ -5266,7 +5309,7 @@ export default function Page() {
         ) : null}
         <VenmoPrompt
           userId={sessionUser.id}
-          hasVenmo={!!sessionUser.venmo}
+          hasVenmo={!!sessionUser.venmo || sessionUser.venmoDeclined === true}
           isCommissioner={pool.role === 'commissioner'}
           onAdd={() => setVenmoModalOpen(true)}
           compact={isMobile}
@@ -7431,7 +7474,7 @@ export default function Page() {
                       <div style={{ marginTop: 4, fontSize: isMobile ? 20 : 30, fontWeight: 900, color: selectedTournament === 'open' ? '#000000' : '#173b63' }}>{pool?.entryFees?.[selectedTournament] ? formatMoney(pool.entryFees[selectedTournament]!) : '—'}</div>
                     </div>
                     <div style={{ border: selectedTournament === 'open' ? '1.5px solid #000000' : '1px solid #dce8f5', borderRadius: isMobile ? 10 : 12, padding: isMobile ? '8px 8px' : '10px 14px', background: selectedTournament === 'open' ? '#F4BC41' : '#f0f6ff' }}>
-                      <div style={{ fontSize: 9, textTransform: 'uppercase', fontWeight: 800, color: selectedTournament === 'open' ? headerSolid : '#5b6b79', letterSpacing: '0.07em' }}>Venmo</div>
+                      <div style={{ fontSize: 9, textTransform: 'uppercase', fontWeight: 800, color: selectedTournament === 'open' ? headerSolid : '#5b6b79', letterSpacing: '0.07em' }}><VenmoMark tone="blue" height="11px" /></div>
                       <div style={{ marginTop: 4, fontSize: isMobile ? 13 : 16, fontWeight: 800, color: selectedTournament === 'open' ? '#000000' : '#173b63' }}>{pool?.venmo ? formatVenmo(pool.venmo.handle) : '—'}</div>
                     </div>
                     <div style={{ border: selectedTournament === 'open' ? '1.5px solid #000000' : '1px solid #dce8f5', borderRadius: isMobile ? 10 : 12, padding: isMobile ? '8px 8px' : '10px 14px', background: selectedTournament === 'open' ? '#F4BC41' : '#f0f6ff' }}>
@@ -7453,7 +7496,7 @@ export default function Page() {
                           <div style={{ marginTop: 4, fontSize: isMobile ? 20 : 30, fontWeight: 900, color: '#173b63' }}>{pool?.entryFees?.[selectedTournament] ? formatMoney(pool.entryFees[selectedTournament]!) : '—'}</div>
                         </div>
                         <div style={{ border: '1px solid #dce8f5', borderRadius: isMobile ? 10 : 12, padding: isMobile ? '8px 10px' : '10px 14px', background: '#fff', minWidth: 0 }}>
-                          <div style={{ fontSize: 9, textTransform: 'uppercase', fontWeight: 800, color: '#5b6b79', letterSpacing: '0.07em' }}>Venmo</div>
+                          <div style={{ fontSize: 9, textTransform: 'uppercase', fontWeight: 800, color: '#5b6b79', letterSpacing: '0.07em' }}><VenmoMark tone="blue" height="11px" /></div>
                           <div style={{ marginTop: 4, fontSize: isMobile ? 13 : 16, fontWeight: 800, color: '#173b63', overflowWrap: 'anywhere' }}>{pool?.venmo ? formatVenmo(pool.venmo.handle) : '—'}</div>
                         </div>
                       </div>
@@ -8512,17 +8555,20 @@ export default function Page() {
               <div style={{ fontSize: 13, fontWeight: 800, textTransform: 'uppercase', color: '#5b6b79', marginBottom: 14 }}>Pool Management Tools</div>
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))', gap: isMobile ? 10 : 14 }}>
                 {([
-                  { key: 'entryFees', title: 'Entry Fees & Venmo', sub: pool?.venmo ? `Members pay ${formatVenmo(pool.venmo.handle)}` : 'Set fees and who collects them', Icon: DollarSign, open: () => setEntryFeesOpen(true) },
+                  { key: 'allLeagues', title: 'All Leagues', sub: 'Every league, its commissioner and plan', Icon: Users, open: () => setAdminLeaguesOpen(true), adminOnly: true },
+                  { key: 'entryFees', title: <>Entry Fees &amp; <VenmoMark tone="blue" /></>, sub: pool?.venmo ? `Members pay ${formatVenmo(pool.venmo.handle)}` : 'Set fees and who collects them', Icon: DollarSign, open: () => setEntryFeesOpen(true) },
                   { key: 'payouts' as const, title: 'Tournament Payouts', sub: 'Set 1st / 2nd / 3rd place amounts', Icon: Trophy },
-                  { key: 'payWinners', title: 'Pay Winners', sub: 'Send winnings on Venmo once final', Icon: Send, open: () => setPayWinnersOpen(true) },
+                  { key: 'payWinners', title: 'Pay Winners', sub: <>Send winnings on <VenmoMark tone="blue" /> once final</>, Icon: Send, open: () => setPayWinnersOpen(true) },
                   { key: 'myVenmo', title: 'Your Venmo', sub: sessionUser?.venmo ? formatVenmo(sessionUser.venmo) : 'Add your Venmo', Icon: Wallet, open: () => setVenmoModalOpen(true) },
                   { key: 'markStatus' as const, title: 'Mark WD / DQ / MDF', sub: "Override a player's status", Icon: AlertCircle },
                   { key: 'roundLeader' as const, title: 'Round Leader Tools', sub: 'Clear a mis-captured round leader', Icon: RefreshCw },
                   { key: 'tiebreak' as const, title: 'Tiebreak Score', sub: 'Enter / override total strokes', Icon: Save },
-                ] as { key: string; title: string; sub: string; Icon: typeof Trophy; open?: () => void }[])
+                ] as { key: string; title: ReactNode; sub: ReactNode; Icon: typeof Trophy; open?: () => void; adminOnly?: boolean }[])
                   // League tools for every commissioner; the app-wide ones for the app admin. The Venmo
                   // tools need a league the user commissions (the admin can be in other leagues).
-                  .filter((t) => t.open ? pool?.role === 'commissioner' : isAppAdmin || t.key === 'payouts' || t.key === 'tiebreak')
+                  // League tools (payouts, tiebreak, Venmo) are for the league's commissioner; the
+                  // app-wide ones (All Leagues, WD/DQ, round leaders) for the app admin only.
+                  .filter((t) => (t.adminOnly || t.key === 'markStatus' || t.key === 'roundLeader') ? isAppAdmin : pool?.role === 'commissioner')
                   .map((t) => {
                   const Icon = t.Icon;
                   return (
@@ -9637,22 +9683,30 @@ export default function Page() {
                   </button>
                   ) : null}
                   {(() => {
+                    // One commissioner per league: they can hand the role to another member.
                     const memberIsCommissioner = (pool?.commissioners ?? []).some((c) => c.id === selectedCommissionerMember.id);
+                    if (memberIsCommissioner || pool?.role !== 'commissioner') return null;
+                    const confirming = confirmHandOverId === selectedCommissionerMember.id;
                     return (
                       <button
-                        onClick={() => void handleToggleCommissionerRole(selectedCommissionerMember.id, !memberIsCommissioner)}
+                        onClick={() => {
+                          if (!confirming) { setConfirmHandOverId(selectedCommissionerMember.id); return; }
+                          void handleHandOverCommissioner(selectedCommissionerMember.id, selectedCommissionerMember.displayName);
+                        }}
                         disabled={commissionerBusy}
                         style={{
-                          border: '1px solid #d7e0e8',
+                          border: confirming ? '1.5px solid #b45309' : '1px solid #d7e0e8',
                           borderRadius: 16,
-                          background: '#fff',
+                          background: confirming ? '#fff7ed' : '#fff',
                           padding: '16px 18px',
                           textAlign: 'left',
                           fontWeight: 800,
                           cursor: commissionerBusy ? 'wait' : 'pointer',
                         }}
                       >
-                        {memberIsCommissioner ? 'Remove Commissioner Role' : 'Make Commissioner'}
+                        {confirming
+                          ? `Tap again to make ${selectedCommissionerMember.displayName} the commissioner. You'll become a member and lose the commissioner tools.`
+                          : 'Make Commissioner (hand over the role)'}
                       </button>
                     );
                   })()}
@@ -12005,12 +12059,12 @@ export default function Page() {
                 {/* Explanation for the Submit & Pay flow */}
                 {!hasSubmittedRoster && paysEntryFeeInApp && (
                   <div style={{ fontSize: 11.5, color: entriesTournamentId === 'open' ? entriesTournamentBg : '#5b6b79', lineHeight: 1.5, marginBottom: 10 }}>
-                    *Hitting <b>Submit &amp; Pay</b>{' '}submits your roster and automatically opens Venmo to {formatVenmo(entryFeeVenmo!.handle)} to pay the pool entry fee. The {formatMoney(entryFee)}{' '}amount and what it&apos;s for are auto-populated for you.
+                    *Hitting <b>Submit &amp; Pay</b>{' '}submits your roster and automatically opens <VenmoMark tone="blue" /> to {formatVenmo(entryFeeVenmo!.handle)} to pay the pool entry fee. The {formatMoney(entryFee)}{' '}amount and what it&apos;s for are auto-populated for you.
                   </div>
                 )}
                 {!hasSubmittedRoster && entryFee > 0 && !entryFeeVenmo && (
                   <div style={{ fontSize: 11.5, color: entriesTournamentId === 'open' ? entriesTournamentBg : '#5b6b79', lineHeight: 1.5, marginBottom: 10 }}>
-                    *Your commissioner hasn&apos;t added their Venmo yet, so pay the {formatMoney(entryFee)} entry fee to them directly.
+                    *Your commissioner hasn&apos;t added their <VenmoMark tone="blue" /> yet, so pay the {formatMoney(entryFee)} entry fee to them directly.
                   </div>
                 )}
 
@@ -12065,7 +12119,7 @@ export default function Page() {
                     onClick={() => openEntryFeePayment()}
                     style={{ marginTop: 12, width: '100%', background: 'none', border: 'none', padding: 4, fontSize: 13, fontWeight: 800, color: entriesTournamentId === 'open' ? entriesTournamentBg : '#008CFF', cursor: 'pointer' }}
                   >
-                    Still need to pay? Pay your {formatMoney(entryFee)} entry fee on Venmo
+                    Still need to pay? Pay your {formatMoney(entryFee)} entry fee on <VenmoMark tone="blue" />
                   </button>
                 ) : null}
               </div>
@@ -12080,7 +12134,7 @@ export default function Page() {
               <span style={{ fontSize: 17, fontWeight: 900, color: entriesTournamentId === 'open' ? entriesTournamentBg : '#0f1720' }}>
                 Roster successfully submitted!
                 {paysEntryFeeInApp ? (
-                  <span style={{ display: 'block', marginTop: 4, fontSize: 14, fontWeight: 700, color: entriesTournamentId === 'open' ? entriesTournamentBg : '#5b6b79' }}>Now opening Venmo…</span>
+                  <span style={{ display: 'block', marginTop: 4, fontSize: 14, fontWeight: 700, color: entriesTournamentId === 'open' ? entriesTournamentBg : '#5b6b79' }}>Now opening <VenmoMark tone="blue" />…</span>
                 ) : null}
               </span>
             </div>

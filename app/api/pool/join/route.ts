@@ -10,6 +10,9 @@ export async function POST(request: Request) {
   if (!session.user) {
     return NextResponse.json({ error: 'Sign in before joining a pool.' }, { status: 401 });
   }
+  if (session.user.emailVerified === false) {
+    return NextResponse.json({ error: 'Confirm your email first. Enter the code we emailed you.' }, { status: 403 });
+  }
 
   try {
     const body = (await request.json()) as { joinCode?: string };

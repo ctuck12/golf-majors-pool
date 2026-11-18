@@ -39,8 +39,10 @@ async function store() {
   return postgresStore;
 }
 
-export const registerUser = async (input: { displayName: string; email: string; password: string; joinCode?: string }) =>
-  (await store()).registerUser(input);
+export const registerUser = async (input: { displayName?: string; firstName?: string; lastName?: string; email: string; password: string; joinCode?: string }) =>
+  userDataBackend() === 'postgres'
+    ? (await store() as typeof postgresStore).registerUser(input)
+    : redisStore.registerUser({ ...input, displayName: input.displayName ?? `${input.firstName ?? ''} ${input.lastName ?? ''}`.trim() });
 export const loginUser = async (input: { email: string; password: string }) =>
   (await store()).loginUser(input);
 export const createSession = async (userId: string) =>
@@ -102,14 +104,24 @@ export const regenerateJoinCode = async (requestingUserId: string) =>
   (await postgresOnly()).regenerateJoinCode(requestingUserId);
 export const updateUserVenmo = async (userId: string, venmo: unknown) =>
   (await postgresOnly()).updateUserVenmo(userId, venmo);
+export const declineVenmo = async (userId: string) =>
+  (await postgresOnly()).declineVenmo(userId);
+export const markEmailVerified = async (userId: string) =>
+  (await postgresOnly()).markEmailVerified(userId);
 export const updateEntryFees = async (requestingUserId: string, fees: Partial<Record<TournamentId, number | null>>) =>
   (await postgresOnly()).updateEntryFees(requestingUserId, fees);
-export const setVenmoCollector = async (requestingUserId: string, collectorId: string) =>
-  (await postgresOnly()).setVenmoCollector(requestingUserId, collectorId);
 export const setPayoutSent = async (
   requestingUserId: string,
   input: { tournamentId: TournamentId; place: number; userId: string | null; amount: number; sent: boolean },
 ) => (await postgresOnly()).setPayoutSent(requestingUserId, input);
+export const adminListLeagues = async () =>
+  (await postgresOnly()).adminListLeagues();
+export const adminListLeagueMembers = async (leagueId: string) =>
+  (await postgresOnly()).adminListLeagueMembers(leagueId);
+export const adminSetCommissioner = async (leagueId: string, memberId: string) =>
+  (await postgresOnly()).adminSetCommissioner(leagueId, memberId);
+export const adminGrantFreeSeason = async (leagueId: string) =>
+  (await postgresOnly()).adminGrantFreeSeason(leagueId);
 export const updatePoolWinnerScore = async (requestingUserId: string, tournamentId: TournamentId, score: number) =>
   (await store()).updatePoolWinnerScore(requestingUserId, tournamentId, score);
 
@@ -121,6 +133,50 @@ const PASSWORD_RESET_THROTTLE_SECONDS = 60;
 // Only the token's hash is stored, so someone reading Redis can't turn a key into a working link.
 function passwordResetKey(token: string) {
   return `password-reset:${createHash('sha256').update(token).digest('hex')}`;
+}
+
+// ── Email confirmation codes (Redis) ────────────────────────────────────────
+// A new account gets a 6-digit code by email. Only its hash is stored, it expires in 30 minutes,
+// allows 5 wrong tries, and a new one can be sent once a minute.
+
+const EMAIL_CODE_TTL_SECONDS = 30 * 60;
+const EMAIL_CODE_RESEND_SECONDS = 60;
+const EMAIL_CODE_MAX_ATTEMPTS = 5;
+
+function emailCodeKey(userId: string) {
+  return `email-verify:${userId}`;
+}
+
+function hashEmailCode(userId: string, code: string) {
+  return createHash('sha256').update(`${userId}:${code}`).digest('hex');
+}
+
+// Returns a new code to email, or null if one was sent less than a minute ago.
+export async function createEmailVerificationCode(userId: string): Promise<string | null> {
+  const throttled = await redis.set(`email-verify-throttle:${userId}`, '1', 'EX', EMAIL_CODE_RESEND_SECONDS, 'NX');
+  if (throttled !== 'OK') return null;
+  const code = String(randomBytes(4).readUInt32BE(0) % 1_000_000).padStart(6, '0');
+  await redis.set(emailCodeKey(userId), JSON.stringify({ hash: hashEmailCode(userId, code), attempts: 0 }), 'EX', EMAIL_CODE_TTL_SECONDS);
+  return code;
+}
+
+// Checks a code; on success marks the account's email confirmed.
+export async function confirmEmailWithCode(userId: string, code: string) {
+  const raw = await redis.get(emailCodeKey(userId));
+  if (!raw) {
+    throw new Error('That code has expired. Tap "Send a new code".');
+  }
+  const stored = JSON.parse(raw) as { hash: string; attempts: number };
+  if (stored.attempts >= EMAIL_CODE_MAX_ATTEMPTS) {
+    throw new Error('Too many tries. Tap "Send a new code".');
+  }
+  if (stored.hash !== hashEmailCode(userId, code.trim())) {
+    const ttl = await redis.ttl(emailCodeKey(userId));
+    await redis.set(emailCodeKey(userId), JSON.stringify({ ...stored, attempts: stored.attempts + 1 }), 'EX', Math.max(ttl, 1));
+    throw new Error("That code isn't right. Check the email and try again.");
+  }
+  await redis.del(emailCodeKey(userId));
+  await (await postgresOnly()).markEmailVerified(userId);
 }
 
 // Issues a one-time reset token for the account using this email. Returns null when no account

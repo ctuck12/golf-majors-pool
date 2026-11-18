@@ -61,3 +61,30 @@ export async function sendPasswordResetEmail(input: { to: string; displayName: s
       </div>`,
   });
 }
+
+// The 6-digit code a new account confirms its email with.
+export async function sendVerificationCodeEmail(input: { to: string; displayName: string; code: string }) {
+  const name = escapeHtml(input.displayName);
+  await sendEmail({
+    to: input.to,
+    subject: `${input.code} is your Golf Majors Pool code`,
+    text: [
+      `Hi ${input.displayName},`,
+      '',
+      `Your Golf Majors Pool confirmation code is ${input.code}.`,
+      '',
+      "Enter it in the app to confirm your email. It expires in 30 minutes. If you didn't sign up, you can ignore this email.",
+    ].join('\n'),
+    html: `
+      <div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#0f1720">
+        <div style="background:#0a1628;border-radius:16px;padding:12px 16px;margin:0 0 24px;text-align:center">
+          <img src="${appBaseUrl()}/email/logo-header.jpg" width="400" height="171" alt="Golf Majors Pool" style="display:block;width:100%;max-width:400px;height:auto;margin:0 auto;border:0">
+        </div>
+        <h2 style="margin:0 0 16px">Confirm your email</h2>
+        <p>Hi ${name},</p>
+        <p>Enter this code in the app to confirm your email:</p>
+        <p style="margin:20px 0;font-size:34px;font-weight:800;letter-spacing:8px;color:#173b63">${input.code}</p>
+        <p style="font-size:13px;color:#5b6b79">It expires in 30 minutes. If you didn't sign up for Golf Majors Pool, you can ignore this email.</p>
+      </div>`,
+  });
+}

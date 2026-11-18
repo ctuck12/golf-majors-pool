@@ -1,22 +1,42 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { createSession, getSessionContext, registerUser, SESSION_COOKIE_NAME } from '../../../lib/pool-store';
+import { createEmailVerificationCode, createSession, getSessionContext, markEmailVerified, registerUser, SESSION_COOKIE_NAME, userDataBackend } from '../../../lib/pool-store';
+import { isEmailConfigured, sendVerificationCodeEmail } from '../../../lib/email';
 
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as {
       displayName?: string;
+      firstName?: string;
+      lastName?: string;
       email?: string;
       password?: string;
       joinCode?: string;
     };
 
     const user = await registerUser({
-      displayName: body.displayName ?? '',
+      displayName: body.displayName,
+      firstName: body.firstName,
+      lastName: body.lastName,
       email: body.email ?? '',
       password: body.password ?? '',
       joinCode: body.joinCode ?? '',
     });
+
+    // Email the code that confirms the address. Without email set up (local testing) the account
+    // is confirmed straight away; if sending fails the user can ask for a new code in the app.
+    if (userDataBackend() === 'postgres') {
+      if (isEmailConfigured()) {
+        const code = await createEmailVerificationCode(user.id);
+        if (code) {
+          await sendVerificationCodeEmail({ to: user.email, displayName: user.displayName, code }).catch((err) => {
+            console.error('Could not send the confirmation code:', err);
+          });
+        }
+      } else {
+        await markEmailVerified(user.id);
+      }
+    }
 
     const token = await createSession(user.id);
     const cookieStore = await cookies();
