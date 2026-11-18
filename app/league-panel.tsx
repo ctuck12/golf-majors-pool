@@ -370,8 +370,13 @@ export function LeagueModal<T extends SessionLike>({
   const [deleteText, setDeleteText] = useState('');
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [leaveConfirm, setLeaveConfirm] = useState(false);
+  const [leaveBusy, setLeaveBusy] = useState(false);
+  const [leaveError, setLeaveError] = useState('');
 
   if (!open) return null;
+
+  const activeLeague = leagues.find((league) => league.id === activeLeagueId) ?? null;
 
   const handleSession = (payload: T) => {
     onSession(payload);
@@ -477,6 +482,38 @@ export function LeagueModal<T extends SessionLike>({
           </div>
 
           <div style={{ borderTop: '1px solid #e2e8ef', paddingTop: 16 }}>
+            {/* Members can leave the league they're viewing; the commissioner hands the role over first. */}
+            {activeLeague && !isCommissioner && !deleteOpen ? (
+              <div style={{ display: 'grid', gap: 8, marginBottom: 10 }}>
+                <button
+                  type="button"
+                  disabled={leaveBusy}
+                  onClick={async () => {
+                    if (!leaveConfirm) { setLeaveConfirm(true); return; }
+                    setLeaveBusy(true);
+                    setLeaveError('');
+                    try {
+                      handleSession(await postJson<T>('/api/leagues/leave', { leagueId: activeLeague.id }));
+                    } catch (err) {
+                      setLeaveError(err instanceof Error ? err.message : 'Unable to leave the league.');
+                    } finally {
+                      setLeaveBusy(false);
+                      setLeaveConfirm(false);
+                    }
+                  }}
+                  style={{ ...secondaryButton, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, ...(leaveConfirm ? { borderColor: '#b45309', background: '#fff7ed' } : {}) }}
+                >
+                  <LogOut size={16} />
+                  {leaveBusy ? 'Leaving…' : leaveConfirm ? `Tap again to leave ${activeLeague.name}` : `Leave ${activeLeague.name}`}
+                </button>
+                {leaveConfirm ? (
+                  <div style={{ fontSize: 12.5, color: '#5b6b79', lineHeight: 1.45, textAlign: 'center' }}>
+                    Your picks in this league are removed. You can rejoin later with its code.
+                  </div>
+                ) : null}
+                {leaveError ? <div style={{ fontSize: 13, color: '#a61b1b' }}>{leaveError}</div> : null}
+              </div>
+            ) : null}
             {!deleteOpen ? (
               <button type="button" onClick={() => setDeleteOpen(true)} style={{ ...secondaryButton, width: '100%', color: '#a61b1b', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                 <Trash2 size={16} /> Delete my account
@@ -515,9 +552,14 @@ export function LeagueModal<T extends SessionLike>({
                 </div>
               </div>
             )}
-            <a href="https://golfmajorspool.com/privacy.html" target="_blank" rel="noreferrer" style={{ display: 'block', marginTop: 12, textAlign: 'center', fontSize: 13, color: '#5a6876' }}>
-              Privacy Policy
-            </a>
+            <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center', gap: 16, fontSize: 13 }}>
+              <a href="https://golfmajorspool.com/privacy.html" target="_blank" rel="noreferrer" style={{ color: '#5a6876' }}>
+                Privacy Policy
+              </a>
+              <a href="https://golfmajorspool.com/terms.html" target="_blank" rel="noreferrer" style={{ color: '#5a6876' }}>
+                Terms of Use
+              </a>
+            </div>
           </div>
         </div>
       </div>

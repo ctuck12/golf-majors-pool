@@ -3902,7 +3902,7 @@ export default function Page() {
     const yearStr = standingsMeta?.year;
     const year = yearStr ? parseInt(yearStr, 10) : NaN;
     if (isNaN(year)) return;
-    const key = `${selectedTournament}:${year}`;
+    const key = `${pool?.id ?? ''}:${selectedTournament}:${year}`;
     if (archivedThisSession.current.has(key)) return;
     archivedThisSession.current.add(key);
     fetch('/api/standings-archive', {
@@ -3916,7 +3916,7 @@ export default function Page() {
       }),
     }).catch(() => { archivedThisSession.current.delete(key); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isTournamentFinal, selectedTournament, standings.length]);
+  }, [isTournamentFinal, selectedTournament, standings.length, pool?.id]);
 
   const pickedPlayerIds = (() => {
     const ids = new Set<number>();
@@ -4978,6 +4978,14 @@ export default function Page() {
                 >
                   {authMode === 'login' ? 'Sign in' : 'Create account'}
                 </button>
+                {authMode === 'register' ? (
+                  <div style={{ fontSize: 12, color: '#6b7b88', lineHeight: 1.45, textAlign: 'center' }}>
+                    By creating an account you agree to the{' '}
+                    <a href="https://golfmajorspool.com/terms.html" target="_blank" rel="noreferrer" style={{ color: '#2f5f96' }}>Terms of Use</a>
+                    {' '}and{' '}
+                    <a href="https://golfmajorspool.com/privacy.html" target="_blank" rel="noreferrer" style={{ color: '#2f5f96' }}>Privacy Policy</a>, and confirm you&apos;re 18 or older.
+                  </div>
+                ) : null}
               </form>
 
               {authMode === 'register' && (

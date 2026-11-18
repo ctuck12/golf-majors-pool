@@ -5,6 +5,7 @@ export const maxDuration = 300; // 5 min — 147 players × ESPN calls needs tim
 import redis from '@/app/lib/redis';
 import { PLAYER_POOL_WITH_PGA_IDS } from '@/app/lib/player-pool';
 import { fetchPlayerSeasonResults } from '@/app/lib/espn-player-season';
+import { getActiveSeason } from '@/app/lib/tournament-config';
 
 const CACHE_TTL = 432000; // 120 hours
 const BATCH_SIZE = 5;
@@ -26,15 +27,21 @@ export async function GET(request: Request) {
     const batch = players.slice(i, i + BATCH_SIZE);
     await Promise.all(
       batch.map(async (player) => {
-        const cacheKey = `player-season:2026:${player.name}`;
+        const cacheKey = `player-season:${getActiveSeason()}:${player.name}`;
         try {
           if (!force) {
             const existing = await redis.get(cacheKey);
             if (existing) { cached++; return; }
           }
-          const results = await fetchPlayerSeasonResults(player.name);
+          // Same off-season fallback as /api/player-season: last season's results, re-checked sooner.
+          let results = await fetchPlayerSeasonResults(player.name);
+          let ttl = CACHE_TTL;
+          if (results.length === 0) {
+            results = await fetchPlayerSeasonResults(player.name, getActiveSeason() - 1);
+            ttl = 43200;
+          }
           if (results.length > 0) {
-            await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(results));
+            await redis.setex(cacheKey, ttl, JSON.stringify(results));
             fetched++;
           } else {
             empty++;

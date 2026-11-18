@@ -25,6 +25,15 @@ import {
   type TournamentId,
 } from '@/app/lib/pool-store';
 import redis from '@/app/lib/redis';
+import { trackScoreHealth } from '@/app/lib/score-alerts';
+
+const TOURNAMENT_NAMES: Record<string, string> = {
+  players: 'The Players',
+  masters: 'The Masters',
+  pga: 'The PGA Championship',
+  'us-open': 'The U.S. Open',
+  open: 'The Open',
+};
 
 
 // ── Field parsing (same helpers as before) ────────────────────────────────
@@ -486,6 +495,8 @@ export async function GET(request: Request) {
       } catch (err) {
         results[id] = `error: ${err instanceof Error ? err.message : String(err)}`;
       }
+      // Email the admin if this tournament's live scores keep failing during its event.
+      await trackScoreHealth(id, TOURNAMENT_NAMES[id] ?? id, currentTournamentMeta(id), results[id]).catch(() => {});
     }),
   );
 

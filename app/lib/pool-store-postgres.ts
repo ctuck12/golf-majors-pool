@@ -1347,3 +1347,66 @@ export async function adminGrantFreeSeason(leagueId: string) {
   if ((league.paid_season ?? 0) >= season) throw new Error(`This league already has the ${season} season.`);
   await db()`update leagues set paid_season = ${season} where id = ${leagueId}`;
 }
+
+// ── Past Results (each league's final standings) ─────────────────────────────
+
+export async function archiveSeasonsFor(leagueId: string, tournamentId: string): Promise<number[]> {
+  const rows = await db()<{ season: number }[]>`
+    select season from league_standings_archive
+    where league_id = ${leagueId} and tournament_id = ${tournamentId}
+    order by season desc
+  `;
+  return rows.map((row) => row.season);
+}
+
+export async function readStandingsArchive(leagueId: string, tournamentId: string, season: number) {
+  const [row] = await db()<{ standings: unknown[]; payouts: unknown; saved_at: Date }[]>`
+    select standings, payouts, saved_at from league_standings_archive
+    where league_id = ${leagueId} and tournament_id = ${tournamentId} and season = ${season}
+  `;
+  return row ? { standings: row.standings, payouts: row.payouts ?? null, savedAt: row.saved_at.toISOString() } : null;
+}
+
+// Saves a league's final standings unless a larger snapshot is already saved (a partly loaded
+// screen must never replace a complete one). Returns false when skipped.
+export async function saveStandingsArchive(
+  leagueId: string,
+  tournamentId: string,
+  season: number,
+  standings: unknown[],
+  payouts: unknown,
+): Promise<boolean> {
+  const rows = await db()`
+    insert into league_standings_archive (league_id, tournament_id, season, standings, payouts)
+    values (${leagueId}, ${tournamentId}, ${season}, ${db().json(standings as never)}, ${payouts === undefined || payouts === null ? null : db().json(payouts as never)})
+    on conflict (league_id, tournament_id, season) do update set
+      standings = excluded.standings, payouts = excluded.payouts, saved_at = now()
+    where jsonb_array_length(league_standings_archive.standings) <= jsonb_array_length(excluded.standings)
+    returning 1
+  `;
+  return rows.length > 0;
+}
+
+// A member leaves a league (their picks there go with them). The commissioner hands the role to
+// another member first. If it was the league they were viewing, the app switches to another one.
+export async function leaveLeague(userId: string, leagueId: string) {
+  await db().begin(async (sql) => {
+    const [membership] = await sql<{ role: LeagueRole; name: string }[]>`
+      select m.role, l.name from league_members m join leagues l on l.id = m.league_id
+      where m.league_id = ${leagueId} and m.user_id = ${userId} for update
+    `;
+    if (!membership) {
+      throw new Error("You're not in that league.");
+    }
+    if (membership.role === 'commissioner') {
+      throw new Error(`You're the commissioner of ${membership.name}. Make another member commissioner before leaving.`);
+    }
+    await sql`delete from league_members where league_id = ${leagueId} and user_id = ${userId}`;
+    await sql`
+      update users set active_league_id = (
+        select league_id from league_members where user_id = ${userId} order by joined_at asc limit 1
+      )
+      where id = ${userId} and (active_league_id = ${leagueId} or active_league_id is null)
+    `;
+  });
+}

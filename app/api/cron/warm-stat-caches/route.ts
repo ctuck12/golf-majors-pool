@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 import redis from '@/app/lib/redis';
-import { getTournamentMetaByEspnId } from '@/app/lib/tournament-config';
+import { scheduledEspnEvents } from '@/app/lib/tournament-config';
 
 // Cron job: keep the stat-leaderboard caches warm WITHOUT hammering the upstream PGA/ESPN APIs.
 //
@@ -98,23 +98,22 @@ export async function GET(request: Request) {
     await sleep(REBUILD_GAP_MS);
   }
 
-  // Warm tournament COURSE + STROKES GAINED leaderboards for the played 2026 events. Completed-event
-  // data is static, so these cache for 7 days and rarely rebuild. Shares the per-run rebuild cap with
-  // season stats, so a cold start warms gradually across runs.
-  const TOURN_EVENT_IDS = ['401811937', '401811941', '401811947', '401811952', '401811957']; // PLAYERS, Masters, PGA, US Open, The Open
+  // Warm tournament COURSE + STROKES GAINED leaderboards for every scheduled event with an ESPN id
+  // (app/lib/tournament-config.ts). Completed-event data is static, so these cache for 7 days and
+  // rarely rebuild. Shares the per-run rebuild cap with season stats, so a cold start warms
+  // gradually across runs. The newest events go first.
+  const scheduledEvents = scheduledEspnEvents().reverse();
   // ESPN-sourced course stats (every event). Scrambling and SG come from the PGA feed instead.
   const ESPN_COURSE_KEYS = ['drivingDistance', 'drivingAccuracy', 'gir', 'sandSaves', 'puttAverage'];
   const PGA_KEYS = ['sgTotal', 'sgTeeToGreen', 'sgOffTee', 'sgApproach', 'sgAroundGreen', 'sgPutting', 'scrambling'];
-  // The Masters PGA feed carries no tournament SG or scrambling (the Masters view hides SG accordingly),
-  // so warming its PGA keys would retry empty builds every run forever and waste the rebuild budget.
-  const MASTERS_EVENT_ID = '401811941';
-  for (const eventId of TOURN_EVENT_IDS) {
+  for (const { tournamentId, espnEventId: eventId, lockAtUtc } of scheduledEvents) {
     // Skip events that haven't started — they have no leaderboard data yet, so building would just
     // hammer the upstream APIs with empty results every run. They warm automatically once underway.
-    const meta = getTournamentMetaByEspnId(eventId);
-    const lockMs = meta?.lockAtUtc ? Date.parse(meta.lockAtUtc) : NaN;
+    const lockMs = Date.parse(lockAtUtc);
     if (!isNaN(lockMs) && Date.now() < lockMs) { results[`t:${eventId}`] = 'notStarted'; continue; }
-    const keysForEvent = eventId === MASTERS_EVENT_ID ? ESPN_COURSE_KEYS : [...ESPN_COURSE_KEYS, ...PGA_KEYS];
+    // The Masters PGA feed carries no tournament SG or scrambling (the Masters view hides SG
+    // accordingly), so warming its PGA keys would retry empty builds every run forever.
+    const keysForEvent = tournamentId === 'masters' ? ESPN_COURSE_KEYS : [...ESPN_COURSE_KEYS, ...PGA_KEYS];
     for (const key of keysForEvent) {
       const label = `t:${eventId}:${key}`;
       let ttl = -2;

@@ -88,3 +88,15 @@ export async function sendVerificationCodeEmail(input: { to: string; displayName
       </div>`,
   });
 }
+
+// A plain operational alert to the app admins (live scoring down, then recovered).
+export async function sendAdminAlertEmail(input: { to: string[]; subject: string; lines: string[] }) {
+  await sendEmail({
+    to: input.to.join(','),
+    subject: input.subject,
+    text: input.lines.join('\n'),
+    html: `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:520px;color:#0f1720">${input.lines
+      .map((line) => `<p style="margin:0 0 10px">${escapeHtml(line)}</p>`)
+      .join('')}</div>`,
+  });
+}

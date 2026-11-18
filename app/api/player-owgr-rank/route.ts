@@ -3,24 +3,31 @@ export const dynamic = 'force-dynamic';
 import { getEspnId } from '@/app/lib/espn-player-season';
 import { resolveChangedAt } from '@/app/lib/changed-at';
 
-const ESPN_CORE = 'https://sports.core.api.espn.com/v2/sports/golf/leagues/all/seasons/2026';
+// World rankings are listed under ESPN's season. Use this year's, or last year's until the new
+// season has a ranking date posted.
+const espnSeasonBase = (year: number) => `https://sports.core.api.espn.com/v2/sports/golf/leagues/all/seasons/${year}`;
 
-async function getMostRecentRankingsDate(): Promise<string | null> {
-  try {
-    const res = await fetch(`${ESPN_CORE}/rankings/1`, {
-      next: { revalidate: 86400 },
-    } as RequestInit);
-    if (!res.ok) return null;
-    const data = await res.json();
-    const rankings = data.rankings as Array<{ $ref?: string }> | undefined;
-    if (!Array.isArray(rankings) || rankings.length === 0) return null;
-    // First item is the most recent date
-    const ref = rankings[0]?.$ref ?? '';
-    const match = ref.match(/\/dates\/(\d{8})/);
-    return match?.[1] ?? null;
-  } catch {
-    return null;
+async function getMostRecentRankings(): Promise<{ base: string; dateKey: string } | null> {
+  const year = new Date().getUTCFullYear();
+  for (const season of [year, year - 1]) {
+    try {
+      const base = espnSeasonBase(season);
+      const res = await fetch(`${base}/rankings/1`, {
+        next: { revalidate: 86400 },
+      } as RequestInit);
+      if (!res.ok) continue;
+      const data = await res.json();
+      const rankings = data.rankings as Array<{ $ref?: string }> | undefined;
+      if (!Array.isArray(rankings) || rankings.length === 0) continue;
+      // First item is the most recent date
+      const ref = rankings[0]?.$ref ?? '';
+      const match = ref.match(/\/dates\/(\d{8})/);
+      if (match?.[1]) return { base, dateKey: match[1] };
+    } catch {
+      // try the previous season
+    }
   }
+  return null;
 }
 
 export async function GET(request: Request) {
@@ -29,14 +36,15 @@ export async function GET(request: Request) {
   if (!name) return Response.json({ rank: null });
 
   try {
-    const [espnId, dateKey] = await Promise.all([
+    const [espnId, latest] = await Promise.all([
       getEspnId(name),
-      getMostRecentRankingsDate(),
+      getMostRecentRankings(),
     ]);
 
-    if (!espnId || !dateKey) return Response.json({ rank: null });
+    if (!espnId || !latest) return Response.json({ rank: null });
+    const { base, dateKey } = latest;
 
-    const rankRes = await fetch(`${ESPN_CORE}/rankings/1/dates/${dateKey}?limit=500`, {
+    const rankRes = await fetch(`${base}/rankings/1/dates/${dateKey}?limit=500`, {
       next: { revalidate: 86400 },
     } as RequestInit);
     if (!rankRes.ok) return Response.json({ rank: null });

@@ -122,6 +122,14 @@ export const adminSetCommissioner = async (leagueId: string, memberId: string) =
   (await postgresOnly()).adminSetCommissioner(leagueId, memberId);
 export const adminGrantFreeSeason = async (leagueId: string) =>
   (await postgresOnly()).adminGrantFreeSeason(leagueId);
+export const archiveSeasonsFor = async (leagueId: string, tournamentId: string) =>
+  (await postgresOnly()).archiveSeasonsFor(leagueId, tournamentId);
+export const readStandingsArchive = async (leagueId: string, tournamentId: string, season: number) =>
+  (await postgresOnly()).readStandingsArchive(leagueId, tournamentId, season);
+export const saveStandingsArchive = async (leagueId: string, tournamentId: string, season: number, standings: unknown[], payouts: unknown) =>
+  (await postgresOnly()).saveStandingsArchive(leagueId, tournamentId, season, standings, payouts);
+export const leaveLeague = async (userId: string, leagueId: string) =>
+  (await postgresOnly()).leaveLeague(userId, leagueId);
 export const updatePoolWinnerScore = async (requestingUserId: string, tournamentId: TournamentId, score: number) =>
   (await store()).updatePoolWinnerScore(requestingUserId, tournamentId, score);
 

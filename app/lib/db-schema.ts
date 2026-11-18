@@ -186,6 +186,25 @@ begin
   end if;
 end $$;
 
+-- Each league's final standings per tournament and season ("Past Results"). Saved when a member
+-- views a finished tournament; the larger snapshot wins.
+create table if not exists league_standings_archive (
+  league_id text not null references leagues(id) on delete cascade,
+  tournament_id text not null,
+  season integer not null,
+  standings jsonb not null,
+  payouts jsonb,
+  saved_at timestamptz not null default now(),
+  primary key (league_id, tournament_id, season)
+);
+
+-- Copies of important data that lives in Redis (salary lists, lock times, etc.), taken nightly.
+create table if not exists redis_backups (
+  key text primary key,
+  value text not null,
+  backed_up_at timestamptz not null default now()
+);
+
 alter table users enable row level security;
 alter table sessions enable row level security;
 alter table leagues enable row level security;
@@ -195,4 +214,6 @@ alter table rosters enable row level security;
 alter table league_purchases enable row level security;
 alter table league_payouts_sent enable row level security;
 alter table app_migrations enable row level security;
+alter table league_standings_archive enable row level security;
+alter table redis_backups enable row level security;
 `;
