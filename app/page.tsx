@@ -8,6 +8,7 @@ import { VenmoSetupStep, VerifyEmailGate } from './onboarding';
 import { AdminLeaguesModal } from './admin-leagues';
 import { VenmoMark } from './venmo-mark';
 import { PoolMessageModal } from './pool-message';
+import { PayoutPlanModal } from './payout-plan-ui';
 import { currentTournamentMeta, effectiveLockTime } from '@/app/lib/tournament-config';
 import { EntryFeesModal, PayWinnersModal, VenmoFallbackNotice, VenmoModal, VenmoPrompt } from './venmo-ui';
 import { formatVenmo } from '@/app/lib/venmo';
@@ -139,6 +140,8 @@ export default function Page() {
     setPayWinnersOpen,
     poolMessageOpen,
     setPoolMessageOpen,
+    payoutPlanOpen,
+    setPayoutPlanOpen,
     lockTimeOverrides,
     venmoFallbackUrl,
     setVenmoFallbackUrl,
@@ -1010,6 +1013,7 @@ export default function Page() {
             tournaments={TOURNAMENTS.map((t) => ({ id: t.id as TournamentId, label: t.name }))}
             entryFees={pool.entryFees ?? {}}
             commissionerVenmo={sessionUser.venmo ?? null}
+            paymentNote={pool.paymentNote ?? null}
             onClose={() => setEntryFeesOpen(false)}
             onPool={(next) => setPool((current) => (current ? { ...current, ...next } : next))}
             onAddVenmo={() => { setEntryFeesOpen(false); setVenmoModalOpen(true); }}
@@ -1031,6 +1035,21 @@ export default function Page() {
           />
         ) : null}
 
+        {payoutPlanOpen && pool && pool.role === 'commissioner' ? (
+          <PayoutPlanModal<PoolInfo>
+            plan={pool.payoutPlan ?? null}
+            tournamentId={entriesTournamentId}
+            tournamentLabel={TOURNAMENTS.find((t) => t.id === entriesTournamentId)?.name ?? 'This tournament'}
+            entryFee={pool.entryFees?.[entriesTournamentId] ?? 0}
+            info={pool.payoutInfo?.[entriesTournamentId] ?? null}
+            payouts={pool.payouts?.[entriesTournamentId] ?? null}
+            memberCount={pool.memberCount ?? 0}
+            onPool={(next) => setPool((current) => (current ? { ...current, ...next } : next))}
+            onOpenEntryFees={() => { setPayoutPlanOpen(false); setEntryFeesOpen(true); }}
+            onClose={() => setPayoutPlanOpen(false)}
+          />
+        ) : null}
+
         {poolMessageOpen && pool && pool.role === 'commissioner' ? (
           <PoolMessageModal
             tournaments={TOURNAMENTS.map((t) => ({
@@ -1045,7 +1064,10 @@ export default function Page() {
             joinCode={pool.joinCode || null}
             entryFees={pool.entryFees ?? {}}
             venmoHandle={pool.venmo?.handle ?? null}
+            payoutPlan={pool.payoutPlan ?? null}
             payouts={pool.payouts ?? {}}
+            paymentNote={pool.paymentNote ?? null}
+            commissionerName={sessionUser?.displayName ?? null}
             signOff={sessionUser?.displayName?.split(' ')[0] ?? null}
             rosterSize={REQUIRED_GOLFERS}
             salaryCap={SALARY_CAP}

@@ -80,6 +80,30 @@ await check('picks save for the current season', async () => {
   assert.deepEqual(r.json.user.rosters.open, [1, 2, 3, 4, 5, 6]);
 });
 
+await check('payout plan: checked, saved, and works out the amounts', async () => {
+  let r = await call('admin', '/api/commissioner/payout-plan', 'PATCH', { plan: { places: [{ mode: 'percent', value: 60 }, { mode: 'percent', value: 30 }], roundTo: 5 } });
+  assert.equal(r.status, 400, 'percentages must add up to 100 or leave "the rest"');
+  assert.equal((await call('bob', '/api/commissioner/payout-plan', 'PATCH', { plan: null })).status, 403);
+  const plan = { places: [{ mode: 'percent', value: 67.5 }, { mode: 'rest', value: 0 }, { mode: 'fee', value: 2 }], roundTo: 5 };
+  r = await call('admin', '/api/commissioner/payout-plan', 'PATCH', { plan });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  assert.deepEqual(r.json.pool.payoutPlan, plan);
+  r = await call('admin', '/api/commissioner/entry-fees', 'PATCH', { fees: { masters: 25, open: 30 } });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  r = await call('admin', '/api/auth/session');
+  const info = r.json.pool.payoutInfo.open;
+  assert.equal(info.pot, info.entries * 30);
+  if (info.entries > 0) assert.equal(r.json.pool.payouts.open.third, Math.min(60, info.pot));
+  // Exact amounts for one tournament override the plan, and can be cleared.
+  r = await call('admin', '/api/commissioner/payouts', 'PATCH', { tournamentId: 'open', first: 100, second: 50, third: 0 });
+  assert.equal(r.json.pool.payouts.open.first, 100);
+  assert.equal(r.json.pool.payoutInfo.open.manual, true);
+  r = await call('admin', '/api/commissioner/payouts', 'PATCH', { tournamentId: 'open', usePlan: true });
+  assert.equal(r.json.pool.payoutInfo.open.manual, false);
+  r = await call('admin', '/api/commissioner/entry-fees', 'PATCH', { paymentNote: 'Cash or Zelle' });
+  assert.equal(r.json.pool.paymentNote, 'Cash or Zelle');
+});
+
 await check('one commissioner: hand over and back', async () => {
   let r = await call('admin', `/api/commissioner/members/${jar.bobId}`, 'PATCH', { role: 'commissioner' });
   assert.equal(r.status, 200, JSON.stringify(r.json));

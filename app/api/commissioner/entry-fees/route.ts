@@ -6,6 +6,7 @@ import {
   TOURNAMENT_IDS,
   type TournamentId,
   updateEntryFees,
+  setPaymentNote,
 } from '../../../lib/pool-store';
 
 // League entry fees per tournament (members pay them to the commissioner's Venmo).
@@ -22,7 +23,10 @@ export async function PATCH(request: Request) {
   }
 
   try {
-    const body = (await request.json()) as { fees?: Record<string, unknown> };
+    const body = (await request.json()) as { fees?: Record<string, unknown>; paymentNote?: unknown };
+    if (body.paymentNote !== undefined) {
+      await setPaymentNote(session.user.id, typeof body.paymentNote === 'string' ? body.paymentNote : null);
+    }
     if (body.fees && typeof body.fees === 'object') {
       const fees: Partial<Record<TournamentId, number | null>> = {};
       for (const tid of TOURNAMENT_IDS) {

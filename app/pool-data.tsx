@@ -2,6 +2,8 @@
 // the schedule and display helpers, formatting, and saved-session storage. No visible change
 // from when they lived in page.tsx.
 
+import type { PayoutPlan } from './lib/payout-plan';
+import type { PayoutInfo } from './lib/pool-store-shared';
 import { isNativeApp } from './native-bridge';
 import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { type LeagueSummary } from './league-panel';
@@ -914,6 +916,11 @@ export type PoolInfo = {
   // Entry fee per tournament and the Venmo that collects it (null until a commissioner adds one).
   entryFees?: Partial<Record<TournamentId, number>>;
   venmo?: { userId: string; name: string; handle: string } | null;
+  // How the league splits the pot, and per tournament the entries, pot and whether amounts were typed in.
+  payoutPlan?: PayoutPlan | null;
+  payoutInfo?: Partial<Record<TournamentId, PayoutInfo>>;
+  // How to pay the entry fee when it isn't through the commissioner's Venmo.
+  paymentNote?: string | null;
   // Commissioners only: winners already paid this season.
   payoutsSent?: Partial<Record<TournamentId, { place: number; userId: string | null; amount: number; sentAt: string }[]>>;
 };

@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import { Check, Copy, Share2 } from 'lucide-react';
 import { buildPoolMessage } from './lib/pool-message';
+import type { PayoutPlan } from './lib/payout-plan';
 import { Modal, primaryButton, secondaryButton, sectionLabel } from './venmo-ui';
 import type { TournamentId } from './lib/pool-store-shared';
 
@@ -25,7 +26,10 @@ export function PoolMessageModal({
   joinCode,
   entryFees,
   venmoHandle,
+  payoutPlan,
   payouts,
+  paymentNote,
+  commissionerName,
   signOff,
   rosterSize,
   salaryCap,
@@ -37,7 +41,10 @@ export function PoolMessageModal({
   joinCode: string | null;
   entryFees: Partial<Record<TournamentId, number>>;
   venmoHandle: string | null;
+  payoutPlan: PayoutPlan | null;
   payouts: Partial<Record<TournamentId, { first: number; second: number; third: number }>>;
+  paymentNote: string | null;
+  commissionerName: string | null;
   signOff: string | null;
   rosterSize: number;
   salaryCap: number;
@@ -53,7 +60,10 @@ export function PoolMessageModal({
     timeZone,
     entryFee: entryFees[tournament.id] ?? null,
     venmoHandle,
+    payoutPlan,
     payouts: payouts[tournament.id] ?? null,
+    paymentNote,
+    commissionerName,
     joinCode,
     signOff,
     rosterSize,

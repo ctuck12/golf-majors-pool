@@ -1,6 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { db, type Sql, type TxSql } from './db';
 import { normalizeVenmoUsername } from './venmo';
+import { computePayouts, type PayoutPlan } from './payout-plan';
 import { latestStartedSeason, picksSeason } from './tournament-config';
 import { currentSeason, parsePassProduct, tierForLimit, tierInfo, type LeagueTier, type PassAction } from './league-passes';
 import { fetchPassPurchases } from './revenuecat';
@@ -142,10 +143,23 @@ async function loadPool(sql: AnySql, league: { id: string; name: string; join_co
     winner_score: number | null;
     entry_fee: number | null;
     state_season: number | null;
+    payouts_season: number | null;
   }[]>`
-    select tournament_id, picks_open, lineup_locked, payout_first, payout_second, payout_third, winner_score, entry_fee, state_season
+    select tournament_id, picks_open, lineup_locked, payout_first, payout_second, payout_third, winner_score, entry_fee, state_season, payouts_season
     from league_tournaments where league_id = ${league.id}
   `;
+  const [planRow] = await sql<{ payout_plan: PayoutPlan | null; payment_note: string | null }[]>`select payout_plan, payment_note from leagues where id = ${league.id}`;
+  const payoutPlan = planRow?.payout_plan ?? null;
+  // Entries per tournament and season: members who have picks in.
+  const counts = await sql<{ tournament_id: string; season: number; entries: number }[]>`
+    select r.tournament_id, r.season, count(*)::int as entries
+    from rosters r
+    join league_members m on m.league_id = r.league_id and m.user_id = r.user_id
+    where r.league_id = ${league.id} and r.golfer_ids is not null and cardinality(r.golfer_ids) > 0
+    group by r.tournament_id, r.season
+  `;
+  const entriesFor = (tid: string, season: number) =>
+    counts.find((row) => row.tournament_id === tid && row.season === season)?.entries ?? 0;
 
   const pool: PublicPool = {
     id: league.id,
@@ -156,6 +170,9 @@ async function loadPool(sql: AnySql, league: { id: string; name: string; join_co
     payouts: {},
     winnerScores: {},
     entryFees: {},
+    payoutPlan,
+    payoutInfo: {},
+    paymentNote: planRow?.payment_note ?? null,
   };
 
   for (const row of rows) {
@@ -165,15 +182,29 @@ async function loadPool(sql: AnySql, league: { id: string; name: string; join_co
     const currentState = (row.state_season ?? 2026) === picksSeason(tid);
     if (currentState && row.lineup_locked !== null) pool.lineupLocks[tid] = row.lineup_locked;
     if (currentState && row.picks_open !== null) pool.picksOpen[tid] = row.picks_open;
-    if (row.payout_first !== null || row.payout_second !== null || row.payout_third !== null) {
-      pool.payouts[tid] = {
-        first: row.payout_first ?? 0,
-        second: row.payout_second ?? 0,
-        third: row.payout_third ?? 0,
-      };
-    }
     if (currentState && row.winner_score !== null) pool.winnerScores[tid] = row.winner_score;
     if (row.entry_fee !== null && row.entry_fee > 0) pool.entryFees![tid] = row.entry_fee;
+  }
+
+  // Payouts for each tournament's event on show: amounts the commissioner typed in for that event,
+  // else the league's plan applied to the pot (entry fee × entries).
+  for (const tid of TOURNAMENT_IDS) {
+    const row = rows.find((r) => r.tournament_id === tid);
+    const season = payoutDisplaySeason(tid, (s) => entriesFor(tid, s));
+    const entries = entriesFor(tid, season);
+    const fee = pool.entryFees![tid] ?? 0;
+    const pot = fee * entries;
+    const manual =
+      !!row &&
+      (row.payout_first !== null || row.payout_second !== null || row.payout_third !== null) &&
+      (row.payouts_season ?? 2026) === season;
+    if (manual) {
+      pool.payouts[tid] = { first: row.payout_first ?? 0, second: row.payout_second ?? 0, third: row.payout_third ?? 0 };
+    } else if (payoutPlan) {
+      const amounts = computePayouts(payoutPlan, pot, fee);
+      if (amounts.first + amounts.second + amounts.third > 0) pool.payouts[tid] = amounts;
+    }
+    pool.payoutInfo![tid] = { season, entries, pot, manual };
   }
 
   return pool;
@@ -411,6 +442,13 @@ function payoutSeason(tournamentId: string) {
   return latestStartedSeason(tournamentId) ?? picksSeason(tournamentId);
 }
 
+// The event whose payouts show for a tournament: the upcoming one once anyone has picks in for it,
+// else the most recent one (so winners can still be paid after it ends).
+function payoutDisplaySeason(tournamentId: string, entriesIn: (season: number) => number) {
+  const upcoming = picksSeason(tournamentId);
+  return entriesIn(upcoming) > 0 ? upcoming : payoutSeason(tournamentId);
+}
+
 async function loadPayoutsSent(sql: AnySql, leagueId: string) {
   const rows = await sql<{ tournament_id: string; season: number; place: number; user_id: string | null; amount: number; sent_at: Date }[]>`
     select tournament_id, season, place, user_id, amount, sent_at from league_payouts_sent
@@ -498,6 +536,9 @@ export async function getSessionContext(token: string | undefined): Promise<Sess
       lineupLocks: pool.lineupLocks,
       picksOpen: pool.picksOpen,
       payouts: pool.payouts,
+      payoutPlan: pool.payoutPlan ?? null,
+      payoutInfo: pool.payoutInfo,
+      paymentNote: pool.paymentNote ?? null,
       entryFees: pool.entryFees,
       role: league.role,
       plan: league.plan,
@@ -874,11 +915,41 @@ export async function getSelectedPlayerIdsForTournament(tournamentId: Tournament
 }
 
 export async function updatePoolPayouts(requestingUserId: string, tournamentId: TournamentId, payouts: TournamentPayouts) {
-  return updateLeagueTournament(requestingUserId, tournamentId, (sql, leagueId) => sql`
+  return updateLeagueTournament(requestingUserId, tournamentId, async (sql, leagueId) => sql`
     update league_tournaments
-    set payout_first = ${payouts.first}, payout_second = ${payouts.second}, payout_third = ${payouts.third}
+    set payout_first = ${payouts.first}, payout_second = ${payouts.second}, payout_third = ${payouts.third},
+      payouts_season = ${await overrideSeason(sql, leagueId, tournamentId)}
     where league_id = ${leagueId} and tournament_id = ${tournamentId}
   `);
+}
+
+// Typed-in amounts are for the event currently shown (see payoutDisplaySeason).
+async function overrideSeason(sql: AnySql, leagueId: string, tournamentId: TournamentId) {
+  const upcoming = picksSeason(tournamentId);
+  const [row] = await sql<{ n: number }[]>`
+    select count(*)::int as n from rosters
+    where league_id = ${leagueId} and tournament_id = ${tournamentId} and season = ${upcoming}
+      and golfer_ids is not null and cardinality(golfer_ids) > 0
+  `;
+  return (row?.n ?? 0) > 0 ? upcoming : payoutSeason(tournamentId);
+}
+
+// Go back to the league's payout plan for this tournament.
+export async function clearPoolPayouts(requestingUserId: string, tournamentId: TournamentId) {
+  return updateLeagueTournament(requestingUserId, tournamentId, (sql, leagueId) => sql`
+    update league_tournaments set payout_first = null, payout_second = null, payout_third = null, payouts_season = null
+    where league_id = ${leagueId} and tournament_id = ${tournamentId}
+  `);
+}
+
+// Save (or, with null, remove) the league's payout plan. Commissioner of the current league only.
+export async function setLeaguePayoutPlan(requestingUserId: string, plan: PayoutPlan | null) {
+  return db().begin(async (sql) => {
+    const league = await requireActiveLeague(sql, requestingUserId);
+    if (league.role !== 'commissioner') throw new Error('Only the commissioner can change payouts.');
+    await sql`update leagues set payout_plan = ${plan ? sql.json(plan as never) : null} where id = ${league.id}`;
+    return loadPool(sql, league);
+  });
 }
 
 export async function updatePoolWinnerScore(requestingUserId: string, tournamentId: TournamentId, score: number) {
@@ -1222,6 +1293,15 @@ export async function updateEntryFees(requestingUserId: string, fees: Partial<Re
         on conflict (league_id, tournament_id) do update set entry_fee = excluded.entry_fee
       `;
     }
+  });
+}
+
+// How members pay when it isn't through the commissioner's Venmo (null clears it).
+export async function setPaymentNote(requestingUserId: string, note: string | null) {
+  const clean = note?.trim().slice(0, 200) || null;
+  await db().begin(async (sql) => {
+    const league = await requireCommissionerLeague(sql, requestingUserId);
+    await sql`update leagues set payment_note = ${clean} where id = ${league.id}`;
   });
 }
 

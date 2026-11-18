@@ -6,6 +6,7 @@ import {
   TOURNAMENT_IDS,
   type TournamentId,
   updatePoolPayouts,
+  clearPoolPayouts,
 } from '../../../lib/pool-store';
 
 function isTournamentId(value: string): value is TournamentId {
@@ -32,10 +33,16 @@ export async function PATCH(request: Request) {
       first?: number;
       second?: number;
       third?: number;
+      // Drop the typed-in amounts and go back to the league's payout plan.
+      usePlan?: boolean;
     };
 
     if (!body.tournamentId || !isTournamentId(body.tournamentId)) {
       return NextResponse.json({ error: 'Unknown tournament.' }, { status: 400 });
+    }
+
+    if (body.usePlan) {
+      return NextResponse.json({ pool: await clearPoolPayouts(session.user.id, body.tournamentId) });
     }
 
     const first = Number(body.first);

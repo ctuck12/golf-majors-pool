@@ -186,6 +186,25 @@ begin
   end if;
 end $$;
 
+-- Payout plans: how a league splits the pot (see app/lib/payout-plan.ts), applied to every
+-- tournament. Amounts a commissioner types in for one tournament override the plan for that
+-- season's event only (payouts_season; older rows were for 2026).
+alter table leagues add column if not exists payout_plan jsonb;
+alter table league_tournaments add column if not exists payouts_season integer;
+-- How members pay the entry fee when the commissioner doesn't use Venmo (e.g. "Cash or Zelle to
+-- Clayton"). Shown at Submit and in the tournament-week text.
+alter table leagues add column if not exists payment_note text;
+do $$
+declare applied integer;
+begin
+  insert into app_migrations (name) values ('founder-payout-plan') on conflict do nothing;
+  get diagnostics applied = row_count;
+  if applied = 1 then
+    update leagues set payout_plan = '{"places":[{"mode":"percent","value":67.5},{"mode":"rest","value":0},{"mode":"fee","value":2}],"roundTo":5}'::jsonb
+      where id = 'golf-majors-pool' and payout_plan is null;
+  end if;
+end $$;
+
 -- Each league's final standings per tournament and season ("Past Results"). Saved when a member
 -- views a finished tournament; the larger snapshot wins.
 create table if not exists league_standings_archive (
