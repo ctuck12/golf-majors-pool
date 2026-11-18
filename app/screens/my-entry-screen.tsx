@@ -3,7 +3,10 @@
 import { latestStartedSeason, picksSeason } from '@/app/lib/tournament-config';
 import { ArrowLeft, CircleUserRound, CheckCircle2, History, MoreVertical, Pencil, Search } from 'lucide-react';
 import { SALARY_CAP, REQUIRED_GOLFERS, totalParFor, TOURNAMENTS, TOURNAMENT_PICKS_HEADER, PICKS_HEADER_LOGO_H, TOURNAMENT_ENTRIES_INTRO, TOURNAMENT_TAB_LOGOS, TOURNAMENT_EVENT_LOGOS, eventLogoStyle, PICK_HISTORY_NAMES, pgaPhoto, playerPhotoSrc, photoOnError, MOBILE_TWO_LINE_NAMES, MOBILE_CUSTOM_SPLITS, rosterInSeason, fieldStyle } from '../pool-data';
+import { useState } from 'react';
+import { Share2 } from 'lucide-react';
 import { EntryFeeStatus } from '../entry-fee-status';
+import { ShareImageModal } from '../share-image';
 import type { PoolPage } from '../pool-page-state';
 
 // Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
@@ -65,6 +68,9 @@ export function MyEntryScreen({ p }: { p: PoolPage }) {
     reportMyPayment,
     pool,
   } = p;
+  const [sharing, setSharing] = useState(false);
+  const myTieBreak = sessionUser?.tieBreaks?.[entriesTournamentId];
+  const rosterSalary = savedRosterPlayers.reduce((sum, player) => sum + (player.salary ?? 0), 0);
   return (
     <main style={{ marginTop: isMobile ? 14 : 24, display: 'grid', gap: isMobile ? 12 : 20 }}>
             {!sessionUser ? (
@@ -233,6 +239,31 @@ export function MyEntryScreen({ p }: { p: PoolPage }) {
                           <Pencil size={isMobile ? 13 : 14} />
                           Edit Picks
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => setSharing(true)}
+                          style={{ border: '1px solid #cdd9e5', borderRadius: 12, padding: '8px 14px', background: '#fff', color: '#173b63', fontSize: 13.5, fontWeight: 800, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                        >
+                          <Share2 size={14} /> Share my roster
+                        </button>
+                        {sharing ? (
+                          <ShareImageModal
+                            fileName="my-golf-majors-pool-roster.png"
+                            onClose={() => setSharing(false)}
+                            input={{
+                              kicker: `${entriesTournament.fullName} picks`,
+                              title: userLabel,
+                              subtitle: pool?.name,
+                              rows: savedRosterPlayers.map((player, i) => ({
+                                left: String(i + 1),
+                                label: player.name,
+                                sub: player.worldRank ? `World #${player.worldRank}` : undefined,
+                                right: `$${(player.salary ?? 0).toLocaleString()}`,
+                              })),
+                              footer: `Salary $${rosterSalary.toLocaleString()} of $${SALARY_CAP.toLocaleString()}${myTieBreak ? ` · Tiebreaker ${myTieBreak}` : ''}`,
+                            }}
+                          />
+                        ) : null}
                         {showMyPaymentStatus ? (
                           <EntryFeeStatus
                             fee={entryFee}
