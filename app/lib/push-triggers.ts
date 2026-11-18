@@ -5,8 +5,10 @@ import { formatMoney, placeLabel } from './venmo';
 import { readLeaderboardCache } from './scorecard-store';
 import { currentTournamentMeta, effectiveLockTime } from './tournament-config';
 import { getLockTimeOverrides } from './lock-time-store';
-import { leagueMemberIds, membersMissingPicks, membersWhoPicked, membersWithPicks, type TournamentId } from './pool-store';
-import { isPushConfigured, sendPushOnce } from './push';
+import { leagueMemberIds, leaguesForPlacingAlerts, membersMissingPicks, membersWhoPicked, membersWithPicks, pushTokensByUser, type TournamentId } from './pool-store';
+import { isPushConfigured, sendPushOnce, sendPushToTokens } from './push';
+import { leaguePlacings, nextAlert, type AlertState } from './placing-alerts';
+import redis from './redis';
 
 // What the app sends as push notifications, and when. Each is sent at most once (per league,
 // event, round or payment as fits), so the every-2-minutes score refresh can call these freely.
@@ -88,6 +90,9 @@ export async function pushFromScoreRefresh(tournamentId: TournamentId, refreshRe
 
   // A golfer takes the solo lead: to everyone who picked them, once per golfer per round.
   if (cache.tournamentComplete) return;
+
+  // Moving into, or out of, your league's paying places.
+  await pushPlacingChanges(tournamentId, season).catch(() => {});
   const leaders = cache.leaderboard.filter((row) => String(row.position).trim() === '1');
   if (leaders.length !== 1) return;
   const leader = leaders[0];
@@ -105,3 +110,67 @@ export async function pushFromScoreRefresh(tournamentId: TournamentId, refreshRe
   });
 }
 
+
+// "You're in the money" / "You dropped out of the money": per league, against the places that
+// league pays (its payout plan, or the amounts typed in for this event). Uses the same golfer
+// points as the leaderboard. A change has to last 10 minutes, and each member gets at most one
+// of these per league every 45 minutes, so live swings don't flood anyone.
+async function pushPlacingChanges(tournamentId: TournamentId, season: number) {
+  const { GET } = await import('../api/leaderboard/route');
+  const res = await GET(new Request(`http://internal/api/leaderboard?tournamentId=${tournamentId}`));
+  const feed = (await res.json()) as { season?: number; players?: { canonicalName?: string; scoreBreakdown?: { totalPoints?: number } }[] };
+  if (feed.season !== season || !feed.players?.length) return;
+
+  const dynamic = await getDynamicPlayers().catch(() => []);
+  const idByName = new Map([...PLAYER_POOL_WITH_PGA_IDS, ...dynamic].map((p) => [canonicalNameKey(p.name), p.id]));
+  const pointsByGolfer = new Map<number, number>();
+  for (const row of feed.players) {
+    const id = idByName.get(canonicalNameKey(row.canonicalName ?? ''));
+    if (id != null) pointsByGolfer.set(id, row.scoreBreakdown?.totalPoints ?? 0);
+  }
+
+  const now = Date.now();
+  for (const league of await leaguesForPlacingAlerts(tournamentId, season)) {
+    // Nothing to win or lose when the league pays nobody, or pays everyone who entered.
+    if (league.places < 1 || league.entries.length <= league.places) continue;
+    const placings = leaguePlacings(league.entries, pointsByGolfer, league.places);
+    const key = `push-placing:${league.id}:${tournamentId}:${season}`;
+    const stored = await redis.hgetall(key).catch(() => ({} as Record<string, string>));
+    const updates: Record<string, string> = {};
+    const toSend: { userId: string; inMoney: boolean; rank: number; tied: boolean; points: number }[] = [];
+    for (const p of placings) {
+      let prev: AlertState | undefined;
+      try {
+        prev = stored[p.userId] ? (JSON.parse(stored[p.userId]) as AlertState) : undefined;
+      } catch {
+        prev = undefined;
+      }
+      const { send, state } = nextAlert(prev, p.inMoney, now);
+      if (JSON.stringify(state) !== JSON.stringify(prev ?? null)) updates[p.userId] = JSON.stringify(state);
+      if (send) toSend.push(p);
+    }
+    if (Object.keys(updates).length) {
+      await redis.hset(key, updates).catch(() => {});
+      await redis.expire(key, 14 * DAY).catch(() => {});
+    }
+    if (toSend.length === 0) continue;
+    const pays = league.places === 1 ? 'winner takes all' : `top ${league.places} get paid`;
+    const tokens = await pushTokensByUser(toSend.map((p) => p.userId));
+    for (const p of toSend) {
+      const userTokens = tokens.get(p.userId) ?? [];
+      if (userTokens.length === 0) continue;
+      const place = `${p.tied ? 'T' : ''}${placeLabel(p.rank)}`;
+      await sendPushToTokens(userTokens, p.inMoney
+        ? {
+            title: "You're in the money! 💰",
+            body: `You're ${place} in ${league.name} for ${TITLE[tournamentId]} with ${p.points} pts (${pays}).`,
+            data: { tab: 'Standings' },
+          }
+        : {
+            title: 'You dropped out of the money 📉',
+            body: `You're ${place} in ${league.name} for ${TITLE[tournamentId]} now (${pays}). Still time to climb back.`,
+            data: { tab: 'Standings' },
+          });
+    }
+  }
+}

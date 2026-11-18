@@ -1400,6 +1400,51 @@ export async function membersWhoPicked(tournamentId: TournamentId, season: numbe
   return rows.map((row) => row.user_id);
 }
 
+// For "in the money" alerts: every league with picks in for an event, how many places it pays
+// (its typed-in amounts for this event, else its payout plan), and each entry's golfers.
+export async function leaguesForPlacingAlerts(tournamentId: TournamentId, season: number) {
+  const leagues = await db()<{
+    id: string;
+    name: string;
+    payout_plan: PayoutPlan | null;
+    payout_first: number | null;
+    payout_second: number | null;
+    payout_third: number | null;
+    payouts_season: number | null;
+  }[]>`
+    select l.id, l.name, l.payout_plan, lt.payout_first, lt.payout_second, lt.payout_third, lt.payouts_season
+    from leagues l
+    left join league_tournaments lt on lt.league_id = l.id and lt.tournament_id = ${tournamentId}
+    where exists (select 1 from rosters r where r.league_id = l.id and r.tournament_id = ${tournamentId} and r.season = ${season})
+  `;
+  const rosters = await db()<{ league_id: string; user_id: string; golfer_ids: number[] }[]>`
+    select r.league_id, r.user_id, r.golfer_ids
+    from rosters r
+    join league_members m on m.league_id = r.league_id and m.user_id = r.user_id
+    where r.tournament_id = ${tournamentId} and r.season = ${season} and r.golfer_ids is not null and cardinality(r.golfer_ids) > 0
+  `;
+  return leagues.map((l) => {
+    const manual = (l.payout_first !== null || l.payout_second !== null || l.payout_third !== null) && (l.payouts_season ?? 2026) === season;
+    const places = manual
+      ? [l.payout_first, l.payout_second, l.payout_third].filter((amount) => (amount ?? 0) > 0).length
+      : l.payout_plan?.places.length ?? 0;
+    return {
+      id: l.id,
+      name: l.name,
+      places,
+      entries: rosters.filter((r) => r.league_id === l.id).map((r) => ({ userId: r.user_id, golferIds: r.golfer_ids })),
+    };
+  });
+}
+
+export async function pushTokensByUser(userIds: string[]) {
+  if (userIds.length === 0) return new Map<string, string[]>();
+  const rows = await db()<{ user_id: string; token: string }[]>`select user_id, token from push_tokens where user_id in ${db()(userIds)}`;
+  const byUser = new Map<string, string[]>();
+  for (const row of rows) byUser.set(row.user_id, [...(byUser.get(row.user_id) ?? []), row.token]);
+  return byUser;
+}
+
 // Everyone with picks in for an event, in any league.
 export async function membersWithPicks(tournamentId: TournamentId, season: number) {
   const rows = await db()<{ user_id: string }[]>`
