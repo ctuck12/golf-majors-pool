@@ -208,6 +208,9 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                   gridAutoRows: '1fr', // equal-height rows so all four status boxes match
                 }}
               >
+                {/* Where scores come from and when they last synced: the app admin's concern only. */}
+                {isAppAdmin ? (
+                <>
                 <div style={{ border: '1px solid #e6edf1', borderRadius: isMobile ? 12 : 18, padding: isMobile ? 10 : 16, background: '#f8fbfd', display: 'flex', flexDirection: 'column' }}>
                   <div style={{ fontSize: 11, textTransform: 'uppercase', fontWeight: 800, color: '#5b6b79' }}>
                     Data source
@@ -225,16 +228,19 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                   </div>
                   <div style={{ marginTop: isMobile ? 4 : 8, fontSize: isMobile ? 13 : 18, fontWeight: 800 }}>{formatRefresh(feed?.fetchedAt ?? null).replace(/^Updated /, '')}</div>
                 </div>
+                </>
+                ) : null}
                 <button
-                  onClick={handleToggleLineupLock}
-                  disabled={!canManagePool || commissionerBusy}
+                  onClick={isAppAdmin ? handleToggleLineupLock : undefined}
+                  disabled={!isAppAdmin || commissionerBusy}
                   style={{
                     border: `1.5px solid ${locked ? '#e7a3a3' : '#a8d3ba'}`,
                     borderRadius: isMobile ? 12 : 18,
                     padding: isMobile ? 10 : 16,
                     background: locked ? '#fbf1f1' : '#f1f8f4',
                     textAlign: 'left',
-                    cursor: !canManagePool || commissionerBusy ? 'not-allowed' : 'pointer',
+                    cursor: !isAppAdmin ? 'default' : commissionerBusy ? 'not-allowed' : 'pointer',
+                    color: 'inherit',
                   }}
                 >
                   <div style={{ fontSize: 11, textTransform: 'uppercase', fontWeight: 800, color: '#5b6b79' }}>
@@ -245,19 +251,22 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                     {locked ? 'Locked' : 'Unlocked'}
                   </div>
                   <div style={{ marginTop: isMobile ? 4 : 8, fontSize: isMobile ? 11 : 13, color: '#5b6b79' }}>
-                    {locked ? 'Click to unlock roster editing' : 'Click to lock roster editing'}
+                    {!isAppAdmin
+                      ? (locked ? 'Picks are locked for this tournament' : 'Locks automatically at the first tee time')
+                      : locked ? 'Click to unlock roster editing' : 'Click to lock roster editing'}
                   </div>
                 </button>
                 <button
-                  onClick={handleTogglePicksOpen}
-                  disabled={!canManagePool || commissionerBusy}
+                  onClick={isAppAdmin ? handleTogglePicksOpen : undefined}
+                  disabled={!isAppAdmin || commissionerBusy}
                   style={{
                     border: `1.5px solid ${pool?.picksOpen?.[selectedTournament] ? '#a8d3ba' : '#e7a3a3'}`,
                     borderRadius: isMobile ? 12 : 18,
                     padding: isMobile ? 10 : 16,
                     background: pool?.picksOpen?.[selectedTournament] ? '#f1f8f4' : '#fbf1f1',
                     textAlign: 'left',
-                    cursor: !canManagePool || commissionerBusy ? 'not-allowed' : 'pointer',
+                    cursor: !isAppAdmin ? 'default' : commissionerBusy ? 'not-allowed' : 'pointer',
+                    color: 'inherit',
                   }}
                 >
                   <div style={{ fontSize: 11, textTransform: 'uppercase', fontWeight: 800, color: '#5b6b79' }}>
@@ -268,7 +277,9 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                     {pool?.picksOpen?.[selectedTournament] ? 'Open' : 'Closed'}
                   </div>
                   <div style={{ marginTop: isMobile ? 4 : 8, fontSize: isMobile ? 11 : 13, color: '#5b6b79' }}>
-                    {pool?.picksOpen?.[selectedTournament] ? 'Click to hide pick sheet' : 'Click to show pick sheet'}
+                    {!isAppAdmin
+                      ? (pool?.picksOpen?.[selectedTournament] ? 'Members can make picks now' : 'Opens once the field is set')
+                      : pool?.picksOpen?.[selectedTournament] ? 'Click to hide pick sheet' : 'Click to show pick sheet'}
                   </div>
                 </button>
               </div>

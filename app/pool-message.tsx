@@ -123,7 +123,7 @@ export function PoolMessageModal({
 
       {!tournament.picksOpen ? (
         <div style={{ background: '#fff7e6', border: '1px solid #f3d38b', borderRadius: 12, padding: 12, fontSize: 13.5, color: '#5c4310', lineHeight: 1.45 }}>
-          Picks aren&apos;t open yet for {tournament.label}. Open them before you send this.
+          Picks aren&apos;t open yet for {tournament.label}. They open once the field is set, usually the Monday of tournament week; send this then.
         </div>
       ) : null}
 

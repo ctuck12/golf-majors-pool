@@ -149,8 +149,8 @@ export function CommissionerGuide<P>({
             Share your league&apos;s invite link or join code. People sign up in the app and land in your league.
             {status.memberCount > 1 ? <> You have {status.memberCount} members.</> : null}
           </Step>
-          <Step done={false} title="Each tournament week: open picks and send the text" action={<button type="button" onClick={openMessage} style={linkButton}>Open Message Your Pool →</button>}>
-            See the Tournament week playbook below. {status.nextTournamentLabel} picks are {status.nextPicksOpen ? 'open' : 'not open yet'}.
+          <Step done={false} title="Each tournament week: send the text" action={<button type="button" onClick={openMessage} style={linkButton}>Open Message Your Pool →</button>}>
+            Picks open automatically once the field is set. See the Tournament week playbook below. {status.nextTournamentLabel} picks are {status.nextPicksOpen ? 'open' : 'not open yet'}.
           </Step>
         </Section>
 
@@ -179,7 +179,7 @@ export function CommissionerGuide<P>({
 
         <Section title="3. Tournament week playbook" subtitle="What to do, day by day" open={openSection === 'week'} onToggle={() => toggle('week')}>
           {[
-            ['Monday', <>The field and salaries go up in the app. Open <b>Player picks</b> at the top of your tools, then send the <b>Message Your Pool</b> text to your group chat.</>],
+            ['Monday', <>The field and salaries go up and picks open in every league automatically. Send the <b>Message Your Pool</b> text to your group chat.</>],
             ['Mon – Wed', <>Members make picks and pay. Check <b>Member Management</b> to see who&apos;s in, and nudge anyone missing. A Wednesday-night reminder helps.</>],
             ['Thursday', <>Picks lock automatically at the first tee time. Nothing to do. If someone texts you picks late, you can enter them for that person in <b>Member Management</b> (your call; set your rule up front).</>],
             ['Thu – Sun', <>Live scoring, points, bonuses and round leaders update on their own. Enjoy it, and expect some trash talk.</>],
@@ -229,7 +229,7 @@ export function CommissionerGuide<P>({
           <h3 style={h3}>Taken care of for you</h3>
           <ul style={{ margin: '0 0 10px', paddingLeft: 18 }}>
             <li style={li}>The field and player salaries for every major, plus world rankings, stats and player research in the pick sheet.</li>
-            <li style={li}>The schedule, first tee times and automatic pick locks.</li>
+            <li style={li}>The schedule, opening picks once the field is set, first tee times and pick locks.</li>
             <li style={li}>Live scoring from ESPN and the PGA Tour, points, bonuses and round leaders.</li>
             <li style={li}>Withdrawals and disqualifications, and the tiebreaker.</li>
             <li style={li}>Past results and season history for your league.</li>
@@ -237,7 +237,7 @@ export function CommissionerGuide<P>({
           <h3 style={h3}>On your plate</h3>
           <ul style={{ margin: '0 0 10px', paddingLeft: 18 }}>
             <li style={li}>Inviting members and answering their questions.</li>
-            <li style={li}>Opening picks each tournament week and sending the text.</li>
+            <li style={li}>Sending the text each tournament week.</li>
             <li style={li}>Collecting entry fees and paying winners (the app sets both up for you).</li>
             <li style={li}>Your league&apos;s rules: entry fee, payouts and late entries.</li>
             <li style={li}>Handing the league to someone else if you step down: Member Management → the member → Make Commissioner.</li>

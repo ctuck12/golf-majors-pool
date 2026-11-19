@@ -18,6 +18,7 @@ import {
   sanitizeRoster,
   SESSION_TTL_MS,
   TOURNAMENT_IDS,
+  DEFAULT_POOL_ID,
   type LeagueRole,
   type LeagueSummary,
   type LeagueVenmo,
@@ -915,6 +916,45 @@ export async function updatePoolPicksOpen(requestingUserId: string, tournamentId
       `);
 }
 
+// The app admin opens or closes picks, and locks or unlocks lineups, for every league at once
+// (every league plays the same field on the same schedule). Opening picks starts a fresh pick
+// window, so it also clears a stale lineup lock. Returns the admin's own league as it is now.
+export async function setTournamentStateEverywhere(
+  requestingUserId: string,
+  tournamentId: TournamentId,
+  change: { picksOpen?: boolean; locked?: boolean },
+) {
+  const season = picksSeason(tournamentId);
+  await db().begin(async (sql) => {
+    // A new season's event starts clean (picks closed, unlocked, no winner score).
+    await sql`
+      insert into league_tournaments (league_id, tournament_id, state_season)
+      select id, ${tournamentId}, ${season} from leagues
+      on conflict (league_id, tournament_id) do update set
+        picks_open = case when coalesce(league_tournaments.state_season, 2026) = ${season} then league_tournaments.picks_open else null end,
+        lineup_locked = case when coalesce(league_tournaments.state_season, 2026) = ${season} then league_tournaments.lineup_locked else null end,
+        winner_score = case when coalesce(league_tournaments.state_season, 2026) = ${season} then league_tournaments.winner_score else null end,
+        state_season = ${season}
+    `;
+    if (change.picksOpen !== undefined) {
+      await (change.picksOpen
+        ? sql`update league_tournaments set picks_open = true, lineup_locked = false where tournament_id = ${tournamentId}`
+        : sql`update league_tournaments set picks_open = false where tournament_id = ${tournamentId}`);
+    }
+    if (change.locked !== undefined) {
+      await sql`update league_tournaments set lineup_locked = ${change.locked} where tournament_id = ${tournamentId}`;
+    }
+  });
+  const league = await requireActiveLeague(db(), requestingUserId);
+  return loadPool(db(), league);
+}
+
+// Everyone in any league (for the "picks are open" notification).
+export async function allLeagueMemberIds() {
+  const rows = await db()<{ user_id: string }[]>`select distinct user_id from league_members`;
+  return rows.map((row) => row.user_id);
+}
+
 // Locks this tournament's lineups in every league (tee times are the same for everyone).
 export async function autoLockPoolLineup(tournamentId: TournamentId): Promise<void> {
   const season = picksSeason(tournamentId);
@@ -1035,6 +1075,14 @@ async function createLeagueTx(
     `;
     await sql`insert into league_members (league_id, user_id, role) values (${id}, ${userId}, 'commissioner')`;
     await sql`update users set active_league_id = ${id} where id = ${userId}`;
+    // Picks open / lineup lock are set by the app admin for every league at once: a new league
+    // starts where the others are (the founder league always has the admin's settings).
+    await sql`
+      insert into league_tournaments (league_id, tournament_id, picks_open, lineup_locked, state_season)
+      select ${id}, tournament_id, picks_open, lineup_locked, state_season from league_tournaments
+      where league_id = ${DEFAULT_POOL_ID}
+      on conflict do nothing
+    `;
     return { id, name, joinCode };
   }
 }

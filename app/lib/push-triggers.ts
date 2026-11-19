@@ -5,7 +5,7 @@ import { formatMoney, placeLabel } from './venmo';
 import { readLeaderboardCache } from './scorecard-store';
 import { currentTournamentMeta, effectiveLockTime } from './tournament-config';
 import { getLockTimeOverrides } from './lock-time-store';
-import { leagueMemberIds, leaguesForPlacingAlerts, membersMissingPicks, membersWhoPicked, membersWithPicks, pushTokensByUser, type TournamentId } from './pool-store';
+import { allLeagueMemberIds, leaguesForPlacingAlerts, membersMissingPicks, membersWhoPicked, membersWithPicks, pushTokensByUser, type TournamentId } from './pool-store';
 import { isPushConfigured, sendPushOnce, sendPushToTokens } from './push';
 import { leaguePlacings, nextAlert, type AlertState } from './placing-alerts';
 import redis from './redis';
@@ -29,13 +29,13 @@ const TITLE: Record<TournamentId, string> = {
 };
 const DAY = 24 * 60 * 60;
 
-// A commissioner opened picks.
-export async function pushPicksOpen(input: { leagueId: string; leagueName: string; tournamentId: TournamentId; season: number; commissionerId: string }) {
+// Picks opened (by the app admin, for every league at once): to everyone in any league.
+export async function pushPicksOpen(input: { tournamentId: TournamentId; season: number; adminId: string }) {
   if (!isPushConfigured()) return;
-  const members = await leagueMemberIds(input.leagueId, input.commissionerId);
-  await sendPushOnce(`picks-open:${input.leagueId}:${input.tournamentId}:${input.season}`, 30 * DAY, members, {
+  const members = (await allLeagueMemberIds()).filter((id) => id !== input.adminId);
+  await sendPushOnce(`picks-open:all:${input.tournamentId}:${input.season}`, 30 * DAY, members, {
     title: `${TITLE[input.tournamentId]} picks are open ⛳`,
-    body: `Pick your 6 golfers in ${input.leagueName} before the first tee time.`,
+    body: 'The field is set. Pick your 6 golfers before the first tee time.',
     data: { tab: 'My Entries' },
   });
 }
