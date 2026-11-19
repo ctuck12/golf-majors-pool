@@ -447,6 +447,11 @@ export default function Page() {
                   </div>
                   <div style={{ marginTop: 6, fontSize: isMobile ? 16 : 20, fontWeight: 900 }}>{sessionUser.displayName}</div>
                   <div style={{ marginTop: 4, fontSize: 13, color: '#6b7b88' }}>{sessionUser.email}</div>
+                  {pool ? (
+                    <div style={{ marginTop: 6, fontSize: 13, color: '#3d4b58' }}>
+                      League: <span style={{ fontWeight: 800, color: '#173b63' }}>{pool.name}</span>
+                    </div>
+                  ) : null}
                   {accountPreferencesView === 'root' ? (
                     <button
                       type="button"
@@ -513,7 +518,8 @@ export default function Page() {
                           minWidth: 0,
                           border: '1px solid #d7e0e8',
                           borderRadius: 12,
-                          padding: '12px 14px',
+                          padding: isMobile ? '11px 6px' : '12px 14px',
+                          fontSize: isMobile ? 13.5 : 15,
                           background: '#fff',
                           color: '#0f1720',
                           fontWeight: 800,
@@ -534,14 +540,15 @@ export default function Page() {
                           minWidth: 0,
                           border: 'none',
                           borderRadius: 12,
-                          padding: '12px 14px',
+                          padding: isMobile ? '11px 6px' : '12px 14px',
+                          fontSize: isMobile ? 13.5 : 15,
                           background: '#173b63',
                           color: '#fff',
                           fontWeight: 800,
                           cursor: 'pointer',
                         }}
                       >
-                        Preferences
+                        {isMobile ? 'Settings' : 'Preferences'}
                       </button>
                     ) : null}
 
@@ -646,7 +653,9 @@ export default function Page() {
                         minWidth: 0,
                         border: '1px solid #d7e0e8',
                         borderRadius: 12,
-                        padding: '12px 14px',
+                        padding: isMobile ? '11px 6px' : '12px 14px',
+                        fontSize: isMobile ? 13.5 : 15,
+                        whiteSpace: 'nowrap',
                         background: '#fff',
                         color: '#0f1720',
                         fontWeight: 800,
@@ -1183,17 +1192,6 @@ export default function Page() {
                 Renew
               </button>
             ) : null}
-          </div>
-        ) : null}
-        {/* Which league you're looking at, once there's more than one to tell apart. */}
-        {sessionFlags.leagues.length > 1 || !isFounderPool ? (
-          <div style={{ marginTop: isMobile ? 10 : 16, display: 'flex', justifyContent: 'center' }}>
-            <button
-              onClick={() => setLeagueModalOpen(true)}
-              style={{ border: '1px solid #d7e0e8', borderRadius: 999, background: '#fff', padding: '6px 14px', fontSize: 13, fontWeight: 800, color: '#173b63', cursor: 'pointer', boxShadow: '0 4px 12px rgba(9,34,51,0.06)' }}
-            >
-              {pool.name}{sessionFlags.leagues.length > 1 ? ' · Switch' : ''}
-            </button>
           </div>
         ) : null}
         <VenmoPrompt

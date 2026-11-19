@@ -133,6 +133,14 @@ await check('one commissioner: hand over and back', async () => {
   r = await call('admin', '/api/auth/session');
   assert.equal(r.json.pool.role, 'member');
   assert.equal(r.json.pool.commissioners.length, 1);
+  // Only the app admin opens picks and locks lineups (for every league at once).
+  assert.equal((await call('bob', '/api/commissioner/lineup-lock', 'PATCH', { tournamentId: 'masters', picksOpen: true })).status, 403);
+  assert.equal((await call('bob', '/api/commissioner/lineup-lock', 'PATCH', { tournamentId: 'masters', locked: true })).status, 403);
+  const opened = await call('admin', '/api/commissioner/lineup-lock', 'PATCH', { tournamentId: 'masters', picksOpen: true });
+  assert.equal(opened.status, 200, JSON.stringify(opened.json));
+  assert.equal(opened.json.pool.picksOpen.masters, true);
+  const closed = await call('admin', '/api/commissioner/lineup-lock', 'PATCH', { tournamentId: 'masters', picksOpen: false });
+  assert.equal(closed.json.pool.picksOpen.masters, false);
   r = await call('bob', `/api/commissioner/members/${r.json.user.id}`, 'PATCH', { role: 'commissioner' });
   assert.equal(r.status, 200, JSON.stringify(r.json));
 });

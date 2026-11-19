@@ -4,7 +4,7 @@ import { type ReactNode } from 'react';
 import { VenmoMark } from '../venmo-mark';
 import { formatVenmo } from '@/app/lib/venmo';
 import { currentTournamentMeta, effectiveLockTime } from '@/app/lib/tournament-config';
-import { AlertCircle, ArrowLeft, Award, BookOpen, ChevronRight, Calendar, CircleUserRound, CheckCircle2, DollarSign, Eye, EyeOff, Globe, Lock, MessageSquareText, Pencil, RefreshCw, Save, Search, Send, Trophy, Users, Wallet } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Award, Layers, BookOpen, ChevronRight, Calendar, CircleUserRound, CheckCircle2, DollarSign, Eye, EyeOff, Globe, Lock, MessageSquareText, Pencil, RefreshCw, Save, Search, Send, Trophy, Users, Wallet } from 'lucide-react';
 import { SALARY_CAP, REQUIRED_GOLFERS, totalParFor, TOURNAMENTS, getFlagSrc, getCountryLabel, TOURNAMENT_TAB_LOGOS, TOURNAMENT_EVENT_LOGOS, eventLogoStyle, KNOCKOUT_TAB_LOGOS, pgaPhoto, playerPhotoSrc, photoOnError, MOBILE_TWO_LINE_NAMES, MOBILE_CUSTOM_SPLITS, utcToCentralInput, shouldShowPreTournamentView, formatRefresh, fieldStyle } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
 
@@ -132,6 +132,16 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
     <main style={{ marginTop: isMobile ? 12 : 24, display: 'grid', gap: isMobile ? 12 : 20 }}>
             {commissionerConsoleView === 'dashboard' ? (
               <>
+              {pool ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap', fontSize: isMobile ? 13 : 14, color: '#5b6b79' }}>
+                  <span>Viewing league:</span>
+                  <span style={{ fontWeight: 900, color: '#173b63' }}>{pool.name}</span>
+                  <span aria-hidden="true">·</span>
+                  <button type="button" onClick={() => setLeagueModalOpen(true)} style={{ background: 'none', border: 'none', padding: 0, color: '#2f5f96', fontWeight: 800, fontSize: 'inherit', cursor: 'pointer' }}>
+                    Switch
+                  </button>
+                </div>
+              ) : null}
               {pool?.role === 'commissioner' ? (
                 <button
                   type="button"
@@ -171,22 +181,6 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                 <button
-                  onClick={() => setLeagueModalOpen(true)}
-                  style={{
-                    padding: isMobile ? '7px 15px' : '9px 18px',
-                    fontSize: isMobile ? 13 : 14,
-                    fontWeight: 800,
-                    borderRadius: 9,
-                    border: '1px solid #e2e8ef',
-                    background: '#fff',
-                    color: '#173b63',
-                    cursor: 'pointer',
-                    flexShrink: 0,
-                  }}
-                >
-                  Leagues
-                </button>
-                <button
                   onClick={() => void handleLogout()}
                   disabled={authBusy}
                   style={{
@@ -214,6 +208,9 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                   gridAutoRows: '1fr', // equal-height rows so all four status boxes match
                 }}
               >
+                {/* Where scores come from and when they last synced: the app admin's concern only. */}
+                {isAppAdmin ? (
+                <>
                 <div style={{ border: '1px solid #e6edf1', borderRadius: isMobile ? 12 : 18, padding: isMobile ? 10 : 16, background: '#f8fbfd', display: 'flex', flexDirection: 'column' }}>
                   <div style={{ fontSize: 11, textTransform: 'uppercase', fontWeight: 800, color: '#5b6b79' }}>
                     Data source
@@ -231,16 +228,19 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                   </div>
                   <div style={{ marginTop: isMobile ? 4 : 8, fontSize: isMobile ? 13 : 18, fontWeight: 800 }}>{formatRefresh(feed?.fetchedAt ?? null).replace(/^Updated /, '')}</div>
                 </div>
+                </>
+                ) : null}
                 <button
-                  onClick={handleToggleLineupLock}
-                  disabled={!canManagePool || commissionerBusy}
+                  onClick={isAppAdmin ? handleToggleLineupLock : undefined}
+                  disabled={!isAppAdmin || commissionerBusy}
                   style={{
                     border: `1.5px solid ${locked ? '#e7a3a3' : '#a8d3ba'}`,
                     borderRadius: isMobile ? 12 : 18,
                     padding: isMobile ? 10 : 16,
                     background: locked ? '#fbf1f1' : '#f1f8f4',
                     textAlign: 'left',
-                    cursor: !canManagePool || commissionerBusy ? 'not-allowed' : 'pointer',
+                    cursor: !isAppAdmin ? 'default' : commissionerBusy ? 'not-allowed' : 'pointer',
+                    color: 'inherit',
                   }}
                 >
                   <div style={{ fontSize: 11, textTransform: 'uppercase', fontWeight: 800, color: '#5b6b79' }}>
@@ -251,19 +251,22 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                     {locked ? 'Locked' : 'Unlocked'}
                   </div>
                   <div style={{ marginTop: isMobile ? 4 : 8, fontSize: isMobile ? 11 : 13, color: '#5b6b79' }}>
-                    {locked ? 'Click to unlock roster editing' : 'Click to lock roster editing'}
+                    {!isAppAdmin
+                      ? (locked ? 'Picks are locked for this tournament' : 'Locks automatically at the first tee time')
+                      : locked ? 'Click to unlock roster editing' : 'Click to lock roster editing'}
                   </div>
                 </button>
                 <button
-                  onClick={handleTogglePicksOpen}
-                  disabled={!canManagePool || commissionerBusy}
+                  onClick={isAppAdmin ? handleTogglePicksOpen : undefined}
+                  disabled={!isAppAdmin || commissionerBusy}
                   style={{
                     border: `1.5px solid ${pool?.picksOpen?.[selectedTournament] ? '#a8d3ba' : '#e7a3a3'}`,
                     borderRadius: isMobile ? 12 : 18,
                     padding: isMobile ? 10 : 16,
                     background: pool?.picksOpen?.[selectedTournament] ? '#f1f8f4' : '#fbf1f1',
                     textAlign: 'left',
-                    cursor: !canManagePool || commissionerBusy ? 'not-allowed' : 'pointer',
+                    cursor: !isAppAdmin ? 'default' : commissionerBusy ? 'not-allowed' : 'pointer',
+                    color: 'inherit',
                   }}
                 >
                   <div style={{ fontSize: 11, textTransform: 'uppercase', fontWeight: 800, color: '#5b6b79' }}>
@@ -274,7 +277,9 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                     {pool?.picksOpen?.[selectedTournament] ? 'Open' : 'Closed'}
                   </div>
                   <div style={{ marginTop: isMobile ? 4 : 8, fontSize: isMobile ? 11 : 13, color: '#5b6b79' }}>
-                    {pool?.picksOpen?.[selectedTournament] ? 'Click to hide pick sheet' : 'Click to show pick sheet'}
+                    {!isAppAdmin
+                      ? (pool?.picksOpen?.[selectedTournament] ? 'Members can make picks now' : 'Opens once the field is set')
+                      : pool?.picksOpen?.[selectedTournament] ? 'Click to hide pick sheet' : 'Click to show pick sheet'}
                   </div>
                 </button>
               </div>
@@ -501,6 +506,7 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
               <div style={{ fontSize: 13, fontWeight: 800, textTransform: 'uppercase', color: '#5b6b79', marginBottom: 14 }}>Pool Management Tools</div>
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))', gap: isMobile ? 10 : 14 }}>
                 {([
+                  { key: 'leagues', title: 'Leagues', sub: 'Switch, join, create or invite', Icon: Layers, open: () => setLeagueModalOpen(true), everyone: true },
                   { key: 'allLeagues', title: 'All Leagues', sub: 'Every league, its commissioner and plan', Icon: Users, open: () => setAdminLeaguesOpen(true), adminOnly: true },
                   { key: 'poolMessage', title: 'Message Your Pool', sub: `Tournament-week text for ${entriesTournament.name}`, Icon: MessageSquareText, open: () => setPoolMessageOpen(true) },
                   { key: 'entryFees', title: <>Entry Fees &amp; <VenmoMark tone="blue" /></>, sub: pool?.venmo ? `Members pay ${formatVenmo(pool.venmo.handle)}` : 'Set fees and who collects them', Icon: DollarSign, open: () => setEntryFeesOpen(true) },
@@ -512,12 +518,12 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                   { key: 'markStatus' as const, title: 'Mark WD / DQ / MDF', sub: "Override a player's status", Icon: AlertCircle },
                   { key: 'roundLeader' as const, title: 'Round Leader Tools', sub: 'Clear a mis-captured round leader', Icon: RefreshCw },
                   { key: 'tiebreak' as const, title: 'Tiebreak Score', sub: 'Enter / override total strokes', Icon: Save },
-                ] as { key: string; title: ReactNode; sub: ReactNode; Icon: typeof Trophy; open?: () => void; adminOnly?: boolean }[])
+                ] as { key: string; title: ReactNode; sub: ReactNode; Icon: typeof Trophy; open?: () => void; adminOnly?: boolean; everyone?: boolean }[])
                   // League tools for every commissioner; the app-wide ones for the app admin. The Venmo
                   // tools need a league the user commissions (the admin can be in other leagues).
                   // League tools (payouts, tiebreak, Venmo) are for the league's commissioner; the
                   // app-wide ones (All Leagues, WD/DQ, round leaders) for the app admin only.
-                  .filter((t) => (t.adminOnly || t.key === 'markStatus' || t.key === 'roundLeader') ? isAppAdmin : pool?.role === 'commissioner')
+                  .filter((t) => t.everyone ? true : (t.adminOnly || t.key === 'markStatus' || t.key === 'roundLeader') ? isAppAdmin : pool?.role === 'commissioner')
                   .map((t) => {
                   const Icon = t.Icon;
                   return (
