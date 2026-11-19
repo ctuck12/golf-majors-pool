@@ -201,11 +201,11 @@ export async function createEmailVerificationCode(userId: string): Promise<strin
 export async function confirmEmailWithCode(userId: string, code: string) {
   const raw = await redis.get(emailCodeKey(userId));
   if (!raw) {
-    throw new Error('That code has expired. Tap "Send a new code".');
+    throw new Error('That code has expired. Resend the code below for a new one.');
   }
   const stored = JSON.parse(raw) as { hash: string; attempts: number };
   if (stored.attempts >= EMAIL_CODE_MAX_ATTEMPTS) {
-    throw new Error('Too many tries. Tap "Send a new code".');
+    throw new Error('Too many tries. Resend the code below for a new one.');
   }
   if (stored.hash !== hashEmailCode(userId, code.trim())) {
     const ttl = await redis.ttl(emailCodeKey(userId));

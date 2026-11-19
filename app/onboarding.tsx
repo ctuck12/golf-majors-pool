@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { normalizeVenmoUsername } from './lib/venmo';
 import { VenmoMark } from './venmo-mark';
 
@@ -65,6 +65,11 @@ async function post<T>(url: string, body: unknown, method = 'POST'): Promise<T> 
 
 // ── Confirm your email ───────────────────────────────────────────────────────
 
+const CODE_LENGTH = 6;
+const RESEND_SECONDS = 30;
+
+// Six digit boxes over one real input: typing, paste and iPhone's "From Mail" autofill all fill
+// it, the next empty box is highlighted, and the code submits on its own once it's complete.
 export function VerifyEmailGate<T>({
   email,
   onSession,
@@ -78,15 +83,27 @@ export function VerifyEmailGate<T>({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
+  const [focused, setFocused] = useState(false);
+  const [resendIn, setResendIn] = useState(RESEND_SECONDS);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const confirm = async () => {
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const timer = window.setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [resendIn]);
+
+  const confirm = async (value: string) => {
+    if (value.length !== CODE_LENGTH || busy) return;
     setError('');
     setNote('');
     setBusy(true);
     try {
-      onSession(await post<T>('/api/auth/verify-email', { code }));
+      onSession(await post<T>('/api/auth/verify-email', { code: value }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to confirm your email.');
+      setError(err instanceof Error ? err.message : 'That code didn’t work. Try again.');
+      setCode('');
+      inputRef.current?.focus();
     } finally {
       setBusy(false);
     }
@@ -97,47 +114,108 @@ export function VerifyEmailGate<T>({
     setNote('');
     try {
       await post('/api/auth/verify-email', { resend: true });
-      setNote(`New code sent to ${email}.`);
+      setNote('A new code is on its way.');
+      setResendIn(RESEND_SECONDS);
+      setCode('');
+      inputRef.current?.focus();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to send a new code.');
     }
   };
 
+  const onChange = (raw: string) => {
+    const next = raw.replace(/\D/g, '').slice(0, CODE_LENGTH);
+    setCode(next);
+    setError('');
+    if (next.length === CODE_LENGTH) void confirm(next);
+  };
+
+  const active = Math.min(code.length, CODE_LENGTH - 1);
+
   return (
-    <section style={card}>
-      <div style={{ fontSize: 22, fontWeight: 900, color: '#0f1720' }}>Confirm your email</div>
-      <div style={{ fontSize: 15, color: '#3d4b58', lineHeight: 1.5 }}>
-        We emailed a 6-digit code to <b>{email}</b>. Enter it here to finish setting up your account.
+    <section style={{ ...card, padding: '30px 24px 26px', gap: 0, textAlign: 'center', justifyItems: 'center' }}>
+      <style>{'@keyframes gmpCaret{0%,49%{opacity:1}50%,100%{opacity:0}}'}</style>
+      <div style={{ width: 60, height: 60, borderRadius: 18, background: 'linear-gradient(135deg, #173b63 0%, #2f5f96 100%)', display: 'grid', placeItems: 'center', boxShadow: '0 10px 24px rgba(23,59,99,0.28)' }}>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <rect x="2" y="4" width="20" height="16" rx="3" />
+          <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+        </svg>
       </div>
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          void confirm();
-        }}
-        style={{ display: 'grid', gap: 12 }}
-      >
+      <div style={{ marginTop: 18, fontSize: 24, fontWeight: 900, color: '#0f1720', letterSpacing: '-0.01em' }}>Check your email</div>
+      <div style={{ marginTop: 8, fontSize: 15, color: '#5b6b79', lineHeight: 1.5 }}>
+        Enter the 6-digit code we sent to
+        <div style={{ marginTop: 2, fontWeight: 800, color: '#0f1720', overflowWrap: 'anywhere' }}>{email}</div>
+      </div>
+
+      <label htmlFor="email-code" style={{ position: 'relative', display: 'block', marginTop: 24, width: '100%', maxWidth: 360, cursor: 'text' }}>
+        <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>6-digit code</span>
         <input
           id="email-code"
+          ref={inputRef}
           value={code}
-          onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+          onChange={(event) => onChange(event.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           inputMode="numeric"
           autoComplete="one-time-code"
-          placeholder="6-digit code"
-          aria-label="6-digit code"
-          style={{ ...input, fontSize: 24, letterSpacing: 8, textAlign: 'center', fontWeight: 800 }}
+          maxLength={CODE_LENGTH}
+          autoFocus
+          disabled={busy}
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, fontSize: 16, border: 'none', padding: 0, zIndex: 1, caretColor: 'transparent' }}
         />
-        {error ? <div style={{ fontSize: 13, color: '#a61b1b' }}>{error}</div> : null}
-        {note ? <div style={{ fontSize: 13, color: '#1f7a4a' }}>{note}</div> : null}
-        <button type="submit" disabled={busy || code.length !== 6} style={{ ...primary(busy), opacity: busy || code.length !== 6 ? 0.6 : 1 }}>
-          {busy ? 'Checking…' : 'Confirm email'}
-        </button>
-      </form>
-      <div style={{ fontSize: 13, color: '#6b7b88', lineHeight: 1.5 }}>
-        No email? Check your spam folder, or{' '}
-        <button type="button" onClick={() => void resend()} style={{ ...link, fontSize: 13 }}>send a new code</button>.
+        <div aria-hidden="true" style={{ display: 'grid', gridTemplateColumns: `repeat(${CODE_LENGTH}, minmax(0, 1fr))`, gap: 8 }}>
+          {Array.from({ length: CODE_LENGTH }, (_, i) => {
+            const digit = code[i] ?? '';
+            const isActive = focused && i === active && !busy;
+            const borderColor = error ? '#d64545' : isActive ? '#2f5f96' : digit ? '#173b63' : '#d7e0e8';
+            return (
+              <div
+                key={i}
+                style={{
+                  height: 58,
+                  borderRadius: 14,
+                  border: `2px solid ${borderColor}`,
+                  background: digit ? '#f4f8fc' : '#ffffff',
+                  boxShadow: isActive ? '0 0 0 4px rgba(47,95,150,0.15)' : 'none',
+                  display: 'grid',
+                  placeItems: 'center',
+                  fontSize: 26,
+                  fontWeight: 800,
+                  color: '#0f1720',
+                  fontVariantNumeric: 'tabular-nums',
+                  transition: 'border-color 0.15s, box-shadow 0.15s',
+                }}
+              >
+                {digit || (isActive && code.length < CODE_LENGTH ? <span style={{ width: 2, height: 26, background: '#2f5f96', animation: 'gmpCaret 1s step-end infinite' }} /> : null)}
+              </div>
+            );
+          })}
+        </div>
+      </label>
+
+      <div style={{ minHeight: 22, marginTop: 12, fontSize: 13.5, fontWeight: 600, color: error ? '#c0392b' : '#1f7a4a' }}>
+        {busy ? 'Checking…' : error || note}
       </div>
-      <button type="button" onClick={onSignOut} style={{ ...link, fontSize: 13, color: '#6b7b88' }}>
-        Wrong email? Sign out and sign up again
+
+      <button
+        type="button"
+        onClick={() => void confirm(code)}
+        disabled={busy || code.length !== CODE_LENGTH}
+        style={{ ...primary(busy), width: '100%', maxWidth: 360, marginTop: 6, padding: '14px 16px', opacity: busy || code.length !== CODE_LENGTH ? 0.5 : 1, cursor: busy || code.length !== CODE_LENGTH ? 'default' : 'pointer' }}
+      >
+        {busy ? 'Verifying…' : 'Verify email'}
+      </button>
+
+      <div style={{ marginTop: 18, fontSize: 14, color: '#5b6b79', display: 'grid', gap: 6, justifyItems: 'center' }}>
+        <span>Didn’t get it? Check your spam folder.</span>
+        {resendIn > 0 ? (
+          <span style={{ color: '#8a99a6', fontWeight: 700 }}>Resend code in {resendIn}s</span>
+        ) : (
+          <button type="button" onClick={() => void resend()} style={{ ...link, fontSize: 14 }}>Resend code</button>
+        )}
+      </div>
+      <button type="button" onClick={onSignOut} style={{ ...link, marginTop: 10, fontSize: 13, color: '#6b7b88', fontWeight: 600 }}>
+        Use a different email
       </button>
     </section>
   );

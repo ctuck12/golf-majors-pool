@@ -12,6 +12,12 @@ export function appBaseUrl() {
   return 'http://localhost:3000';
 }
 
+// The logo at the top of every email: the image alone, its rounded corners built in. (A dark box
+// around it turned into a pale frame in Gmail's dark mode, which lightens dark backgrounds.)
+function emailHeader() {
+  return `<img src="${appBaseUrl()}/email/logo-header-rounded.png" width="480" height="206" alt="Golf Majors Pool" style="display:block;width:100%;max-width:480px;height:auto;margin:0 auto 28px;border:0;outline:none;text-decoration:none">`;
+}
+
 function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
 }
@@ -48,9 +54,7 @@ export async function sendPasswordResetEmail(input: { to: string; displayName: s
     ].join('\n'),
     html: `
       <div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#0f1720">
-        <div style="background:#0a1628;border-radius:16px;padding:12px 16px;margin:0 0 24px;text-align:center">
-          <img src="${appBaseUrl()}/email/logo-header.jpg" width="400" height="171" alt="Golf Majors Pool" style="display:block;width:100%;max-width:400px;height:auto;margin:0 auto;border:0">
-        </div>
+        ${emailHeader()}
         <h2 style="margin:0 0 16px">Reset your password</h2>
         <p>Hi ${name},</p>
         <p>Tap the button below to set a new password for Golf Majors Pool.</p>
@@ -77,9 +81,7 @@ export async function sendVerificationCodeEmail(input: { to: string; displayName
     ].join('\n'),
     html: `
       <div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#0f1720">
-        <div style="background:#0a1628;border-radius:16px;padding:12px 16px;margin:0 0 24px;text-align:center">
-          <img src="${appBaseUrl()}/email/logo-header.jpg" width="400" height="171" alt="Golf Majors Pool" style="display:block;width:100%;max-width:400px;height:auto;margin:0 auto;border:0">
-        </div>
+        ${emailHeader()}
         <h2 style="margin:0 0 16px">Confirm your email</h2>
         <p>Hi ${name},</p>
         <p>Enter this code in the app to confirm your email:</p>
@@ -132,9 +134,7 @@ export async function sendReminderEmail(input: {
     text: [...lines, link, footer].join('\n\n'),
     html: `
       <div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#0f1720">
-        <div style="background:#0a1628;border-radius:16px;padding:12px 16px;margin:0 0 24px;text-align:center">
-          <img src="${appBaseUrl()}/email/logo-header.jpg" width="400" height="171" alt="Golf Majors Pool" style="display:block;width:100%;max-width:400px;height:auto;margin:0 auto;border:0">
-        </div>
+        ${emailHeader()}
         ${lines.map((line) => `<p style="margin:0 0 14px;line-height:1.5">${escapeHtml(line)}</p>`).join('')}
         <p style="margin:24px 0">
           <a href="${link}" style="background:#315f95;color:#fff;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:12px;display:inline-block">${input.kind === 'picks' ? 'Make my picks' : 'Open Golf Majors Pool'}</a>
