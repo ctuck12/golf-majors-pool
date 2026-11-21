@@ -4,7 +4,8 @@
 #
 # Needs, in GitHub → Settings → Secrets and variables → Actions:
 #   secret   CAPGO_TOKEN                    your Capgo API key
-#   variable NEXT_PUBLIC_REVENUECAT_IOS_KEY the public RevenueCat iOS key (appl_...)
+#   variable NEXT_PUBLIC_REVENUECAT_IOS_KEY the public RevenueCat iOS key (appl_...), once RevenueCat
+#            is set up; until then updates ship with in-app purchases off
 #
 # A change that needs a new Xcode build (a new plugin, permission or icon) makes this fail rather
 # than upload: ship the new build through the App Store first, then re-run it from the Actions tab
@@ -41,7 +42,7 @@ jobs:
       - name: Check settings
         run: |
           if [ -z "$CAPGO_TOKEN" ]; then echo "::error::Add the CAPGO_TOKEN secret (your Capgo API key) in the repo's Actions settings."; exit 1; fi
-          if [ -z "$NEXT_PUBLIC_REVENUECAT_IOS_KEY" ]; then echo "::error::Add the NEXT_PUBLIC_REVENUECAT_IOS_KEY variable in the repo's Actions settings, or in-app purchases would stop working in the update."; exit 1; fi
+          if [ -z "$NEXT_PUBLIC_REVENUECAT_IOS_KEY" ]; then echo "::warning::No NEXT_PUBLIC_REVENUECAT_IOS_KEY variable yet, so in-app purchases stay off in this update. Add it once RevenueCat is set up."; fi
       - uses: actions/setup-node@v4
         with:
           node-version: 22
