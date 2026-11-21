@@ -464,6 +464,16 @@ export function cutHideAt(meta: TournamentMeta) {
   return Date.parse(meta.lockAtUtc) + 2 * 24 * 60 * 60 * 1000 - 10 * 60 * 1000;
 }
 
+// The tournament tab strip shows each event's name only (no emblem): the official lettering with
+// the golfer, map, seal, trophy and jug taken out. Everywhere else keeps the full logos.
+export const TOURNAMENT_TAB_WORDMARKS: Partial<Record<TournamentId, string>> = {
+  players: '/tab-wordmarks/players.png',
+  masters: '/tab-wordmarks/masters.png',
+  pga: '/tab-wordmarks/pga.png',
+  'us-open': '/tab-wordmarks/us-open.png',
+  open: '/tab-wordmarks/open.png',
+};
+
 export const TOURNAMENT_TAB_LOGO_HEIGHTS: Partial<Record<TournamentId, number>> = {
   players: 46,
   pga: 46,

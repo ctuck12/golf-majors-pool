@@ -17,7 +17,7 @@ import { currentTournamentMeta, effectiveLockTime } from '@/app/lib/tournament-c
 import { EntryFeesModal, PayWinnersModal, VenmoFallbackNotice, VenmoModal, VenmoPrompt } from './venmo-ui';
 import { formatVenmo } from '@/app/lib/venmo';
 import { AlertCircle, CircleUserRound, CheckCircle2, ChevronDown, Eye, EyeOff, LogIn, UserPlus, } from 'lucide-react';
-import { REGISTRATION_OPEN, SALARY_CAP, REQUIRED_GOLFERS, TOURNAMENTS, TOURNAMENT_TAB_LOGOS, KNOCKOUT_TAB_LOGOS, TOURNAMENT_TAB_LOGO_HEIGHTS, TOURNAMENT_CARD_WIDTH, TOURNAMENT_CARD_HEIGHT, MAIN_TABS, REPORT_OPTIONS, REPORT_TOURNAMENT_SOLID, NO_SESSION_FLAGS, clearStoredMainTab, clearStoredSession, fieldStyle, type TournamentId, type ReportType, type PoolInfo, type SessionPayload } from './pool-data';
+import { REGISTRATION_OPEN, SALARY_CAP, REQUIRED_GOLFERS, TOURNAMENTS, TOURNAMENT_TAB_LOGOS, TOURNAMENT_TAB_WORDMARKS, KNOCKOUT_TAB_LOGOS, TOURNAMENT_TAB_LOGO_HEIGHTS, TOURNAMENT_CARD_WIDTH, TOURNAMENT_CARD_HEIGHT, MAIN_TABS, REPORT_OPTIONS, REPORT_TOURNAMENT_SOLID, NO_SESSION_FLAGS, clearStoredMainTab, clearStoredSession, fieldStyle, type TournamentId, type ReportType, type PoolInfo, type SessionPayload } from './pool-data';
 import { usePoolPage } from './pool-page-state';
 import { DetailsScreen } from './screens/details-screen';
 import { ReportsScreen } from './screens/reports-screen';
@@ -1259,9 +1259,9 @@ export default function Page() {
                       zIndex: active ? 1 : 0,
                     }}
                   >
-                    {TOURNAMENT_TAB_LOGOS[item.id] ? (
+                    {TOURNAMENT_TAB_WORDMARKS[item.id] ?? TOURNAMENT_TAB_LOGOS[item.id] ? (
                       <img
-                        src={TOURNAMENT_TAB_LOGOS[item.id]}
+                        src={TOURNAMENT_TAB_WORDMARKS[item.id] ?? TOURNAMENT_TAB_LOGOS[item.id]}
                         alt={item.name}
                         style={{
                           maxWidth: '100%',
