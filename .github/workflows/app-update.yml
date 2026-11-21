@@ -1,0 +1,53 @@
+# Ships the iPhone app's screens through Capgo whenever main changes, the way Vercel ships the
+# website: it runs `npm run update:app` once the Checks workflow passes on a push to main. Phones
+# download the update in the background and switch to it the next time the app opens.
+#
+# Needs, in GitHub → Settings → Secrets and variables → Actions:
+#   secret   CAPGO_TOKEN                    your Capgo API key
+#   variable NEXT_PUBLIC_REVENUECAT_IOS_KEY the public RevenueCat iOS key (appl_...)
+#
+# A change that needs a new Xcode build (a new plugin, permission or icon) makes this fail rather
+# than upload: ship the new build through the App Store first, then re-run it from the Actions tab
+# ("Run workflow").
+name: App update
+
+on:
+  workflow_run:
+    workflows: [Checks]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: app-update
+  cancel-in-progress: false
+
+jobs:
+  upload:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      NODE_OPTIONS: --max-old-space-size=8192
+      NEXT_TELEMETRY_DISABLED: '1'
+      CAPGO_TOKEN: ${{ secrets.CAPGO_TOKEN }}
+      NEXT_PUBLIC_REVENUECAT_IOS_KEY: ${{ vars.NEXT_PUBLIC_REVENUECAT_IOS_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - name: Check settings
+        run: |
+          if [ -z "$CAPGO_TOKEN" ]; then echo "::error::Add the CAPGO_TOKEN secret (your Capgo API key) in the repo's Actions settings."; exit 1; fi
+          if [ -z "$NEXT_PUBLIC_REVENUECAT_IOS_KEY" ]; then echo "::error::Add the NEXT_PUBLIC_REVENUECAT_IOS_KEY variable in the repo's Actions settings, or in-app purchases would stop working in the update."; exit 1; fi
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Build and upload to Capgo
+        run: npm run update:app -- --comment "main ${GITHUB_SHA_SHORT}"
+        env:
+          GITHUB_SHA_SHORT: ${{ github.event.workflow_run.head_sha || github.sha }}
