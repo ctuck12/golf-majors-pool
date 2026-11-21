@@ -1265,10 +1265,12 @@ export default function Page() {
                         alt={item.name}
                         style={{
                           maxWidth: '100%',
-                          width: '100%',
-                          height: isMobile ? (item.id === 'masters' ? 40 : item.id === 'pga' || item.id === 'players' ? 36 : 28) : (TOURNAMENT_TAB_LOGO_HEIGHTS[item.id] ?? 40),
+                          // PGA's heavy block letters read larger than the others at the same size.
+                          width: item.id === 'pga' ? '86%' : '100%',
+                          height: (isMobile ? (item.id === 'masters' ? 40 : item.id === 'pga' || item.id === 'players' ? 36 : 28) : (TOURNAMENT_TAB_LOGO_HEIGHTS[item.id] ?? 40)) * (item.id === 'pga' ? 0.86 : 1),
                           objectFit: 'contain',
                           display: 'block',
+                          margin: '0 auto',
                         }}
                       />
                     ) : (
