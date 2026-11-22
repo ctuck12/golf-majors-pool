@@ -228,11 +228,11 @@ export default function Page() {
           >
             <div style={{ display: 'flex', justifyContent: 'center' }}>
               <img
-                src="/golf-majors-pool-logo-v11.png"
+                src="/golf-majors-pool-logo.png"
                 alt="Golf Majors Pool"
                 style={{
                   display: 'block',
-                  width: isMobile ? 'min(100%, 260px)' : 'min(100%, 380px)',
+                  width: isMobile ? 'min(100%, 300px)' : 'min(100%, 440px)',
                   height: 'auto',
                   objectFit: 'contain',
                   background: 'transparent',
@@ -283,16 +283,16 @@ export default function Page() {
         >
           <div style={{ display: 'flex', justifyContent: 'center' }}>
             <img
-              src="/golf-majors-pool-logo-v11.png"
+              src="/golf-majors-pool-logo.png"
               alt="Golf Majors Pool"
               style={{
                 display: 'block',
-                width: isMobile ? 'min(100%, 278px)' : 'min(100%, 380px)',
+                // The logo file is cropped tight (no trophies), so it runs wider than the old one.
+                width: isMobile ? 'min(100%, 320px)' : 'min(100%, 460px)',
                 height: 'auto',
                 objectFit: 'contain',
                 background: 'transparent',
-                marginTop: isMobile ? -12 : 0,
-                marginBottom: isMobile ? -18 : 0,
+                margin: isMobile ? '18px 0 14px' : '22px 0 18px',
               }}
             />
           </div>

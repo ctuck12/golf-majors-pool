@@ -56,7 +56,7 @@ export function StatLeaderboardPopup({ p }: { p: PoolPage }) {
                     {statLeaderboardModal.tourAvg && <div style={{ fontSize: 11, fontWeight: 500, color: '#8fa3b1', marginTop: 2 }}>{statLeaderboardModal.avgLabel ?? 'Tour Avg'}: <span style={{ fontWeight: 700, color: '#b8cad6' }}>{statLeaderboardModal.tourAvg}</span></div>}
                   </div>
                   {/* Negative margins: the logo may overhang into the header padding but never makes the header taller. */}
-                  <img src="/logo-popup.png" alt="Golf Majors Pool" width={109} height={44} style={{ width: 109, height: 44, margin: '-7px 0 -7px 10px', display: 'block', flexShrink: 0 }} />
+                  <img src="/logo-popup.png" alt="Golf Majors Pool" width={117} height={35} style={{ width: 117, height: 35, margin: '-2px 0 -2px 10px', display: 'block', flexShrink: 0 }} />
                   <button onClick={() => { setStatLeaderboardModal(null); setStatLbSearch(''); }} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 999, width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', fontSize: 16, fontWeight: 700, flexShrink: 0, marginLeft: 8 }}>×</button>
                 </div>
                 <div style={{ position: 'relative' }}>

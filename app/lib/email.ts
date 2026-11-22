@@ -15,7 +15,7 @@ export function appBaseUrl() {
 // The logo at the top of every email: the image alone, its rounded corners built in. (A dark box
 // around it turned into a pale frame in Gmail's dark mode, which lightens dark backgrounds.)
 function emailHeader() {
-  return `<img src="${appBaseUrl()}/email/logo-header-rounded.png" width="480" height="206" alt="Golf Majors Pool" style="display:block;width:100%;max-width:480px;height:auto;margin:0 auto 28px;border:0;outline:none;text-decoration:none">`;
+  return `<img src="${appBaseUrl()}/email/logo-header-rounded.png" width="480" height="173" alt="Golf Majors Pool" style="display:block;width:100%;max-width:480px;height:auto;margin:0 auto 28px;border:0;outline:none;text-decoration:none">`;
 }
 
 function escapeHtml(value: string) {
