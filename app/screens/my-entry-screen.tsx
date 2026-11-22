@@ -470,9 +470,6 @@ export function MyEntryScreen({ p }: { p: PoolPage }) {
                               return (
                                 <div style={{ height: 22, display: 'flex', alignItems: 'center', gap: 10 }}>
                                   <div style={{ fontSize: 16, fontWeight: 900, color: '#0f1720' }}>{PICK_HISTORY_NAMES[event.id] ?? event.name}</div>
-                                  {TOURNAMENT_TAB_LOGOS[event.id] && (
-                                    <TournamentWordmark id={event.id} alt={event.name} width={110} height={24} />
-                                  )}
                                 </div>
                               );
                             })()}
