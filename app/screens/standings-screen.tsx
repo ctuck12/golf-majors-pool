@@ -516,9 +516,9 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                 >
                   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', gap: 16 }}>
                     {tournament.id === 'us-open' ? (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: isMobile ? 7 : 6, width: '100%' }}>
-                        <TournamentWordmark id="us-open" alt="U.S. Open" width={isMobile ? 104 : 116} height={isMobile ? 26 : 30} style={{ transform: `translateY(${isMobile ? -5 : -4.5}px)` }} />
-                        <span style={{ fontSize: isMobile ? 24 : 25, fontWeight: 900, color: '#173b63', lineHeight: 1, marginTop: isMobile ? -2 : 0, position: 'relative' }}>
+                      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: isMobile ? 7 : 6, width: '100%' }}>
+                        <TournamentWordmark id="us-open" alt="U.S. Open" width={isMobile ? 104 : 116} height={isMobile ? 26 : 30} onBaseline />
+                        <span style={{ fontSize: isMobile ? 24 : 25, fontWeight: 900, color: '#173b63', lineHeight: 1, position: 'relative' }}>
                           Leaderboard
                           <span style={{ position: 'absolute', left: '100%', top: '50%', transform: 'translateY(-50%)', display: 'inline-flex', alignItems: 'center', paddingLeft: 3 }}>
                             <button onClick={() => setShowHeaderCutInfo((v) => !v)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: isMobile ? 14 : 15, color: '#607282', lineHeight: 1, touchAction: 'manipulation' }} aria-label="Cut line info">ⓘ</button>
@@ -527,8 +527,8 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                         </span>
                       </div>
                     ) : tournament.id === 'pga' ? (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1.5, width: '100%' }}>
-                        <TournamentWordmark id="pga" alt="PGA" width={isMobile ? 104 : 116} height={isMobile ? 26 : 30} style={{ marginRight: 6, transform: `translateY(${isMobile ? -2 : -2.5}px)` }} />
+                      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 1.5, width: '100%' }}>
+                        <TournamentWordmark id="pga" alt="PGA" width={isMobile ? 104 : 116} height={isMobile ? 26 : 30} onBaseline style={{ marginRight: 6 }} />
                         <span style={{ fontSize: isMobile ? 21 : 25, fontWeight: 900, color: '#173b63', lineHeight: 1, position: 'relative' }}>
                           Leaderboard
                           <span style={{ position: 'absolute', left: '100%', top: '50%', transform: 'translateY(-50%)', display: 'inline-flex', alignItems: 'center', paddingLeft: 3 }}>
@@ -538,8 +538,8 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                         </span>
                       </div>
                     ) : tournament.id === 'masters' ? (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: isMobile ? 6 : 10, width: '100%' }}>
-                        <TournamentWordmark id="masters" alt="Masters" width={isMobile ? 120 : 136} height={isMobile ? 26 : 30} style={{ transform: `translateY(${isMobile ? -4.33 : -4.5}px)` }} />
+                      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: isMobile ? 6 : 10, width: '100%' }}>
+                        <TournamentWordmark id="masters" alt="Masters" width={isMobile ? 120 : 136} height={isMobile ? 26 : 30} onBaseline />
                         <span style={{ fontSize: isMobile ? 21 : 25, fontWeight: 900, color: '#2c6449', lineHeight: 1, position: 'relative' }}>
                           Leaderboard
                           <span style={{ position: 'absolute', left: '100%', top: '50%', transform: 'translateY(-50%)', display: 'inline-flex', alignItems: 'center', paddingLeft: 3 }}>
@@ -560,8 +560,8 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                         </span>
                       </div>
                     ) : tournament.id === 'players' ? (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: isMobile ? 6 : 10, width: '100%' }}>
-                        <TournamentWordmark id="players" alt="The Players" width={isMobile ? 186 : 225} height={isMobile ? 26 : 30} style={{ transform: `translateY(${isMobile ? -0.67 : -1}px)` }} />
+                      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: isMobile ? 6 : 10, width: '100%' }}>
+                        <TournamentWordmark id="players" alt="The Players" width={isMobile ? 186 : 225} height={isMobile ? 26 : 30} onBaseline />
                         <span style={{ fontSize: isMobile ? 21 : 25, fontWeight: 900, color: '#173b63', lineHeight: 1, position: 'relative' }}>
                           Leaderboard
                           <span style={{ position: 'absolute', left: '100%', top: '50%', transform: 'translateY(-50%)', display: 'inline-flex', alignItems: 'center', paddingLeft: 3 }}>
