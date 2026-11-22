@@ -84,6 +84,8 @@ export function PlayerInfoPopup({ p }: { p: PoolPage }) {
                   </div>
                   )}
                 </div>
+                {/* GMP mark, centered on the close button: drawn taller than its 34px layout box (negative margins), so it never makes the header taller. */}
+                <img src="/gmp-mark.png" alt="Golf Majors Pool" width={36} height={50} style={{ width: 36, height: 50, margin: '-8px -2px -8px 0', display: 'block', flexShrink: 0 }} />
                 <button
                   onClick={() => setPickHistoryPlayerPopup(null)}
                   style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 10, cursor: 'pointer', color: '#fff', width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0 }}
