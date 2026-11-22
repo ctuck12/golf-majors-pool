@@ -784,7 +784,7 @@ export type MainTab = 'Standings' | 'My Entries' | 'Details' | 'Reports' | 'Comm
 export const MAIN_TABS: MainTab[] = ['Standings', 'My Entries', 'Details', 'Reports', 'Commissioner Hub'];
 
 export type ReportType = 'Season Standings' | 'Hall of Champions' | 'Player Pick Summary' | 'Pool Member Pick History' | 'Pool Member Pick Summary' | 'Player Performance Summary' | 'Pool Standings History';
-export const REPORT_OPTIONS: ReportType[] = ['Season Standings', 'Hall of Champions', 'Player Pick Summary', 'Pool Member Pick History', 'Pool Member Pick Summary', 'Player Performance Summary', 'Pool Standings History'];
+export const REPORT_OPTIONS: ReportType[] = ['Player Pick Summary', 'Pool Member Pick History', 'Pool Member Pick Summary', 'Player Performance Summary', 'Season Standings', 'Hall of Champions', 'Pool Standings History'];
 export const REPORT_TOURNAMENTS: { id: TournamentId; label: string }[] = [
   { id: 'players', label: 'The Players' },
   { id: 'masters', label: 'The Masters' },
