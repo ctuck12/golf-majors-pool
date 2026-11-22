@@ -74,7 +74,7 @@ export function EntryBreakdownPopup({ p }: { p: PoolPage }) {
                     <div style={{ fontSize: isMobile ? 18 : 21, fontWeight: 900, color: '#fff', letterSpacing: '-0.01em' }}>{activeStandingEntry.name}</div>
                     {TOURNAMENT_TAB_LOGOS[selectedTournament] && (
                       <div style={{ flexShrink: 0, marginLeft: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <GmpBadge height={36} />
+                        <GmpBadge height={52} style={{ margin: "-8px 0" }} />
                       </div>
                     )}
                     <button
