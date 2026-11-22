@@ -97,7 +97,6 @@ export function usePoolPage() {
     results: Partial<Record<TournamentId, { position: string; score: string } | null>>;
     loading: boolean;
     fedexRank: number | null;
-    dpWorldRank: number | null;
     owgrRank: number | null;
     fullResults: { tournament: string; date: string; course: string; position: string; tour: 'pga' | 'liv' | 'eur' }[] | null;
     fullResultsLoading: boolean;
@@ -2079,7 +2078,6 @@ export function usePoolPage() {
       results: {},
       loading: false,
       fedexRank: null,
-      dpWorldRank: null,
       owgrRank: null,
       fullResults: null,
       fullResultsLoading: true,
@@ -2123,7 +2121,6 @@ export function usePoolPage() {
     Promise.all([
       readJson<{ results: { tournament: string; date: string; course: string; position: string; tour: 'pga' | 'liv' | 'eur' }[] | null }>(`/api/player-season?name=${encodeURIComponent(player.name)}`, { cache: 'no-store' }).catch(() => ({ results: null })),
       readJson<{ rank: number | null; updatedAt?: string | null }>(`/api/player-fedex-rank?pgaTourId=${player.pgaTourId}&name=${encodeURIComponent(player.name)}`, { cache: 'no-store' }).catch(() => ({ rank: null, updatedAt: null })),
-      readJson<{ rank: number | null; updatedAt?: string | null }>(`/api/player-dpworld-rank?pgaTourId=${player.pgaTourId}&name=${encodeURIComponent(player.name)}`, { cache: 'no-store' }).catch(() => ({ rank: null, updatedAt: null })),
       readJson<{ rank: number | null; updatedAt?: string | null }>(`/api/player-owgr-rank?name=${encodeURIComponent(player.name)}`, { cache: 'no-store' }).catch(() => ({ rank: null, updatedAt: null })),
       readJson<{ stats: { drivingDistance: string | null; drivingAccuracy: string | null; gir: string | null; scrambling: string | null; sandSaves: string | null; puttAverage: string | null; avgPuttsPerRound: string | null; proximity: string | null; scoringAverage: string | null; birdiesPerRound: string | null; birdies: string | null; pars: string | null; bogeys: string | null; eagles: string | null; scoreToPar: string | null; sgTotal: string | null; sgOffTee: string | null; sgApproach: string | null; sgAroundGreen: string | null; sgPutting: string | null; sgTeeToGreen: string | null; rounds: string[] | null } | null; ranks: Record<string, string> | null; updatedAt?: string | null }>(`/api/player-stats?${params}`, { cache: 'no-store' }).catch(() => ({ stats: null, ranks: null, updatedAt: null })),
       scorecardFetch,
@@ -2132,13 +2129,13 @@ export function usePoolPage() {
       espnEventId && statsCtx === 'tournament'
         ? readJson<{ averages: Record<string, string>; distributions: Record<string, number[]> }>(`/api/field-averages?eventId=${espnEventId}`, { cache: 'no-store' }).catch(() => ({ averages: {}, distributions: {} }))
         : Promise.resolve({ averages: {}, distributions: {} }),
-    ]).then(([fullData, fedexData, dpWorldData, owgrData, statsData, scData, seasonData, avgData, fieldAvgData]) => {
+    ]).then(([fullData, fedexData, owgrData, statsData, scData, seasonData, avgData, fieldAvgData]) => {
       const rounds = (scData.rounds ?? []).filter((r) => r.score && r.score !== '--');
       const tournamentStatsFetchedAt = statsCtx === 'tournament' ? (statsData.updatedAt ?? null) : null;
       const seasonStatsFetchedAt = statsCtx === 'season' ? (statsData.updatedAt ?? null) : (seasonData.updatedAt ?? null);
-      const rankingUpdates = [fedexData.updatedAt, dpWorldData.updatedAt, owgrData.updatedAt].filter(Boolean) as string[];
+      const rankingUpdates = [fedexData.updatedAt, owgrData.updatedAt].filter(Boolean) as string[];
       const rankingsChangedAt = rankingUpdates.length ? rankingUpdates.slice().sort()[rankingUpdates.length - 1] : null;
-      setPickHistoryPlayerPopup((prev) => prev ? { ...prev, fullResults: fullData.results, fullResultsLoading: false, fedexRank: fedexData.rank, dpWorldRank: dpWorldData.rank, owgrRank: owgrData.rank, playerStats: statsData.stats, playerSeasonStats: seasonData.stats, playerStatsLoading: false, playerRounds: rounds.length > 0 ? rounds : null, statAverages: avgData.averages ?? {}, fieldAverages: fieldAvgData.averages ?? {}, statRanks: statsData.ranks ?? {}, seasonStatRanks: seasonData.ranks ?? {}, fieldDistributions: fieldAvgData.distributions ?? {}, tournamentStatsFetchedAt, seasonStatsFetchedAt, rankingsChangedAt } : null);
+      setPickHistoryPlayerPopup((prev) => prev ? { ...prev, fullResults: fullData.results, fullResultsLoading: false, fedexRank: fedexData.rank, owgrRank: owgrData.rank, playerStats: statsData.stats, playerSeasonStats: seasonData.stats, playerStatsLoading: false, playerRounds: rounds.length > 0 ? rounds : null, statAverages: avgData.averages ?? {}, fieldAverages: fieldAvgData.averages ?? {}, statRanks: statsData.ranks ?? {}, seasonStatRanks: seasonData.ranks ?? {}, fieldDistributions: fieldAvgData.distributions ?? {}, tournamentStatsFetchedAt, seasonStatsFetchedAt, rankingsChangedAt } : null);
     });
   };
 

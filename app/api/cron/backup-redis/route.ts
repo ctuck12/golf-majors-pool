@@ -18,7 +18,6 @@ const EXACT_KEYS = [
   'player-tags:v1',
   'dynamic-pool:v1',
   'dynamic-pool-meta:v1',
-  'dpworld-rankings:manual:v1',
   'locked-odds',
   'player-photo-registry',
 ];

@@ -40,8 +40,7 @@ export function PlayerInfoPopup({ p }: { p: PoolPage }) {
               {/* Header — vertically center the name/flag when the player has no rank bubbles */}
               {(() => {
                 const hasBubbles = (pickHistoryPlayerPopup.owgrRank ?? pickHistoryPlayerPopup.player.worldRank) != null
-                  || pickHistoryPlayerPopup.fedexRank != null
-                  || pickHistoryPlayerPopup.dpWorldRank != null;
+                  || pickHistoryPlayerPopup.fedexRank != null;
                 return (
               <div style={{ background: '#0f1720', borderRadius: '20px 20px 0 0', padding: '14px 16px 12px', display: 'flex', justifyContent: 'space-between', alignItems: hasBubbles ? 'flex-start' : 'center', gap: 12, flexShrink: 0 }}>
                 <div style={{ minWidth: 0, flex: 1 }}>
@@ -73,12 +72,6 @@ export function PlayerInfoPopup({ p }: { p: PoolPage }) {
                         <span style={{ color: '#fff', fontWeight: 800, fontSize: 11 }}>Fed</span>
                         <span style={{ color: '#fb923c', fontWeight: 800, fontSize: 11 }}>Ex</span>
                         <span style={{ color: '#fff', fontWeight: 800, fontSize: 11 }}>: {pickHistoryPlayerPopup.fedexRank}</span>
-                      </div>
-                    )}
-                    {pickHistoryPlayerPopup.dpWorldRank != null && (
-                      <div style={{ background: '#6EB487', borderRadius: 999, padding: '3px 9px', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                        <span style={{ color: '#fff', fontWeight: 800, fontSize: 11 }}>DP World:</span>
-                        <span style={{ color: '#fff', fontWeight: 800, fontSize: 11 }}>{pickHistoryPlayerPopup.dpWorldRank}</span>
                       </div>
                     )}
                   </div>
