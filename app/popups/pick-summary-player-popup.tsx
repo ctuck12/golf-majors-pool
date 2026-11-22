@@ -3,6 +3,7 @@
 import { getPlayerFlag, getFlagSrc, getCountryLabel, HeaderNameFlag, REPORT_TOURNAMENTS, REPORT_TOURNAMENT_SOLID } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
 import { TournamentWordmark } from '../tournament-wordmark';
+import { GmpBadge } from '../gmp-badge';
 
 // Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
 export function PickSummaryPlayerPopup({ p }: { p: PoolPage }) {
@@ -41,7 +42,7 @@ export function PickSummaryPlayerPopup({ p }: { p: PoolPage }) {
                     <div style={{ color: 'rgba(255,255,255,0.82)', fontSize: 11, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', marginTop: 3 }}>{total} total {total === 1 ? 'pick' : 'picks'}</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                    <img src="/golf-majors-pool-logo.png" alt="Golf Majors Pool" style={{ height: isMobile ? 36 : 44, width: 'auto', objectFit: 'contain', display: 'block', flexShrink: 0 }} />
+                    <GmpBadge height={isMobile ? 36 : 44} />
                     <button onClick={close} style={{ background: 'rgba(255,255,255,0.22)', border: 'none', color: '#fff', borderRadius: 8, width: 30, height: 30, cursor: 'pointer', fontSize: 15, flexShrink: 0 }}>&#10005;</button>
                   </div>
                 </div>
