@@ -25,7 +25,7 @@ export function StatLeaderboardPopup({ p }: { p: PoolPage }) {
           const allEntries = statLeaderboardModal.entries ?? [];
           // Default: top 15. Searching: all matches.
           const visibleEntries = searchQ ? allEntries.filter(e => e.name.toLowerCase().includes(searchQ)) : allEntries.slice(0, 15);
-          // Strokes Gained stats put "Strokes Gained" in the small line above, so the title fits beside the logo.
+          // Strokes Gained stats show "Strokes Gained" in the small line above, so the title fits beside the logo.
           const sgName = statLeaderboardModal.label.startsWith('Strokes Gained: ') ? statLeaderboardModal.label.slice('Strokes Gained: '.length) : null;
           const HEADER_H = 118;
           const ROW_H = 40;
@@ -48,8 +48,11 @@ export function StatLeaderboardPopup({ p }: { p: PoolPage }) {
               <div style={{ background: '#0f1720', padding: '12px 18px 10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                   <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontSize: 9, fontWeight: 700, color: '#607282', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{statLeaderboardModal.subtitle}{sgName ? ' · Strokes Gained' : ''}</div>
+                    {/* Strokes Gained: "Strokes Gained" above the stat's name, "Season/Tournament Leaders" below it.
+                        Other stats: leaders line above the name. */}
+                    <div style={{ fontSize: 9, fontWeight: 700, color: '#607282', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sgName ? 'Strokes Gained' : statLeaderboardModal.subtitle}</div>
                     <div style={{ fontSize: 15, fontWeight: 900, color: '#fff', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sgName ?? statLeaderboardModal.label}</div>
+                    {sgName ? <div style={{ fontSize: 9, fontWeight: 700, color: '#607282', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 3, whiteSpace: 'nowrap' }}>{statLeaderboardModal.subtitle}</div> : null}
                     {statLeaderboardModal.tourAvg && <div style={{ fontSize: 11, fontWeight: 500, color: '#8fa3b1', marginTop: 2 }}>{statLeaderboardModal.avgLabel ?? 'Tour Avg'}: <span style={{ fontWeight: 700, color: '#b8cad6' }}>{statLeaderboardModal.tourAvg}</span></div>}
                   </div>
                   {/* Negative margins: the logo may overhang into the header padding but never makes the header taller. */}
