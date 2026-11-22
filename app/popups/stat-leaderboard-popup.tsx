@@ -25,6 +25,8 @@ export function StatLeaderboardPopup({ p }: { p: PoolPage }) {
           const allEntries = statLeaderboardModal.entries ?? [];
           // Default: top 15. Searching: all matches.
           const visibleEntries = searchQ ? allEntries.filter(e => e.name.toLowerCase().includes(searchQ)) : allEntries.slice(0, 15);
+          // Strokes Gained stats put "Strokes Gained" in the small line above, so the title fits beside the logo.
+          const sgName = statLeaderboardModal.label.startsWith('Strokes Gained: ') ? statLeaderboardModal.label.slice('Strokes Gained: '.length) : null;
           const HEADER_H = 118;
           const ROW_H = 40;
           // Critical: add kbH as bottom padding on the backdrop so flex-end anchors
@@ -45,11 +47,13 @@ export function StatLeaderboardPopup({ p }: { p: PoolPage }) {
             <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 380, overflow: 'hidden', boxShadow: '0 8px 40px rgba(0,0,0,0.35)' }}>
               <div style={{ background: '#0f1720', padding: '12px 18px 10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <div>
-                    <div style={{ fontSize: 9, fontWeight: 700, color: '#607282', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 1 }}>{statLeaderboardModal.subtitle}</div>
-                    <div style={{ fontSize: 15, fontWeight: 900, color: '#fff', lineHeight: 1.2 }}>{statLeaderboardModal.label}</div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: '#607282', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{statLeaderboardModal.subtitle}{sgName ? ' · Strokes Gained' : ''}</div>
+                    <div style={{ fontSize: 15, fontWeight: 900, color: '#fff', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sgName ?? statLeaderboardModal.label}</div>
                     {statLeaderboardModal.tourAvg && <div style={{ fontSize: 11, fontWeight: 500, color: '#8fa3b1', marginTop: 2 }}>{statLeaderboardModal.avgLabel ?? 'Tour Avg'}: <span style={{ fontWeight: 700, color: '#b8cad6' }}>{statLeaderboardModal.tourAvg}</span></div>}
                   </div>
+                  {/* Negative margins: the logo may overhang into the header padding but never makes the header taller. */}
+                  <img src="/logo-popup.png" alt="Golf Majors Pool" width={109} height={44} style={{ width: 109, height: 44, margin: '-7px 0 -7px 10px', display: 'block', flexShrink: 0 }} />
                   <button onClick={() => { setStatLeaderboardModal(null); setStatLbSearch(''); }} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 999, width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', fontSize: 16, fontWeight: 700, flexShrink: 0, marginLeft: 8 }}>×</button>
                 </div>
                 <div style={{ position: 'relative' }}>
