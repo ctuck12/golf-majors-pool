@@ -1,8 +1,9 @@
 'use client';
 
 import { canonicalNameKey } from '@/app/lib/name-match';
-import { TOURNAMENTS, TOURNAMENT_CAREER_RESULTS_HEADER, canonicalName, getPlayerFlag, getFlagSrc, getCountryLabel, TOURNAMENT_TAB_LOGOS, PGA_CLUB_PROFESSIONALS, CAREER_TAB_LOGO_HEIGHTS, pgaPhoto, formatCollege, majorTint, PGA_PHOTO_ONLY, playerPhotoSrc, photoOnError, readJson, ordinal } from '../pool-data';
+import { TOURNAMENTS, TOURNAMENT_CAREER_RESULTS_HEADER, canonicalName, getPlayerFlag, getFlagSrc, getCountryLabel, TOURNAMENT_TAB_LOGOS, PGA_CLUB_PROFESSIONALS, pgaPhoto, formatCollege, majorTint, PGA_PHOTO_ONLY, playerPhotoSrc, photoOnError, readJson, ordinal } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
+import { TournamentWordmark } from '../tournament-wordmark';
 
 // Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
 export function PlayerInfoPopup({ p }: { p: PoolPage }) {
@@ -111,7 +112,6 @@ export function PlayerInfoPopup({ p }: { p: PoolPage }) {
                   // tournament tabs) instead of text. Keep it on a white chip so the colored logo stays
                   // legible; selection is shown via the border + shadow rather than a dark fill.
                   const careerLogo = tab === 'career' ? TOURNAMENT_TAB_LOGOS[careerTournamentId] : undefined;
-                  const careerLogoHeight = CAREER_TAB_LOGO_HEIGHTS[careerTournamentId] ?? 32;
                   return (
                     <button
                       key={tab}
@@ -142,7 +142,7 @@ export function PlayerInfoPopup({ p }: { p: PoolPage }) {
                       style={{ flex: 1, height: 33, boxSizing: 'border-box', border: isActive ? '1px solid #0f1720' : '1px solid #d8e0e8', borderRadius: 8, background: isActive ? '#fff' : '#f4f7fa', padding: careerLogo ? '0 4px' : '0 3px', fontSize: 'clamp(8.5px, 2.2vw, 11px)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: isActive ? 800 : 600, color: isActive ? '#0f1720' : '#5a6a7a', cursor: 'pointer', transition: 'all 0.15s', letterSpacing: '0.01em', boxShadow: isActive ? '0 1px 4px rgba(15,23,32,0.28)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
                       {careerLogo
-                        ? <img src={careerLogo} alt={label} style={{ height: careerLogoHeight, maxHeight: '100%', maxWidth: '100%', objectFit: 'contain', display: 'block' }} />
+                        ? <TournamentWordmark id={careerTournamentId} alt={label} width={isMobile ? 64 : 84} height={24} style={{ maxWidth: '100%' }} />
                         : label}
                     </button>
                   );

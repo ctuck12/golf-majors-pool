@@ -2,8 +2,9 @@
 
 import { canonicalNameKey } from '@/app/lib/name-match';
 import { SCORING_RULES } from '../lib/scoring';
-import { getPlayerFlag, getFlagSrc, getCountryLabel, TOURNAMENT_TAB_LOGOS, PGA_CLUB_PROFESSIONALS, KNOCKOUT_TAB_LOGOS, HeaderNameFlag, fitPopupHeader, formatPointValue, ordinal } from '../pool-data';
+import { getPlayerFlag, getFlagSrc, getCountryLabel, TOURNAMENT_TAB_LOGOS, PGA_CLUB_PROFESSIONALS, HeaderNameFlag, fitPopupHeader, formatPointValue, ordinal } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
+import { TournamentWordmark } from '../tournament-wordmark';
 
 // Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
 export function GolferBreakdownPopup({ p }: { p: PoolPage }) {
@@ -68,7 +69,7 @@ export function GolferBreakdownPopup({ p }: { p: PoolPage }) {
                     </div>
                     {TOURNAMENT_TAB_LOGOS[selectedTournament] && (
                       <div style={{ flexShrink: 0, marginLeft: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', alignSelf: selectedTournament !== 'open' ? 'center' : undefined }}>
-                        <img src={KNOCKOUT_TAB_LOGOS[selectedTournament] ?? TOURNAMENT_TAB_LOGOS[selectedTournament]} alt={tournament.fullName} style={{ height: selectedTournament === 'pga' ? (fitPopupHeader(activeStandingGolfer.name, getCountryLabel(activeStandingGolfer.name), 480, isMobile ? 36 : 44, selectedTournament, isMobile).shrinkLogo ? 38 : 48) : selectedTournament === 'players' ? (fitPopupHeader(activeStandingGolfer.name, getCountryLabel(activeStandingGolfer.name), 480, isMobile ? 36 : 44, selectedTournament, isMobile).shrinkLogo ? 34 : 42) : selectedTournament === 'open' ? (fitPopupHeader(activeStandingGolfer.name, getCountryLabel(activeStandingGolfer.name), 480, isMobile ? 36 : 44, selectedTournament, isMobile).shrinkLogo ? 30 : 40) : selectedTournament === 'masters' ? undefined : (fitPopupHeader(activeStandingGolfer.name, getCountryLabel(activeStandingGolfer.name), 480, isMobile ? 36 : 44, selectedTournament, isMobile).shrinkLogo ? 24 : 30), width: selectedTournament === 'masters' ? (fitPopupHeader(activeStandingGolfer.name, getCountryLabel(activeStandingGolfer.name), 480, isMobile ? 36 : 44, selectedTournament, isMobile).shrinkLogo ? 74 : 96) : undefined, margin: selectedTournament === 'pga' ? '-12px 0' : selectedTournament === 'players' ? '-8px 0' : undefined, maxWidth: fitPopupHeader(activeStandingGolfer.name, getCountryLabel(activeStandingGolfer.name), 480, isMobile ? 36 : 44, selectedTournament, isMobile).shrinkLogo ? 74 : 96, objectFit: 'contain', display: 'block', flexShrink: 0 }} />
+                        <TournamentWordmark id={selectedTournament} white alt={tournament.fullName} width={96} height={32} scale={fitPopupHeader(activeStandingGolfer.name, getCountryLabel(activeStandingGolfer.name), 480, isMobile ? 36 : 44, selectedTournament, isMobile).shrinkLogo ? 0.75 : 1} />
                       </div>
                     )}
                     <button

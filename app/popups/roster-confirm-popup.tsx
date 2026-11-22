@@ -2,8 +2,9 @@
 
 import { VenmoMark } from '../venmo-mark';
 import { formatMoney, formatVenmo } from '@/app/lib/venmo';
-import { totalParFor, TOURNAMENT_TAB_LOGOS, KNOCKOUT_TAB_LOGOS } from '../pool-data';
+import { totalParFor, TOURNAMENT_TAB_LOGOS } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
+import { TournamentWordmark } from '../tournament-wordmark';
 
 // Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
 export function RosterConfirmPopup({ p }: { p: PoolPage }) {
@@ -47,7 +48,7 @@ export function RosterConfirmPopup({ p }: { p: PoolPage }) {
                 </div>
                 {TOURNAMENT_TAB_LOGOS[entriesTournamentId] && (
                   <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <img src={KNOCKOUT_TAB_LOGOS[entriesTournamentId] ?? TOURNAMENT_TAB_LOGOS[entriesTournamentId]} alt={entriesTournament.name} style={{ height: entriesTournamentId === 'pga' ? 60 : entriesTournamentId === 'players' ? 52 : entriesTournamentId === 'open' ? 40 : entriesTournamentId === 'masters' ? undefined : 36, width: entriesTournamentId === 'masters' ? 120 : undefined, margin: entriesTournamentId === 'pga' ? '-12px 0' : entriesTournamentId === 'players' ? '-8px 0' : undefined, maxWidth: 120, objectFit: 'contain', display: 'block', flexShrink: 0 }} />
+                    <TournamentWordmark id={entriesTournamentId} white alt={entriesTournament.name} width={120} height={40} />
                   </div>
                 )}
               </div>

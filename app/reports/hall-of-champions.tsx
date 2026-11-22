@@ -3,6 +3,7 @@
 import { TOURNAMENT_TAB_LOGOS, REPORT_TOURNAMENTS } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
 import { keyResolver, seasonComplete, seasonsIn, seasonStandings, TOURNAMENT_ORDER, useLeagueHistory, type HistoryRow } from './league-history';
+import { TournamentWordmark } from '../tournament-wordmark';
 
 // Hall of Champions: the league's winners. Most titles across every season at the top, then each
 // season's champion and the winner of every major.
@@ -87,7 +88,7 @@ export function HallOfChampionsReport({ p }: { p: PoolPage }) {
                     return (
                       <div key={tid} style={{ border: '1px solid #e2e9ef', borderRadius: 14, padding: '11px 13px', display: 'flex', alignItems: 'center', gap: 12, background: '#fff' }}>
                         <div style={{ width: 70, flexShrink: 0, display: 'grid', placeItems: 'center' }}>
-                          {TOURNAMENT_TAB_LOGOS[tid] ? <img src={TOURNAMENT_TAB_LOGOS[tid]} alt={label(tid)} style={{ maxHeight: 30, maxWidth: 70, objectFit: 'contain' }} /> : <span style={{ fontSize: 12, fontWeight: 800 }}>{label(tid)}</span>}
+                          {TOURNAMENT_TAB_LOGOS[tid] ? <TournamentWordmark id={tid} alt={label(tid)} width={70} height={30} /> : <span style={{ fontSize: 12, fontWeight: 800 }}>{label(tid)}</span>}
                         </div>
                         <div style={{ minWidth: 0 }}>
                           <div style={{ fontSize: 15, fontWeight: 900, color: '#0f1720' }}>🥇 {winners.map(display).join(' & ') || '—'}</div>

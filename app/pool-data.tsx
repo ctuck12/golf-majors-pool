@@ -695,7 +695,8 @@ export function FitOneLineText({ text, base, min, style }: { text: string; base:
 // Popup-header layout fitting: measures the name, flag and country abbreviation with a
 // canvas so the header only stacks the abbreviation below the flag — and only shrinks the
 // name/flag/logo — when the row genuinely cannot fit them at full size on one line.
-export const HEADER_LOGO_WIDTH_EST: Record<TournamentId, number> = { players: 50, masters: 96, pga: 80, 'us-open': 75, open: 64 };
+// Drawn width of each tournament wordmark in the popup headers (a 96 × 32 box, see tournament-wordmark.tsx).
+export const HEADER_LOGO_WIDTH_EST: Record<TournamentId, number> = { players: 110, masters: 96, pga: 77, 'us-open': 91, open: 66 };
 export let headerMeasureCtx: CanvasRenderingContext2D | null | undefined;
 export function fitPopupHeader(name: string, abbr: string | null | undefined | false, popupMaxW: number, padH: number, tournamentId: TournamentId, mobile: boolean, forceInline = false, overlayPad = 40): { fontSize: number; flagH: number; stacked: boolean; shrinkLogo: boolean } {
   const sizes: number[] = [];

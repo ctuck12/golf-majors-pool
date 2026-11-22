@@ -1,7 +1,8 @@
 'use client';
 
-import { getPlayerFlag, getFlagSrc, getCountryLabel, TOURNAMENT_TAB_LOGOS, HeaderNameFlag, REPORT_TOURNAMENTS, REPORT_TOURNAMENT_SOLID } from '../pool-data';
+import { getPlayerFlag, getFlagSrc, getCountryLabel, HeaderNameFlag, REPORT_TOURNAMENTS, REPORT_TOURNAMENT_SOLID } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
+import { TournamentWordmark } from '../tournament-wordmark';
 
 // Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
 export function PickSummaryPlayerPopup({ p }: { p: PoolPage }) {
@@ -50,7 +51,7 @@ export function PickSummaryPlayerPopup({ p }: { p: PoolPage }) {
                     return (
                       <div key={t.id} onClick={count > 0 ? () => setPpsPickPopup({ id: player.id, name: player.name, tournament: t.id }) : undefined} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: count > 0 ? 'pointer' : 'default', padding: isMobile ? '11px 14px' : '12px 18px', borderTop: i === 0 ? 'none' : '1px solid #eef2f6' }}>
                         <span style={{ width: isMobile ? 82 : 92, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          {TOURNAMENT_TAB_LOGOS[t.id] && <img src={TOURNAMENT_TAB_LOGOS[t.id]} alt={t.label} style={{ height: (t.id === 'players' || t.id === 'pga') ? 38 : t.id === 'masters' ? 30 : 26, maxWidth: isMobile ? 82 : 92, objectFit: 'contain', display: 'block' }} />}
+                          <TournamentWordmark id={t.id} alt={t.label} width={isMobile ? 82 : 92} height={30} />
                         </span>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                           <div style={{ width: `${pct}%`, minWidth: count > 0 ? (isMobile ? 40 : 46) : 8, height: isMobile ? 22 : 24, borderRadius: 6, background: count > 0 ? REPORT_TOURNAMENT_SOLID[t.id] : '#e2e8f0', flexShrink: 0 }} />

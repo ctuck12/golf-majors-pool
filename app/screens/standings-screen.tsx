@@ -5,6 +5,7 @@ import { CheckCircle2, Lock, Pencil, RefreshCw, Share2, Trophy } from 'lucide-re
 import { ShareImageModal } from '../share-image';
 import { REQUIRED_GOLFERS, TOURNAMENT_LEADERBOARD_HEADER, TOURNAMENT_CARD_LOGOS, TOURNAMENT_HEADING_LOGOS, FitOneLineText, formatRefresh, readJson, formatLeaderboardPosition, formatTeeTime, teeTimeIsPast, type FeedResponse } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
+import { TournamentWordmark } from '../tournament-wordmark';
 
 // Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
 export function StandingsScreen({ p }: { p: PoolPage }) {
@@ -516,7 +517,7 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', gap: 16 }}>
                     {tournament.id === 'us-open' ? (
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: isMobile ? 7 : 6, width: '100%' }}>
-                        <img src="/us-open-tab-logo.png" alt="U.S. Open" style={{ height: isMobile ? 38 : 40, objectFit: 'contain', flexShrink: 0, marginTop: isMobile ? -4 : 0 }} />
+                        <TournamentWordmark id="us-open" alt="U.S. Open" width={isMobile ? 104 : 116} height={isMobile ? 26 : 30} />
                         <span style={{ fontSize: isMobile ? 24 : 25, fontWeight: 900, color: '#173b63', lineHeight: 1, marginTop: isMobile ? -2 : 0, position: 'relative' }}>
                           Leaderboard
                           <span style={{ position: 'absolute', left: '100%', top: '50%', transform: 'translateY(-50%)', display: 'inline-flex', alignItems: 'center', paddingLeft: 3 }}>
@@ -527,7 +528,7 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                       </div>
                     ) : tournament.id === 'pga' ? (
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1.5, width: '100%' }}>
-                        <img src="/pga-tab-logo.png" alt="PGA" style={{ height: isMobile ? 50 : 58, objectFit: 'contain', flexShrink: 0, margin: isMobile ? '-11px 0' : '-14px 0' }} />
+                        <TournamentWordmark id="pga" alt="PGA" width={isMobile ? 104 : 116} height={isMobile ? 26 : 30} style={{ marginRight: 6 }} />
                         <span style={{ fontSize: isMobile ? 21 : 25, fontWeight: 900, color: '#173b63', lineHeight: 1, position: 'relative' }}>
                           Leaderboard
                           <span style={{ position: 'absolute', left: '100%', top: '50%', transform: 'translateY(-50%)', display: 'inline-flex', alignItems: 'center', paddingLeft: 3 }}>
@@ -537,8 +538,8 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                         </span>
                       </div>
                     ) : tournament.id === 'masters' ? (
-                      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: isMobile ? 6 : 10, width: '100%' }}>
-                        <img src="/masters-tab-logo.png" alt="Masters" style={{ height: isMobile ? 38 : 46, objectFit: 'contain', flexShrink: 0, marginTop: isMobile ? '-6px' : '-8px' }} />
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: isMobile ? 6 : 10, width: '100%' }}>
+                        <TournamentWordmark id="masters" alt="Masters" width={isMobile ? 120 : 136} height={isMobile ? 26 : 30} />
                         <span style={{ fontSize: isMobile ? 21 : 25, fontWeight: 900, color: '#2c6449', lineHeight: 1, position: 'relative' }}>
                           Leaderboard
                           <span style={{ position: 'absolute', left: '100%', top: '50%', transform: 'translateY(-50%)', display: 'inline-flex', alignItems: 'center', paddingLeft: 3 }}>
@@ -549,7 +550,7 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                       </div>
                     ) : tournament.id === 'open' ? (
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: isMobile ? 7 : 10, width: '100%' }}>
-                        <img src="/open-tab-logo.png" alt="The Open" style={{ height: isMobile ? 44 : 46, objectFit: 'contain', flexShrink: 0 }} />
+                        <TournamentWordmark id="open" alt="The Open" width={isMobile ? 104 : 116} height={isMobile ? 38 : 42} />
                         <span style={{ fontSize: isMobile ? 21 : 25, fontWeight: 900, color: '#0c1f3a', lineHeight: 1, position: 'relative' }}>
                           Leaderboard
                           <span style={{ position: 'absolute', left: '100%', top: '50%', transform: 'translateY(-50%)', display: 'inline-flex', alignItems: 'center', paddingLeft: 3 }}>
@@ -559,9 +560,9 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                         </span>
                       </div>
                     ) : tournament.id === 'players' ? (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: isMobile ? 6 : 10, width: '100%', marginTop: isMobile ? -36 : 0, marginBottom: isMobile ? -36 : 0 }}>
-                        <img src="/tpc.webp" alt="The Players" style={{ height: isMobile ? 106 : 116, objectFit: 'contain', flexShrink: 0, margin: isMobile ? '0' : '-34px 0' }} />
-                        <span style={{ fontSize: isMobile ? 21 : 25, fontWeight: 900, color: '#173b63', lineHeight: 1, marginTop: isMobile ? '6px' : '0', position: 'relative' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: isMobile ? 6 : 10, width: '100%' }}>
+                        <TournamentWordmark id="players" alt="The Players" width={isMobile ? 130 : 150} height={isMobile ? 26 : 30} />
+                        <span style={{ fontSize: isMobile ? 21 : 25, fontWeight: 900, color: '#173b63', lineHeight: 1, position: 'relative' }}>
                           Leaderboard
                           <span style={{ position: 'absolute', left: '100%', top: '50%', transform: 'translateY(-50%)', display: 'inline-flex', alignItems: 'center', paddingLeft: 3 }}>
                             <button onClick={() => setShowHeaderCutInfo((v) => !v)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: isMobile ? 14 : 15, color: '#607282', lineHeight: 1, touchAction: 'manipulation' }} aria-label="Cut line info">ⓘ</button>

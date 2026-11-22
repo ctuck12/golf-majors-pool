@@ -5,8 +5,9 @@ import { VenmoMark } from '../venmo-mark';
 import { formatVenmo } from '@/app/lib/venmo';
 import { currentTournamentMeta, effectiveLockTime } from '@/app/lib/tournament-config';
 import { AlertCircle, ArrowLeft, Award, Layers, BookOpen, ChevronRight, Calendar, CircleUserRound, CheckCircle2, DollarSign, Eye, EyeOff, Globe, Lock, MessageSquareText, Pencil, RefreshCw, Save, Search, Send, Trophy, Users, Wallet } from 'lucide-react';
-import { SALARY_CAP, REQUIRED_GOLFERS, totalParFor, TOURNAMENTS, getFlagSrc, getCountryLabel, TOURNAMENT_TAB_LOGOS, TOURNAMENT_EVENT_LOGOS, eventLogoStyle, KNOCKOUT_TAB_LOGOS, pgaPhoto, playerPhotoSrc, photoOnError, MOBILE_TWO_LINE_NAMES, MOBILE_CUSTOM_SPLITS, utcToCentralInput, shouldShowPreTournamentView, formatRefresh, fieldStyle } from '../pool-data';
+import { SALARY_CAP, REQUIRED_GOLFERS, totalParFor, TOURNAMENTS, getFlagSrc, getCountryLabel, TOURNAMENT_TAB_LOGOS, TOURNAMENT_EVENT_LOGOS, eventLogoStyle, pgaPhoto, playerPhotoSrc, photoOnError, MOBILE_TWO_LINE_NAMES, MOBILE_CUSTOM_SPLITS, utcToCentralInput, shouldShowPreTournamentView, formatRefresh, fieldStyle } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
+import { TournamentWordmark } from '../tournament-wordmark';
 
 // Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
 export function CommissionerScreen({ p }: { p: PoolPage }) {
@@ -176,7 +177,7 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                     Pool Status
                   </div>
                   {TOURNAMENT_TAB_LOGOS[tournament.id] && (
-                    <img src={TOURNAMENT_TAB_LOGOS[tournament.id]} alt={tournament.name} style={{ height: isMobile ? (tournament.id === 'players' ? 58 : 40) : (tournament.id === 'players' ? 76 : 56), maxWidth: isMobile ? (tournament.id === 'players' ? 220 : 150) : (tournament.id === 'players' ? 300 : 220), objectFit: 'contain' }} />
+                    <TournamentWordmark id={tournament.id} alt={tournament.name} width={isMobile ? 128 : 190} height={isMobile ? 34 : 48} />
                   )}
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
@@ -317,7 +318,7 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                           }}
                         >
                           <span style={{ width: isMobile ? 82 : 74, height: 46, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            {logo && <img src={logo} alt={t.name} style={{ maxHeight: t.id === 'open' ? 36 : 44, maxWidth: t.id === 'open' ? 62 : (isMobile ? 82 : 74), objectFit: 'contain', display: 'block' }} />}
+                            {logo && <TournamentWordmark id={t.id} alt={t.name} width={isMobile ? 82 : 74} height={40} />}
                           </span>
                           <div style={{ minWidth: 0, flex: 1, fontSize: isMobile ? 13.5 : 13, fontWeight: 800, color: isPre ? '#234d80' : '#3a4a58', display: 'flex', alignItems: 'center', gap: isMobile ? 7 : 6, whiteSpace: 'nowrap' }}>
                             <span style={{ width: isMobile ? 10 : 8, height: isMobile ? 10 : 8, borderRadius: '50%', background: isPre ? '#234d80' : '#94a3b8', flexShrink: 0 }} />
@@ -430,7 +431,7 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                     <div style={{ color: '#fff', fontSize: 16, fontWeight: 900 }}>Pool Lock Time</div>
                     {TOURNAMENT_TAB_LOGOS[entriesTournamentId] && (
                       <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0, marginLeft: 'auto' }}>
-                        <img src={KNOCKOUT_TAB_LOGOS[entriesTournamentId] ?? TOURNAMENT_TAB_LOGOS[entriesTournamentId]} alt={entriesTournament.name} style={{ height: entriesTournamentId === 'pga' ? 60 : entriesTournamentId === 'players' ? 52 : entriesTournamentId === 'open' ? 40 : entriesTournamentId === 'masters' ? undefined : 36, width: entriesTournamentId === 'masters' ? 120 : undefined, margin: entriesTournamentId === 'pga' ? '-12px 0' : entriesTournamentId === 'players' ? '-8px 0' : undefined, maxWidth: 120, objectFit: 'contain', display: 'block', flexShrink: 0 }} />
+                        <TournamentWordmark id={entriesTournamentId} white alt={entriesTournament.name} width={120} height={40} />
                       </div>
                     )}
                     <button onClick={() => setPoolLockModalOpen(false)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: 8, width: 30, height: 30, cursor: 'pointer', fontSize: 15, flexShrink: 0 }}>&#10005;</button>
@@ -563,7 +564,7 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                     </div>
                     {TOURNAMENT_TAB_LOGOS[tournament.id] && (
                       <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0, marginLeft: 'auto' }}>
-                        <img src={KNOCKOUT_TAB_LOGOS[tournament.id] ?? TOURNAMENT_TAB_LOGOS[tournament.id]} alt={tournament.name} style={{ height: tournament.id === 'pga' ? 60 : tournament.id === 'players' ? 52 : tournament.id === 'open' ? 40 : tournament.id === 'masters' ? undefined : 36, width: tournament.id === 'masters' ? 120 : undefined, margin: tournament.id === 'pga' ? '-12px 0' : tournament.id === 'players' ? '-8px 0' : undefined, maxWidth: 120, objectFit: 'contain', display: 'block', flexShrink: 0 }} />
+                        <TournamentWordmark id={tournament.id} white alt={tournament.name} width={120} height={40} />
                       </div>
                     )}
                     <button onClick={() => { setPoolToolModal(null); setPoolToolConfirm(null); }} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: 8, width: 30, height: 30, cursor: 'pointer', fontSize: 15, flexShrink: 0 }}>&#10005;</button>
@@ -672,7 +673,7 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                   Pick Submissions
                 </div>
                 {TOURNAMENT_TAB_LOGOS[tournament.id] && (
-                  <img src={TOURNAMENT_TAB_LOGOS[tournament.id]} alt={tournament.name} style={{ height: isMobile ? (tournament.id === 'players' ? 58 : 40) : (tournament.id === 'players' ? 76 : 56), maxWidth: isMobile ? (tournament.id === 'players' ? 220 : 150) : (tournament.id === 'players' ? 300 : 220), objectFit: 'contain' }} />
+                  <TournamentWordmark id={tournament.id} alt={tournament.name} width={isMobile ? 128 : 190} height={isMobile ? 34 : 48} />
                 )}
               </div>
               <div
@@ -836,7 +837,7 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                       </div>
                       {TOURNAMENT_TAB_LOGOS[entriesTournamentId] && (
                         <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0, marginLeft: 'auto' }}>
-                          <img src={KNOCKOUT_TAB_LOGOS[entriesTournamentId] ?? TOURNAMENT_TAB_LOGOS[entriesTournamentId]} alt={entriesTournament.name} style={{ height: entriesTournamentId === 'pga' ? 60 : entriesTournamentId === 'players' ? 52 : entriesTournamentId === 'open' ? 40 : entriesTournamentId === 'masters' ? undefined : 36, width: entriesTournamentId === 'masters' ? 120 : undefined, margin: entriesTournamentId === 'pga' ? '-12px 0' : entriesTournamentId === 'players' ? '-8px 0' : undefined, maxWidth: 120, objectFit: 'contain', display: 'block', flexShrink: 0 }} />
+                          <TournamentWordmark id={entriesTournamentId} white alt={entriesTournament.name} width={120} height={40} />
                         </div>
                       )}
                       <button onClick={() => setPickPopularityPlayer(null)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: 8, width: 30, height: 30, cursor: 'pointer', fontSize: 15, flexShrink: 0 }}>&#10005;</button>
@@ -875,7 +876,7 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                       <div style={{ color: '#fff', fontSize: 16, fontWeight: 900, minWidth: 0 }}>{member.displayName}</div>
                       {TOURNAMENT_TAB_LOGOS[tournament.id] && (
                         <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0, marginLeft: 'auto' }}>
-                          <img src={KNOCKOUT_TAB_LOGOS[tournament.id] ?? TOURNAMENT_TAB_LOGOS[tournament.id]} alt={tournament.name} style={{ height: tournament.id === 'pga' ? 60 : tournament.id === 'players' ? 52 : tournament.id === 'open' ? 40 : tournament.id === 'masters' ? undefined : 36, width: tournament.id === 'masters' ? 120 : undefined, margin: tournament.id === 'pga' ? '-12px 0' : tournament.id === 'players' ? '-8px 0' : undefined, maxWidth: 120, objectFit: 'contain', display: 'block', flexShrink: 0 }} />
+                          <TournamentWordmark id={tournament.id} white alt={tournament.name} width={120} height={40} />
                         </div>
                       )}
                       <button onClick={() => setSubmittedRosterMemberId(null)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: 8, width: 30, height: 30, cursor: 'pointer', fontSize: 15, flexShrink: 0 }}>&#10005;</button>

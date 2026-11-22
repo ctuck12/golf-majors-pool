@@ -1,7 +1,8 @@
 'use client';
 
-import { getPlayerFlag, getFlagSrc, getCountryLabel, TOURNAMENT_TAB_LOGOS, KNOCKOUT_TAB_LOGOS, HeaderNameFlag, REPORT_TOURNAMENT_SOLID } from '../pool-data';
+import { getPlayerFlag, getFlagSrc, getCountryLabel, HeaderNameFlag, REPORT_TOURNAMENT_SOLID } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
+import { TournamentWordmark } from '../tournament-wordmark';
 
 // Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
 export function PickedByPopup({ p }: { p: PoolPage }) {
@@ -20,8 +21,7 @@ export function PickedByPopup({ p }: { p: PoolPage }) {
     (() => {
           const T = ppsPickPopup.tournament;
           const headerColor = REPORT_TOURNAMENT_SOLID[T];
-          const logo = KNOCKOUT_TAB_LOGOS[T] ?? TOURNAMENT_TAB_LOGOS[T];
-          const entriesPicked = reportEntries
+                    const entriesPicked = reportEntries
             .filter((e) => (e.rosters[T] ?? []).includes(ppsPickPopup.id))
             .map((e) => e.name)
             .sort((a, b) => a.localeCompare(b));
@@ -35,9 +35,7 @@ export function PickedByPopup({ p }: { p: PoolPage }) {
                     <HeaderNameFlag name={ppsPickPopup.name} flagSrc={flagSrc} abbr={getCountryLabel(ppsPickPopup.name) || null} base={isMobile ? 15 : 16} min={isMobile ? 11.5 : 14} allowStack={true} initialStacked={false} />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                    {logo && (
-                      <img src={logo} alt="" style={{ height: T === 'pga' ? 52 : T === 'players' ? 46 : T === 'open' ? 36 : T === 'masters' ? undefined : 32, width: T === 'masters' ? 104 : undefined, margin: T === 'pga' ? '-10px 0' : T === 'players' ? '-7px 0' : undefined, maxWidth: 104, objectFit: 'contain', display: 'block', flexShrink: 0 }} />
-                    )}
+                    <TournamentWordmark id={T} white width={104} height={35} />
                     <button onClick={close} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: 8, width: 30, height: 30, cursor: 'pointer', fontSize: 15, flexShrink: 0 }}>&#10005;</button>
                   </div>
                 </div>

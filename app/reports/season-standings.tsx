@@ -9,6 +9,7 @@ import { VenmoMark } from '../venmo-mark';
 import { TOURNAMENT_TAB_LOGOS, REPORT_TOURNAMENTS } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
 import { seasonComplete, seasonsIn, seasonStandings, TOURNAMENT_ORDER, useLeagueHistory } from './league-history';
+import { TournamentWordmark } from '../tournament-wordmark';
 
 // Season Standings: every member's points added up across the season's majors, the season
 // champion once The Open is final, and the season pot (if the commissioner set a buy-in).
@@ -113,7 +114,7 @@ export function SeasonStandingsReport({ p }: { p: PoolPage }) {
               <span>Member</span>
               {!isMobile ? TOURNAMENT_ORDER.map((tid) => (
                 <span key={tid} style={{ textAlign: 'center' }}>
-                  {TOURNAMENT_TAB_LOGOS[tid] ? <img src={TOURNAMENT_TAB_LOGOS[tid]} alt={label(tid)} style={{ height: 16, maxWidth: 60, objectFit: 'contain' }} /> : label(tid)}
+                  {TOURNAMENT_TAB_LOGOS[tid] ? <TournamentWordmark id={tid} alt={label(tid)} width={60} height={20} /> : label(tid)}
                 </span>
               )) : null}
               <span style={{ textAlign: 'right' }}>Points</span>

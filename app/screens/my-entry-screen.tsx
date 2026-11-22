@@ -8,6 +8,7 @@ import { Share2 } from 'lucide-react';
 import { EntryFeeStatus } from '../entry-fee-status';
 import { ShareImageModal } from '../share-image';
 import type { PoolPage } from '../pool-page-state';
+import { TournamentWordmark, wordmarkSize } from '../tournament-wordmark';
 
 // Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
 export function MyEntryScreen({ p }: { p: PoolPage }) {
@@ -144,7 +145,7 @@ export function MyEntryScreen({ p }: { p: PoolPage }) {
                         // keep the row at the text line's height so the box never grows.
                         const lh = isMobile ? 12 : 17;
                         const hgt = (PICKS_HEADER_LOGO_H[entriesTournamentId] ?? [26, 32])[isMobile ? 0 : 1];
-                        return <img src={TOURNAMENT_TAB_LOGOS[entriesTournamentId]} alt={TOURNAMENT_PICKS_HEADER[entriesTournamentId] ?? `${entriesTournament.name} Picks`} style={{ height: hgt, margin: `${-(hgt - lh) / 2}px 0`, width: 'auto', maxWidth: 120, objectFit: 'contain', display: 'block' }} />;
+                        return <TournamentWordmark id={entriesTournamentId} alt={TOURNAMENT_PICKS_HEADER[entriesTournamentId] ?? `${entriesTournament.name} Picks`} width={isMobile ? 96 : 120} height={hgt} style={{ margin: `${-(Math.max(lh, wordmarkSize(entriesTournamentId, isMobile ? 96 : 120, hgt).height) - lh) / 2}px auto` }} />;
                       })()
                     ) : (
                       TOURNAMENT_PICKS_HEADER[entriesTournamentId] ?? `${entriesTournament.name} Picks`
@@ -464,17 +465,13 @@ export function MyEntryScreen({ p }: { p: PoolPage }) {
                               gap: 10,
                             }}
                           >
-                            {/* Header text with the tab logo just after it. Per-logo heights even out the very
-                                different aspect ratios (wide Masters ribbon vs boxy PGA shield); the row is locked
-                                at 22px and the logo overdraws into the card's padding so the card doesn't grow. */}
+                            {/* Header text with the tournament's wordmark just after it; the row is locked at 22px. */}
                             {(() => {
-                              const logoH = ({ players: 40, masters: 25, pga: 42, 'us-open': 30, open: 30 } as Record<string, number>)[event.id] ?? 30;
-                              const logoY = ({ masters: -5 } as Record<string, number>)[event.id] ?? 0; // fine-tune vertical alignment per logo
                               return (
                                 <div style={{ height: 22, display: 'flex', alignItems: 'center', gap: 10 }}>
                                   <div style={{ fontSize: 16, fontWeight: 900, color: '#0f1720' }}>{PICK_HISTORY_NAMES[event.id] ?? event.name}</div>
                                   {TOURNAMENT_TAB_LOGOS[event.id] && (
-                                    <img src={TOURNAMENT_TAB_LOGOS[event.id]} alt={event.name} style={{ height: logoH, width: 'auto', objectFit: 'contain', margin: `${(22 - logoH) / 2}px 0`, transform: logoY ? `translateY(${logoY}px)` : undefined, flexShrink: 0 }} />
+                                    <TournamentWordmark id={event.id} alt={event.name} width={110} height={24} />
                                   )}
                                 </div>
                               );

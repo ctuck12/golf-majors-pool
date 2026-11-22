@@ -2,12 +2,13 @@
 
 import { Fragment, type CSSProperties } from 'react';
 import { Search } from 'lucide-react';
-import { TOURNAMENTS, getPlayerFlag, getFlagSrc, getCountryLabel, TOURNAMENT_TAB_LOGOS, PICK_HISTORY_NAMES, pgaPhoto, playerPhotoSrc, photoOnError, REPORT_OPTIONS, REPORT_TOURNAMENTS, POOL_SEASONS, REPORT_DROPDOWN_LOGO_H, REPORT_TOURNAMENT_SOLID, PPS_ALL_BAR_GRADIENT, REPORT_TOURNAMENT_CHIP, formatLeaderboardPosition, type TournamentId } from '../pool-data';
+import { TOURNAMENTS, getPlayerFlag, getFlagSrc, getCountryLabel, TOURNAMENT_TAB_LOGOS, PICK_HISTORY_NAMES, pgaPhoto, playerPhotoSrc, photoOnError, REPORT_OPTIONS, REPORT_TOURNAMENTS, POOL_SEASONS, REPORT_TOURNAMENT_SOLID, PPS_ALL_BAR_GRADIENT, REPORT_TOURNAMENT_CHIP, formatLeaderboardPosition, type TournamentId } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
 import { SeasonStandingsReport } from '../reports/season-standings';
 import { HallOfChampionsReport } from '../reports/hall-of-champions';
 import { ValuePicksReport } from '../reports/value-picks';
 import { HeadToHeadReport } from '../reports/head-to-head';
+import { TournamentWordmark } from '../tournament-wordmark';
 
 // Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
 export function ReportsScreen({ p }: { p: PoolPage }) {
@@ -95,7 +96,7 @@ export function ReportsScreen({ p }: { p: PoolPage }) {
                           </select>
                           {ppsTournament && ppsTournament !== 'all' && TOURNAMENT_TAB_LOGOS[ppsTournament] && (
                             <span style={{ position: 'absolute', left: 12, right: 34, top: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'flex-start', pointerEvents: 'none' }}>
-                              <img src={TOURNAMENT_TAB_LOGOS[ppsTournament]} alt={REPORT_TOURNAMENTS.find((t) => t.id === ppsTournament)?.label ?? ''} style={{ height: REPORT_DROPDOWN_LOGO_H[ppsTournament], width: 'auto', maxWidth: '100%', objectFit: 'contain', display: 'block' }} />
+                              <TournamentWordmark id={ppsTournament} alt={REPORT_TOURNAMENTS.find((t) => t.id === ppsTournament)?.label ?? ''} width={120} height={34} style={{ maxWidth: '100%', objectFit: 'contain' }} />
                             </span>
                           )}
                         </div>
@@ -247,13 +248,11 @@ export function ReportsScreen({ p }: { p: PoolPage }) {
                                 style={{ borderRadius: 16, border: '1px solid #dce6ee', background: '#fff', padding: 14, display: 'grid', gap: 10 }}
                               >
                                 {(() => {
-                                  const logoH = ({ players: 40, masters: 25, pga: 42, 'us-open': 30, open: 30 } as Record<string, number>)[event.id] ?? 30;
-                                  const logoY = ({ masters: -5 } as Record<string, number>)[event.id] ?? 0;
                                   return (
                                     <div style={{ height: 22, display: 'flex', alignItems: 'center', gap: 10 }}>
                                       <div style={{ fontSize: 16, fontWeight: 900, color: '#0f1720' }}>{PICK_HISTORY_NAMES[event.id] ?? event.name}</div>
                                       {TOURNAMENT_TAB_LOGOS[event.id] && (
-                                        <img src={TOURNAMENT_TAB_LOGOS[event.id]} alt={event.name} style={{ height: logoH, width: 'auto', objectFit: 'contain', margin: `${(22 - logoH) / 2}px 0`, transform: logoY ? `translateY(${logoY}px)` : undefined, flexShrink: 0 }} />
+                                        <TournamentWordmark id={event.id} alt={event.name} width={110} height={24} />
                                       )}
                                     </div>
                                   );
@@ -457,7 +456,7 @@ export function ReportsScreen({ p }: { p: PoolPage }) {
                         </select>
                         {ppfTournament && TOURNAMENT_TAB_LOGOS[ppfTournament] && (
                           <span style={{ position: 'absolute', left: 12, right: 34, top: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'flex-start', pointerEvents: 'none' }}>
-                            <img src={TOURNAMENT_TAB_LOGOS[ppfTournament]} alt={REPORT_TOURNAMENTS.find((t) => t.id === ppfTournament)?.label ?? ''} style={{ height: REPORT_DROPDOWN_LOGO_H[ppfTournament], width: 'auto', maxWidth: '100%', objectFit: 'contain', display: 'block' }} />
+                            <TournamentWordmark id={ppfTournament} alt={REPORT_TOURNAMENTS.find((t) => t.id === ppfTournament)?.label ?? ''} width={120} height={34} style={{ maxWidth: '100%', objectFit: 'contain' }} />
                           </span>
                         )}
                       </div>
@@ -590,7 +589,7 @@ export function ReportsScreen({ p }: { p: PoolPage }) {
                         </select>
                         {pshTournament && TOURNAMENT_TAB_LOGOS[pshTournament] && (
                           <span style={{ position: 'absolute', left: 12, right: 34, top: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'flex-start', pointerEvents: 'none' }}>
-                            <img src={TOURNAMENT_TAB_LOGOS[pshTournament]} alt={REPORT_TOURNAMENTS.find((t) => t.id === pshTournament)?.label ?? ''} style={{ height: REPORT_DROPDOWN_LOGO_H[pshTournament], width: 'auto', maxWidth: '100%', objectFit: 'contain', display: 'block' }} />
+                            <TournamentWordmark id={pshTournament} alt={REPORT_TOURNAMENTS.find((t) => t.id === pshTournament)?.label ?? ''} width={120} height={34} style={{ maxWidth: '100%', objectFit: 'contain' }} />
                           </span>
                         )}
                       </div>

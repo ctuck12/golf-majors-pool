@@ -39,6 +39,7 @@ import { PointsSystemPopup } from './popups/points-system-popup';
 import { WinsListPopup } from './popups/wins-list-popup';
 import { PickSummaryPlayerPopup } from './popups/pick-summary-player-popup';
 import { PickedByPopup } from './popups/picked-by-popup';
+import { TournamentWordmark } from './tournament-wordmark';
 
 // How each event reads in "It's ___ week!".
 const WEEK_NAMES: Record<TournamentId, string> = {
@@ -1407,7 +1408,7 @@ export default function Page() {
                 <div style={{ color: '#fff', fontSize: 17, fontWeight: 900, letterSpacing: '0.01em' }}>Tiebreaker Rules</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                   {(KNOCKOUT_TAB_LOGOS[selectedTournament] ?? TOURNAMENT_TAB_LOGOS[selectedTournament]) && (
-                    <img src={KNOCKOUT_TAB_LOGOS[selectedTournament] ?? TOURNAMENT_TAB_LOGOS[selectedTournament]} alt="" style={{ height: selectedTournament === 'pga' ? 60 : selectedTournament === 'players' ? 52 : selectedTournament === 'open' ? 40 : selectedTournament === 'masters' ? undefined : 36, width: selectedTournament === 'masters' ? 120 : undefined, margin: selectedTournament === 'pga' ? '-12px 0' : selectedTournament === 'players' ? '-8px 0' : undefined, maxWidth: 120, objectFit: 'contain', display: 'block', flexShrink: 0 }} />
+                    <TournamentWordmark id={selectedTournament} white alt="" width={120} height={40} />
                   )}
                   <button onClick={() => setShowTiebreakerRules(false)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: 8, width: 30, height: 30, cursor: 'pointer', fontSize: 15, flexShrink: 0 }}>&#10005;</button>
                 </div>

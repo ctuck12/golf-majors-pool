@@ -4,7 +4,8 @@
 import '../native-bridge';
 
 import { useEffect, useRef, useState } from 'react';
-import { getHeaderTournament, TOURNAMENT_OPTIONS, KNOCKOUT_TAB_LOGOS } from '@/app/lib/tournament-logo';
+import { getHeaderTournament, TOURNAMENT_OPTIONS } from '@/app/lib/tournament-logo';
+import { TournamentWordmark } from '@/app/tournament-wordmark';
 
 type Status = { active: boolean; count: number; updatedAt: string | null };
 type SaveResp = {
@@ -319,7 +320,7 @@ export default function CommissionerSalaryPage() {
             <div style={{ color: '#fff', fontSize: 18, fontWeight: 900 }}>Salary Pick List</div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-            <img src={KNOCKOUT_TAB_LOGOS[headerTournament.id] ?? headerTournament.logo} alt={headerTournament.name} style={{ height: headerTournament.id === 'pga' ? 60 : headerTournament.id === 'players' ? 52 : headerTournament.id === 'open' ? 40 : headerTournament.id === 'masters' ? undefined : 36, width: headerTournament.id === 'masters' ? 120 : undefined, margin: headerTournament.id === 'pga' ? '-8px 0' : headerTournament.id === 'players' ? '-4px 0' : undefined, maxWidth: 120, objectFit: 'contain', display: 'block' }} />
+            <TournamentWordmark id={headerTournament.id} white alt={headerTournament.name} width={120} height={40} />
           </div>
         </div>
 
