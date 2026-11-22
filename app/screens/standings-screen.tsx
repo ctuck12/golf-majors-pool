@@ -517,7 +517,7 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', gap: 16 }}>
                     {tournament.id === 'us-open' ? (
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: isMobile ? 7 : 6, width: '100%' }}>
-                        <TournamentWordmark id="us-open" alt="U.S. Open" width={isMobile ? 104 : 116} height={isMobile ? 26 : 30} />
+                        <TournamentWordmark id="us-open" alt="U.S. Open" width={isMobile ? 104 : 116} height={isMobile ? 26 : 30} style={{ transform: `translateY(${isMobile ? -5 : -4.5}px)` }} />
                         <span style={{ fontSize: isMobile ? 24 : 25, fontWeight: 900, color: '#173b63', lineHeight: 1, marginTop: isMobile ? -2 : 0, position: 'relative' }}>
                           Leaderboard
                           <span style={{ position: 'absolute', left: '100%', top: '50%', transform: 'translateY(-50%)', display: 'inline-flex', alignItems: 'center', paddingLeft: 3 }}>
@@ -528,7 +528,7 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                       </div>
                     ) : tournament.id === 'pga' ? (
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1.5, width: '100%' }}>
-                        <TournamentWordmark id="pga" alt="PGA" width={isMobile ? 104 : 116} height={isMobile ? 26 : 30} style={{ marginRight: 6 }} />
+                        <TournamentWordmark id="pga" alt="PGA" width={isMobile ? 104 : 116} height={isMobile ? 26 : 30} style={{ marginRight: 6, transform: `translateY(${isMobile ? -2 : -2.5}px)` }} />
                         <span style={{ fontSize: isMobile ? 21 : 25, fontWeight: 900, color: '#173b63', lineHeight: 1, position: 'relative' }}>
                           Leaderboard
                           <span style={{ position: 'absolute', left: '100%', top: '50%', transform: 'translateY(-50%)', display: 'inline-flex', alignItems: 'center', paddingLeft: 3 }}>
