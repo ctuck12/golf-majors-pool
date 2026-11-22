@@ -4,7 +4,6 @@ import { type CSSProperties } from 'react';
 import { canonicalNameKey } from '@/app/lib/name-match';
 import { getPlayerFlag, getFlagSrc, getCountryLabel, TOURNAMENT_TAB_LOGOS, PGA_CLUB_PROFESSIONALS, HeaderNameFlag, fitPopupHeader, formatTeeTime } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
-import { GmpBadge } from '../gmp-badge';
 
 // Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
 export function ScorecardPopup({ p }: { p: PoolPage }) {
@@ -101,7 +100,7 @@ export function ScorecardPopup({ p }: { p: PoolPage }) {
                       </div>
                       {TOURNAMENT_TAB_LOGOS[selectedTournament] && (
                       <div style={{ flexShrink: 0, marginLeft: 'auto', height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <GmpBadge height={34 * (fitPopupHeader(scorecardGolferName ?? '', scorecardGolferName ? getCountryLabel(scorecardGolferName) : null, 1140, isMobile ? 28 : 36, selectedTournament, isMobile, true, 32).shrinkLogo ? 0.75 : 1)} />
+                        <img src="/gmp-mark.png" alt="Golf Majors Pool" width={36} height={50} style={{ width: 36, height: 50, margin: '-8px 0', display: 'block', flexShrink: 0 }} />
                       </div>
                     )}
                     <button
