@@ -39,7 +39,7 @@ import { PointsSystemPopup } from './popups/points-system-popup';
 import { WinsListPopup } from './popups/wins-list-popup';
 import { PickSummaryPlayerPopup } from './popups/pick-summary-player-popup';
 import { PickedByPopup } from './popups/picked-by-popup';
-import { TournamentWordmark } from './tournament-wordmark';
+import { GmpBadge } from './gmp-badge';
 
 // How each event reads in "It's ___ week!".
 const WEEK_NAMES: Record<TournamentId, string> = {
@@ -1404,7 +1404,7 @@ export default function Page() {
                 <div style={{ color: '#fff', fontSize: 17, fontWeight: 900, letterSpacing: '0.01em' }}>Tiebreaker Rules</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                   {(KNOCKOUT_TAB_LOGOS[selectedTournament] ?? TOURNAMENT_TAB_LOGOS[selectedTournament]) && (
-                    <TournamentWordmark id={selectedTournament} white alt="" width={120} height={40} />
+                    <GmpBadge height={36} />
                   )}
                   <button onClick={() => setShowTiebreakerRules(false)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: 8, width: 30, height: 30, cursor: 'pointer', fontSize: 15, flexShrink: 0 }}>&#10005;</button>
                 </div>

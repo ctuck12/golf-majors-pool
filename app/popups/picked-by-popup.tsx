@@ -2,7 +2,7 @@
 
 import { getPlayerFlag, getFlagSrc, getCountryLabel, HeaderNameFlag, REPORT_TOURNAMENT_SOLID } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
-import { TournamentWordmark } from '../tournament-wordmark';
+import { GmpBadge } from '../gmp-badge';
 
 // Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
 export function PickedByPopup({ p }: { p: PoolPage }) {
@@ -35,7 +35,7 @@ export function PickedByPopup({ p }: { p: PoolPage }) {
                     <HeaderNameFlag name={ppsPickPopup.name} flagSrc={flagSrc} abbr={getCountryLabel(ppsPickPopup.name) || null} base={isMobile ? 15 : 16} min={isMobile ? 11.5 : 14} allowStack={true} initialStacked={false} />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                    <TournamentWordmark id={T} white width={104} height={35} />
+                    <GmpBadge height={32} />
                     <button onClick={close} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: 8, width: 30, height: 30, cursor: 'pointer', fontSize: 15, flexShrink: 0 }}>&#10005;</button>
                   </div>
                 </div>

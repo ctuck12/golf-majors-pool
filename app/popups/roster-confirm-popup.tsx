@@ -4,7 +4,7 @@ import { VenmoMark } from '../venmo-mark';
 import { formatMoney, formatVenmo } from '@/app/lib/venmo';
 import { totalParFor, TOURNAMENT_TAB_LOGOS } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
-import { TournamentWordmark } from '../tournament-wordmark';
+import { GmpBadge } from '../gmp-badge';
 
 // Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
 export function RosterConfirmPopup({ p }: { p: PoolPage }) {
@@ -48,7 +48,7 @@ export function RosterConfirmPopup({ p }: { p: PoolPage }) {
                 </div>
                 {TOURNAMENT_TAB_LOGOS[entriesTournamentId] && (
                   <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <TournamentWordmark id={entriesTournamentId} white alt={entriesTournament.name} width={120} height={40} />
+                    <GmpBadge height={36} />
                   </div>
                 )}
               </div>

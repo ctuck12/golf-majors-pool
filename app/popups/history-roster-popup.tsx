@@ -2,7 +2,7 @@
 
 import { getPlayerFlag, getFlagSrc, getCountryLabel, TOURNAMENT_TAB_LOGOS, KNOCKOUT_TAB_LOGOS, REPORT_TOURNAMENT_SOLID } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
-import { TournamentWordmark } from '../tournament-wordmark';
+import { GmpBadge } from '../gmp-badge';
 
 // Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
 export function HistoryRosterPopup({ p }: { p: PoolPage }) {
@@ -34,7 +34,7 @@ export function HistoryRosterPopup({ p }: { p: PoolPage }) {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                     {(KNOCKOUT_TAB_LOGOS[histTournament] ?? TOURNAMENT_TAB_LOGOS[histTournament]) && (
-                      <TournamentWordmark id={histTournament} white alt="" width={104} height={35} />
+                      <GmpBadge height={32} />
                     )}
                     <button onClick={closeRoster} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: 8, width: 30, height: 30, cursor: 'pointer', fontSize: 15, flexShrink: 0 }}>&#10005;</button>
                   </div>

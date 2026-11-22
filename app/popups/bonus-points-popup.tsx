@@ -5,7 +5,7 @@ import { applyNameAlias } from '@/app/lib/name-aliases';
 import { SCORING_RULES } from '../lib/scoring';
 import { getFlagSrc, getCountryLabel, TOURNAMENT_TAB_LOGOS } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
-import { TournamentWordmark } from '../tournament-wordmark';
+import { GmpBadge } from '../gmp-badge';
 
 // Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
 export function BonusPointsPopup({ p }: { p: PoolPage }) {
@@ -166,7 +166,7 @@ export function BonusPointsPopup({ p }: { p: PoolPage }) {
                   </div>
                   {TOURNAMENT_TAB_LOGOS[selectedTournament] && (
                     <div style={{ flexShrink: 0, marginLeft: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <TournamentWordmark id={selectedTournament} white alt={tournament.fullName} width={120} height={40} />
+                      <GmpBadge height={36} />
                     </div>
                   )}
                   <button onClick={closeBonusPoints} style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 10, cursor: 'pointer', color: '#fff', width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0, marginLeft: 12 }}>✕</button>
@@ -263,7 +263,7 @@ export function BonusPointsPopup({ p }: { p: PoolPage }) {
                           <div style={{ fontSize: 13, fontWeight: 800, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{bonusInfoPopup.title}</div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                             {TOURNAMENT_TAB_LOGOS[selectedTournament] && (
-                              <TournamentWordmark id={selectedTournament} white alt="" width={72} height={24} />
+                              <GmpBadge height={24} />
                             )}
                             <button onClick={() => setBonusInfoPopup(null)} style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 8, cursor: 'pointer', color: '#fff', width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, flexShrink: 0 }}>✕</button>
                           </div>

@@ -4,7 +4,7 @@ import { canonicalNameKey } from '@/app/lib/name-match';
 import { SCORING_RULES } from '../lib/scoring';
 import { getPlayerFlag, getFlagSrc, getCountryLabel, TOURNAMENT_TAB_LOGOS, PGA_CLUB_PROFESSIONALS, HeaderNameFlag, fitPopupHeader, formatPointValue, ordinal } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
-import { TournamentWordmark } from '../tournament-wordmark';
+import { GmpBadge } from '../gmp-badge';
 
 // Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
 export function GolferBreakdownPopup({ p }: { p: PoolPage }) {
@@ -69,7 +69,7 @@ export function GolferBreakdownPopup({ p }: { p: PoolPage }) {
                     </div>
                     {TOURNAMENT_TAB_LOGOS[selectedTournament] && (
                       <div style={{ flexShrink: 0, marginLeft: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', alignSelf: selectedTournament !== 'open' ? 'center' : undefined }}>
-                        <TournamentWordmark id={selectedTournament} white alt={tournament.fullName} width={96} height={32} scale={fitPopupHeader(activeStandingGolfer.name, getCountryLabel(activeStandingGolfer.name), 480, isMobile ? 36 : 44, selectedTournament, isMobile).shrinkLogo ? 0.75 : 1} />
+                        <GmpBadge height={34 * (fitPopupHeader(activeStandingGolfer.name, getCountryLabel(activeStandingGolfer.name), 480, isMobile ? 36 : 44, selectedTournament, isMobile).shrinkLogo ? 0.75 : 1)} />
                       </div>
                     )}
                     <button

@@ -8,6 +8,7 @@ import { AlertCircle, ArrowLeft, Award, Layers, BookOpen, ChevronRight, Calendar
 import { SALARY_CAP, REQUIRED_GOLFERS, totalParFor, TOURNAMENTS, getFlagSrc, getCountryLabel, TOURNAMENT_TAB_LOGOS, TOURNAMENT_EVENT_LOGOS, eventLogoStyle, pgaPhoto, playerPhotoSrc, photoOnError, MOBILE_TWO_LINE_NAMES, MOBILE_CUSTOM_SPLITS, utcToCentralInput, shouldShowPreTournamentView, formatRefresh, fieldStyle } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
 import { TournamentWordmark } from '../tournament-wordmark';
+import { GmpBadge } from '../gmp-badge';
 
 // Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
 export function CommissionerScreen({ p }: { p: PoolPage }) {
@@ -411,7 +412,7 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                     <div style={{ color: '#fff', fontSize: 16, fontWeight: 900 }}>Pool Lock Time</div>
                     {TOURNAMENT_TAB_LOGOS[entriesTournamentId] && (
                       <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0, marginLeft: 'auto' }}>
-                        <TournamentWordmark id={entriesTournamentId} white alt={entriesTournament.name} width={120} height={40} />
+                        <GmpBadge height={36} />
                       </div>
                     )}
                     <button onClick={() => setPoolLockModalOpen(false)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: 8, width: 30, height: 30, cursor: 'pointer', fontSize: 15, flexShrink: 0 }}>&#10005;</button>
@@ -544,7 +545,7 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                     </div>
                     {TOURNAMENT_TAB_LOGOS[tournament.id] && (
                       <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0, marginLeft: 'auto' }}>
-                        <TournamentWordmark id={tournament.id} white alt={tournament.name} width={120} height={40} />
+                        <GmpBadge height={36} />
                       </div>
                     )}
                     <button onClick={() => { setPoolToolModal(null); setPoolToolConfirm(null); }} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: 8, width: 30, height: 30, cursor: 'pointer', fontSize: 15, flexShrink: 0 }}>&#10005;</button>
@@ -817,7 +818,7 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                       </div>
                       {TOURNAMENT_TAB_LOGOS[entriesTournamentId] && (
                         <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0, marginLeft: 'auto' }}>
-                          <TournamentWordmark id={entriesTournamentId} white alt={entriesTournament.name} width={120} height={40} />
+                          <GmpBadge height={36} />
                         </div>
                       )}
                       <button onClick={() => setPickPopularityPlayer(null)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: 8, width: 30, height: 30, cursor: 'pointer', fontSize: 15, flexShrink: 0 }}>&#10005;</button>
@@ -856,7 +857,7 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                       <div style={{ color: '#fff', fontSize: 16, fontWeight: 900, minWidth: 0 }}>{member.displayName}</div>
                       {TOURNAMENT_TAB_LOGOS[tournament.id] && (
                         <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0, marginLeft: 'auto' }}>
-                          <TournamentWordmark id={tournament.id} white alt={tournament.name} width={120} height={40} />
+                          <GmpBadge height={36} />
                         </div>
                       )}
                       <button onClick={() => setSubmittedRosterMemberId(null)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: 8, width: 30, height: 30, cursor: 'pointer', fontSize: 15, flexShrink: 0 }}>&#10005;</button>

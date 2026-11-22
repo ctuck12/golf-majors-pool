@@ -2,7 +2,7 @@
 
 import { TOURNAMENT_TAB_LOGOS, pgaPhoto, playerPhotoSrc, photoOnError, formatPointValue, formatPosition, formatTeeTime, formatCurrentRoundScore } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
-import { TournamentWordmark } from '../tournament-wordmark';
+import { GmpBadge } from '../gmp-badge';
 
 // Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
 export function EntryBreakdownPopup({ p }: { p: PoolPage }) {
@@ -74,7 +74,7 @@ export function EntryBreakdownPopup({ p }: { p: PoolPage }) {
                     <div style={{ fontSize: isMobile ? 18 : 21, fontWeight: 900, color: '#fff', letterSpacing: '-0.01em' }}>{activeStandingEntry.name}</div>
                     {TOURNAMENT_TAB_LOGOS[selectedTournament] && (
                       <div style={{ flexShrink: 0, marginLeft: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <TournamentWordmark id={selectedTournament} white alt={tournament.fullName} width={120} height={40} />
+                        <GmpBadge height={36} />
                       </div>
                     )}
                     <button

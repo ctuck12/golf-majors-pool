@@ -5,7 +5,7 @@ import '../native-bridge';
 
 import { useEffect, useRef, useState } from 'react';
 import { getHeaderTournament, TOURNAMENT_OPTIONS } from '@/app/lib/tournament-logo';
-import { TournamentWordmark } from '@/app/tournament-wordmark';
+import { GmpBadge } from '@/app/gmp-badge';
 
 type Status = { active: boolean; count: number; updatedAt: string | null };
 type SaveResp = {
@@ -320,7 +320,7 @@ export default function CommissionerSalaryPage() {
             <div style={{ color: '#fff', fontSize: 18, fontWeight: 900 }}>Salary Pick List</div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-            <TournamentWordmark id={headerTournament.id} white alt={headerTournament.name} width={120} height={40} />
+            <GmpBadge height={36} />
           </div>
         </div>
 
