@@ -193,7 +193,9 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                   </div>
                 ) : null}
                 {(selectedTournament === 'open' || selectedTournament === 'us-open' || selectedTournament === 'pga' || selectedTournament === 'masters' || selectedTournament === 'players') && showLivePayoutStrip && (
-                  <img src={selectedTournament === 'open' ? '/open-o-logo.png' : selectedTournament === 'us-open' ? '/us-open-trophy-logo.png' : selectedTournament === 'masters' ? '/masters-map-logo.png' : selectedTournament === 'players' ? '/players-golfer-logo.png' : '/pga-seal-gold.png'} alt="" style={{ position: 'absolute', left: selectedTournament === 'us-open' ? '54.5%' : '54%', top: (isTournamentFinal && !showFutureTournamentView) ? (selectedTournament === 'us-open' ? (isMobile ? '83%' : '72%') : selectedTournament === 'players' ? (isMobile ? '85%' : '75%') : (isMobile ? '80%' : '70%')) : (isMobile ? '108%' : '75%'), transform: 'translate(-50%, -50%)', height: selectedTournament === 'us-open' ? (isMobile ? 57 : 85) : selectedTournament === 'pga' ? (isMobile ? 46 : 60) : selectedTournament === 'masters' ? (isMobile ? 46 : 60) : selectedTournament === 'players' ? (isMobile ? 63 : 86) : (isMobile ? 40 : 54), width: 'auto', objectFit: 'contain', pointerEvents: 'none' }} />
+                  // Each major's trophy, cut from the Golf Majors Pool logo (the Masters' is the silver
+                  // clubhouse). Same box and the same bottom line for all five so they match.
+                  <img src={`/trophies/${selectedTournament}.png`} alt="" style={{ position: 'absolute', left: '54%', top: (isTournamentFinal && !showFutureTournamentView) ? (isMobile ? '78%' : '70%') : (isMobile ? '108%' : '75%'), transform: 'translate(-50%, -50%)', width: isMobile ? 70 : 96, height: isMobile ? 54 : 76, objectFit: 'contain', objectPosition: 'center bottom', pointerEvents: 'none' }} />
                 )}
               </div>
               {!feed?.tournamentComplete && (feed?.currentRound ?? 0) > 0 && (
