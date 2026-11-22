@@ -6,8 +6,6 @@ import { TOURNAMENTS, getPlayerFlag, getFlagSrc, getCountryLabel, TOURNAMENT_TAB
 import type { PoolPage } from '../pool-page-state';
 import { SeasonStandingsReport } from '../reports/season-standings';
 import { HallOfChampionsReport } from '../reports/hall-of-champions';
-import { ValuePicksReport } from '../reports/value-picks';
-import { HeadToHeadReport } from '../reports/head-to-head';
 import { TournamentWordmark } from '../tournament-wordmark';
 
 // Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
@@ -73,10 +71,6 @@ export function ReportsScreen({ p }: { p: PoolPage }) {
                   <SeasonStandingsReport p={p} />
                 ) : selectedReport === 'Hall of Champions' ? (
                   <HallOfChampionsReport p={p} />
-                ) : selectedReport === 'Value Picks' ? (
-                  <ValuePicksReport p={p} />
-                ) : selectedReport === 'Head-to-Head' ? (
-                  <HeadToHeadReport p={p} />
                 ) : selectedReport === 'Player Pick Summary' ? (() => {
                   const ppsControls = (
                     <div style={{ display: 'flex', flexWrap: isMobile ? 'nowrap' : 'wrap', alignItems: 'flex-end', gap: isMobile ? 7 : 12 }}>

@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest } from 'next/server';
 import redis from '@/app/lib/redis';
 import { legacyRowKey, legacyYears } from '@/app/lib/legacy-archive';
+import { eventHasStarted } from '@/app/lib/tournament-config';
 import { cookies } from 'next/headers';
 import { DEFAULT_POOL_ID, getSessionContext, SESSION_COOKIE_NAME, archiveSeasonsFor, readStandingsArchive, saveStandingsArchive, userDataBackend } from '@/app/lib/pool-store';
 
@@ -37,7 +38,7 @@ export async function GET(req: NextRequest) {
     // List the saved seasons for this tournament.
     const years = new Set(await archiveSeasonsFor(league.id, tid));
     if (isFounder) for (const y of await legacyYears(tid)) years.add(y);
-    return Response.json({ tournamentId: tid, years: [...years].sort((a, b) => b - a) });
+    return Response.json({ tournamentId: tid, years: [...years].filter((y) => eventHasStarted(tid, y)).sort((a, b) => b - a) });
   }
   const year = parseInt(yearParam, 10);
   if (isNaN(year)) return Response.json({ error: 'bad year' }, { status: 400 });
@@ -70,6 +71,8 @@ export async function POST(req: NextRequest) {
   const standings = Array.isArray(body.standings) ? body.standings : [];
   if (!TOURNAMENT_IDS.has(tid)) return Response.json({ error: 'unknown tournament' }, { status: 400 });
   if (isNaN(year) || year < 2000 || year > 2100) return Response.json({ error: 'bad year' }, { status: 400 });
+  // Results can only be final for an event that has been played.
+  if (!eventHasStarted(tid, year)) return Response.json({ error: 'That tournament has not been played yet.' }, { status: 400 });
   // Require a real, non-trivial standings payload so a partial/empty client render can't clobber a
   // good archive.
   if (standings.length < 1) return Response.json({ error: 'empty standings' }, { status: 400 });

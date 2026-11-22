@@ -91,6 +91,14 @@ export function latestStartedSeason(tournamentId: string, now = new Date()): num
   return latest;
 }
 
+// Whether an event has teed off (its lock time has passed). Seasons before the schedule were all
+// played; seasons past it haven't been. Results saved for an event that hasn't started are stray.
+export function eventHasStarted(tournamentId: string, season: number, now = new Date()): boolean {
+  const meta = getTournamentMeta(tournamentId, season);
+  if (!meta) return season < POOL_SEASONS[0];
+  return now.getTime() >= Date.parse(meta.lockAtUtc);
+}
+
 // The event a tournament's picks, live scoring and lock are about right now.
 export function currentTournamentMeta(tournamentId: string, now = new Date()): TournamentMeta | undefined {
   return getTournamentMeta(tournamentId, picksSeason(tournamentId, now));
