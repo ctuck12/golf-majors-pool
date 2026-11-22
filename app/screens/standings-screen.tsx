@@ -1,8 +1,7 @@
 'use client';
 
-import { Fragment, useState, type CSSProperties } from 'react';
-import { CheckCircle2, Lock, Pencil, RefreshCw, Share2, Trophy } from 'lucide-react';
-import { ShareImageModal } from '../share-image';
+import { Fragment, type CSSProperties } from 'react';
+import { CheckCircle2, Lock, Pencil, RefreshCw, Trophy } from 'lucide-react';
 import { REQUIRED_GOLFERS, TOURNAMENT_LEADERBOARD_HEADER, TOURNAMENT_CARD_LOGOS, TOURNAMENT_HEADING_LOGOS, FitOneLineText, formatRefresh, readJson, formatLeaderboardPosition, formatTeeTime, teeTimeIsPast, type FeedResponse } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
 import { TournamentWordmark } from '../tournament-wordmark';
@@ -87,22 +86,7 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
     entriesTournamentBg,
     entriesTournamentSolid,
     showPayWinnersPrompt,
-    pool,
   } = p;
-  const [sharingStandings, setSharingStandings] = useState(false);
-  // The image shows the top 10, plus the viewer's own entry if they're further down.
-  const shareRows = (() => {
-    const top = standings.slice(0, 10);
-    const mine = sessionUser ? standings.find((e) => e.id === sessionUser.id) : undefined;
-    const list = mine && !top.includes(mine) ? [...top, mine] : top;
-    const medal = (place: number) => (isTournamentFinal && place <= 3 ? ['🥇', '🥈', '🥉'][place - 1] : String(place));
-    return list.map((e) => ({
-      left: medal(e.place),
-      label: e.name,
-      right: `${e.rosterPoints % 1 === 0 ? e.rosterPoints : e.rosterPoints.toFixed(1)} pts`,
-      highlight: e.id === sessionUser?.id,
-    }));
-  })();
   return (
     <main
             style={{
@@ -477,29 +461,6 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                   </div>
                 </div>
             )}
-            {!showFutureTournamentView && standings.length > 0 ? (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: isMobile ? '10px 0 4px' : '14px 0 6px' }}>
-                <button
-                  type="button"
-                  onClick={() => setSharingStandings(true)}
-                  style={{ border: '1px solid #cdd9e5', borderRadius: 12, padding: '8px 16px', background: '#fff', color: '#173b63', fontSize: 13.5, fontWeight: 800, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-                >
-                  <Share2 size={14} /> {isTournamentFinal ? 'Share final results' : 'Share standings'}
-                </button>
-              </div>
-            ) : null}
-            {sharingStandings ? (
-              <ShareImageModal
-                fileName="golf-majors-pool-standings.png"
-                onClose={() => setSharingStandings(false)}
-                input={{
-                  kicker: `${tournament.fullName} · ${isTournamentFinal ? 'Final results' : 'Live standings'}`,
-                  title: pool?.name ?? 'Golf Majors Pool',
-                  subtitle: standingsMeta?.year,
-                  rows: shareRows,
-                }}
-              />
-            ) : null}
             </section>
 
             <aside style={{ display: showFutureTournamentView ? 'none' : 'grid', gap: 20, alignSelf: isMobile ? undefined : 'start' }}>
