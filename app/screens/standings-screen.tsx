@@ -539,7 +539,7 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                       </div>
                     ) : tournament.id === 'masters' ? (
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: isMobile ? 6 : 10, width: '100%' }}>
-                        <TournamentWordmark id="masters" alt="Masters" width={isMobile ? 120 : 136} height={isMobile ? 26 : 30} style={{ transform: `translateY(${isMobile ? -6 : -7}px)` }} />
+                        <TournamentWordmark id="masters" alt="Masters" width={isMobile ? 120 : 136} height={isMobile ? 26 : 30} style={{ transform: `translateY(${isMobile ? -4.33 : -4.5}px)` }} />
                         <span style={{ fontSize: isMobile ? 21 : 25, fontWeight: 900, color: '#2c6449', lineHeight: 1, position: 'relative' }}>
                           Leaderboard
                           <span style={{ position: 'absolute', left: '100%', top: '50%', transform: 'translateY(-50%)', display: 'inline-flex', alignItems: 'center', paddingLeft: 3 }}>
