@@ -177,7 +177,7 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                     Pool Status
                   </div>
                   {TOURNAMENT_TAB_LOGOS[tournament.id] && (
-                    <TournamentWordmark id={tournament.id} alt={tournament.name} width={isMobile ? 128 : 190} height={isMobile ? 34 : 48} />
+                    <TournamentWordmark id={tournament.id} alt={tournament.name} width={isMobile ? 172 : 240} height={isMobile ? 40 : 52} />
                   )}
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
@@ -673,7 +673,7 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                   Pick Submissions
                 </div>
                 {TOURNAMENT_TAB_LOGOS[tournament.id] && (
-                  <TournamentWordmark id={tournament.id} alt={tournament.name} width={isMobile ? 128 : 190} height={isMobile ? 34 : 48} />
+                  <TournamentWordmark id={tournament.id} alt={tournament.name} width={isMobile ? 172 : 240} height={isMobile ? 40 : 52} />
                 )}
               </div>
               <div

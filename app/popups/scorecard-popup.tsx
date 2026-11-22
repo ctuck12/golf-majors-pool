@@ -100,7 +100,7 @@ export function ScorecardPopup({ p }: { p: PoolPage }) {
                         })()}
                       </div>
                       {TOURNAMENT_TAB_LOGOS[selectedTournament] && (
-                      <div style={{ flexShrink: 0, marginLeft: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ flexShrink: 0, marginLeft: 'auto', height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <TournamentWordmark id={selectedTournament} white alt={tournament.fullName} width={96} height={32} scale={fitPopupHeader(scorecardGolferName ?? '', scorecardGolferName ? getCountryLabel(scorecardGolferName) : null, 1140, isMobile ? 28 : 36, selectedTournament, isMobile, true, 32).shrinkLogo ? 0.75 : 1} />
                       </div>
                     )}

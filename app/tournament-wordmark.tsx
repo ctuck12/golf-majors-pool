@@ -34,5 +34,8 @@ export function TournamentWordmark({ id, white = false, width, height, scale = 1
   const src = wordmarkSrc(id, white);
   if (!src) return null;
   const size = wordmarkSize(id, width, height, scale, white);
-  return <img src={src} alt={alt} width={size.width} height={size.height} style={{ display: 'block', flexShrink: 0, width: size.width, height: size.height, ...style }} />;
+  // The Masters script carries its weight low (tall swash M over small letters), so centered it
+  // reads low next to text and buttons; nudge it up a touch.
+  const nudge = id === 'masters' ? `translateY(${-Math.round(size.height * 0.1)}px)` : undefined;
+  return <img src={src} alt={alt} width={size.width} height={size.height} style={{ display: 'block', flexShrink: 0, width: size.width, height: size.height, transform: nudge, ...style }} />;
 }
