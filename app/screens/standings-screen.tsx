@@ -194,9 +194,9 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                 ) : null}
                 {(selectedTournament === 'open' || selectedTournament === 'us-open' || selectedTournament === 'pga' || selectedTournament === 'masters' || selectedTournament === 'players') && showLivePayoutStrip && (
                   // Each major's trophy, cut from the Golf Majors Pool logo (the Masters' is the silver
-                  // clubhouse). Same box for all five. On phones the three tall cups sit a few px lower so
-                  // their tops stay clear of the payout chips.
-                  <img src={`/trophies/${selectedTournament}.png`} alt="" style={{ position: 'absolute', left: '54%', top: (isTournamentFinal && !showFutureTournamentView) ? (isMobile ? '78%' : '70%') : (isMobile ? '108%' : '75%'), transform: `translate(-50%, calc(-50% + ${isMobile && (selectedTournament === 'pga' || selectedTournament === 'us-open' || selectedTournament === 'open') ? 5 : 0}px))`, width: isMobile ? 70 : 96, height: isMobile ? 54 : 76, objectFit: 'contain', objectPosition: 'center bottom', pointerEvents: 'none' }} />
+                  // clubhouse). Same box for all five. On phones the four tall trophies sit a few px lower so
+                  // their tops stay clear of the payout chips (the low clubhouse doesn't need it).
+                  <img src={`/trophies/${selectedTournament}.png`} alt="" style={{ position: 'absolute', left: '54%', top: (isTournamentFinal && !showFutureTournamentView) ? (isMobile ? '78%' : '70%') : (isMobile ? '108%' : '75%'), transform: `translate(-50%, calc(-50% + ${isMobile && selectedTournament !== 'masters' ? 5 : 0}px))`, width: isMobile ? 70 : 96, height: isMobile ? 54 : 76, objectFit: 'contain', objectPosition: 'center bottom', pointerEvents: 'none' }} />
                 )}
               </div>
               {!feed?.tournamentComplete && (feed?.currentRound ?? 0) > 0 && (
