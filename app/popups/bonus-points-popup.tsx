@@ -166,7 +166,7 @@ export function BonusPointsPopup({ p }: { p: PoolPage }) {
                   </div>
                   {TOURNAMENT_TAB_LOGOS[selectedTournament] && (
                     <div style={{ flexShrink: 0, marginLeft: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <GmpLogo height={36} />
+                      <GmpLogo height={50} style={{ margin: "-8px 0" }} />
                     </div>
                   )}
                   <button onClick={closeBonusPoints} style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 10, cursor: 'pointer', color: '#fff', width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0, marginLeft: 12 }}>✕</button>
