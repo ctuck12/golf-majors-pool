@@ -20,13 +20,19 @@ export function HallOfChampionsReport({ p }: { p: PoolPage }) {
   const seasons = seasonsIn(events);
 
   // Titles per member: major wins plus season championships.
-  const titles = new Map<string, { name: string; majors: number; seasons: number }>();
+  const titles = new Map<string, { key: string; name: string; majors: number; seasons: number }>();
   const credit = (key: string, name: string, kind: 'majors' | 'seasons') => {
-    const t = titles.get(key) ?? { name, majors: 0, seasons: 0 };
+    const t = titles.get(key) ?? { key, name, majors: 0, seasons: 0 };
     t[kind] += 1;
     titles.set(key, t);
   };
   const keyOf = keyResolver(events);
+  // Seasons each member has played: every season they had an entry in at least one major.
+  const seasonsPlayed = new Map<string, Set<number>>();
+  for (const e of events) for (const r of e.standings) {
+    const k = keyOf(r);
+    seasonsPlayed.set(k, (seasonsPlayed.get(k) ?? new Set()).add(e.season));
+  }
   for (const e of events) for (const r of e.standings) if (r.place === 1) credit(keyOf(r), display(r), 'majors');
   const seasonChamps = new Map<number, { names: string[]; total: number }>();
   for (const season of seasons) {
@@ -55,9 +61,15 @@ export function HallOfChampionsReport({ p }: { p: PoolPage }) {
               {leaders.map((l, i) => (
                 <div key={l.name + i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ width: 26, fontSize: 16, textAlign: 'center' }}>{i < 3 ? ['🥇', '🥈', '🥉'][i] : <span style={{ fontSize: 13, fontWeight: 800, color: '#8a99a6' }}>{i + 1}</span>}</span>
-                  <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 800, color: '#0f1720', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.name}</span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: 'block', fontSize: 15, fontWeight: 800, color: '#0f1720', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.name}</span>
+                    {(() => {
+                      const played = seasonsPlayed.get(l.key)?.size ?? 0;
+                      return played ? <span style={{ display: 'block', fontSize: 12, color: '#8a99a6' }}>{played} season{played === 1 ? '' : 's'} played</span> : null;
+                    })()}
+                  </span>
                   <span style={{ fontSize: 13, color: '#5b6b79', whiteSpace: 'nowrap' }}>
-                    {l.seasons ? `🏆 ${l.seasons} season${l.seasons > 1 ? 's' : ''} · ` : ''}{l.majors} major{l.majors === 1 ? '' : 's'}
+                    {l.seasons ? `🏆 ${l.seasons} season title${l.seasons > 1 ? 's' : ''} · ` : ''}{l.majors} major{l.majors === 1 ? '' : 's'}
                   </span>
                 </div>
               ))}
@@ -84,7 +96,6 @@ export function HallOfChampionsReport({ p }: { p: PoolPage }) {
                     const e = events.find((ev) => ev.season === season && ev.tournamentId === tid);
                     if (!e) return null;
                     const winners = e.standings.filter((r) => r.place === 1);
-                    const runnerUp = e.standings.find((r) => r.place === 2);
                     return (
                       <div key={tid} style={{ border: '1px solid #e2e9ef', borderRadius: 14, padding: '11px 13px', display: 'flex', alignItems: 'center', gap: 12, background: '#fff' }}>
                         <div style={{ width: 70, flexShrink: 0, display: 'grid', placeItems: 'center' }}>
@@ -93,7 +104,7 @@ export function HallOfChampionsReport({ p }: { p: PoolPage }) {
                         <div style={{ minWidth: 0 }}>
                           <div style={{ fontSize: 15, fontWeight: 900, color: '#0f1720' }}>🥇 {winners.map(display).join(' & ') || '—'}</div>
                           <div style={{ fontSize: 12.5, color: '#5b6b79' }}>
-                            {winners[0] ? `${Number(winners[0].points).toLocaleString()} pts` : ''}{runnerUp ? ` · 2nd ${display(runnerUp)}` : ''}
+                            {winners[0] ? `${Number(winners[0].points).toLocaleString()} pts` : ''}
                           </div>
                         </div>
                       </div>
