@@ -11,7 +11,7 @@ import { currentTournamentMeta, effectiveLockTime, getTournamentMeta, latestStar
 import { History, Lock, Save } from 'lucide-react';
 import { buildPlaceholderScoreBreakdown } from './lib/scoring';
 import { unregisterPushToken, usePushRegistration } from './push-client';
-import { MAIN_TABS, SALARY_CAP, REQUIRED_GOLFERS, espnEventIdFor, COMMISSIONER_DISPLAY_NAME, FOUNDER_POOL_ID, TOURNAMENTS, PLAYER_FLAGS, canonicalName, cutShowAt, cutHideAt, pgaPhoto, playerPhotoSrc, photoOnError, PLAYER_POOL, ORIGINAL_WORLD_RANK_BY_ID, DEFAULT_ROSTERS, REPORT_TOURNAMENTS, POOL_SEASONS, rosterInSeason, tieBreakInSeason, withSeasonPicks, STATIC_ENTRIES, NO_SESSION_FLAGS, buildPricedPlayers, normalizeName, formatRosterField, parseRosterField, clearStoredMainTab, readStoredSession, writeStoredSession, clearStoredSession, purgeStoredAccounts, readRoster, saveGuestRoster, readFeedCache, writeFeedCache, getCurrentRoundLabel, centralInputToUtc, getTournamentEventWindow, getDisplayTournamentWindow, getTournamentCardStatuses, getDefaultTournamentId, formatTournamentStartDate, readJson, resetViewAfterMainTabChange, formatTeeTime, teeTimeIsPast, type TournamentId, type MainTab, type ReportType, type FeedRow, type FullFieldPlayer, type ScorecardData, type ArchivedStandingRow, type ArchivedStandingsData, type FeedResponse, type AuthUser, type PoolInfo, type PoolEntry, type CommissionerMember, type AuthMode, type StandingEntry, type SessionPayload, type SessionFlags, setCommissionerPreTournamentView, setLockTimeOverrides } from './pool-data';
+import { MAIN_TABS, SALARY_CAP, REQUIRED_GOLFERS, espnEventIdFor, COMMISSIONER_DISPLAY_NAME, FOUNDER_POOL_ID, TOURNAMENTS, PLAYER_FLAGS, canonicalName, cutShowAt, cutHideAt, pgaPhoto, playerPhotoSrc, photoOnError, PLAYER_POOL, ORIGINAL_WORLD_RANK_BY_ID, DEFAULT_ROSTERS, REPORT_TOURNAMENTS, POOL_SEASONS, rosterInSeason, tieBreakInSeason, withSeasonPicks, STATIC_ENTRIES, NO_SESSION_FLAGS, buildPricedPlayers, normalizeName, formatRosterField, parseRosterField, clearStoredMainTab, readStoredSession, writeStoredSession, clearStoredSession, purgeStoredAccounts, readRoster, saveGuestRoster, readFeedCache, writeFeedCache, getCurrentRoundLabel, centralInputToUtc, getTournamentEventWindow, getDisplayTournamentWindow, getTournamentCardStatuses, getDefaultTournamentId, formatTournamentStartDate, readJson, resetViewAfterMainTabChange, formatTeeTime, teeTimeIsPast, type TournamentId, type MainTab, type ReportType, type FeedRow, type FullFieldPlayer, type ScorecardData, type ArchivedStandingRow, type ArchivedStandingsData, type FeedResponse, type AuthUser, type PoolInfo, type PoolEntry, type CommissionerMember, type AuthMode, type StandingEntry, type SessionPayload, type SessionFlags, setCommissionerPreTournamentView, setLockTimeOverrides, registerLearnedFlags } from './pool-data';
 
 export type SalaryMaps = { salaries: Record<number, number>; worldRanks: Record<number, number> };
 
@@ -133,6 +133,21 @@ export function usePoolPage() {
   const [statLeaderboardModal, setStatLeaderboardModal] = useState<{ label: string; statKey: string; subtitle: string; tourAvg: string | null; avgLabel?: string; playerName: string | null; entries: { rank: number; name: string; value: string }[] | null } | null>(null);
   const [statLbSearch, setStatLbSearch] = useState('');
   const [visualVpHeight, setVisualVpHeight] = useState<number | null>(null);
+  // Flags for golfers missing from the built-in list, learned by the server from the live feeds.
+  // Loaded once; the version bump re-renders so flags appear wherever names are shown.
+  const [, setLearnedFlagsVersion] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/player-flags')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { flags?: Record<string, string> } | null) => {
+        if (cancelled || !data?.flags || Object.keys(data.flags).length === 0) return;
+        registerLearnedFlags(data.flags);
+        setLearnedFlagsVersion((v) => v + 1);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
   useEffect(() => {
     if (typeof window === 'undefined' || !window.visualViewport) return;
     const vv = window.visualViewport;

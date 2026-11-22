@@ -9,6 +9,7 @@ import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { type LeagueSummary } from './league-panel';
 import { PLAYER_POOL_WITH_PGA_IDS } from '@/app/lib/player-pool';
 import { PLAYER_ESPN_IDS } from '@/app/lib/player-espn-ids';
+import { FLAG_TO_CODE3 } from '@/app/lib/country-codes';
 import { effectiveLockTime, getTournamentMeta, picksSeason, POOL_SEASONS as SCHEDULED_SEASONS, type TournamentMeta } from '@/app/lib/tournament-config';
 import { applyNameAlias } from '@/app/lib/name-aliases';
 import { History, Lock } from 'lucide-react';
@@ -288,6 +289,11 @@ export const PLAYER_FLAGS: Record<string, string> = {
   'Alejandro De Castro Piera': 'es', // Spain (Barcelona)
   'Tim Wiedemeyer': 'de',            // Germany (Munich)
   'Scott Vincent': 'zw',             // Zimbabwe (Harare)
+  // Stat leaderboards showed these without a flag (Nov 2026). New names are also picked up
+  // automatically from the feeds (see registerLearnedFlags), so this list is only a backstop.
+  'Paul Peterson': 'us',
+  'Blades Brown': 'us',
+  'Kevin Streelman': 'us',
 };
 // Accent-insensitive index of PLAYER_FLAGS, so leaderboard display names with diacritics
 // (e.g. "Séamus Power", "Thorbjørn Olesen") resolve to the same flag as their unaccented key
@@ -307,7 +313,15 @@ export const PLAYER_FLAGS_NORM: Record<string, string> = (() => {
   }
   return m;
 })();
-export const lookupFlagCode = (rawName: string): string => { const name = canonicalName(rawName); return PLAYER_FLAGS[name] ?? PLAYER_FLAGS_NORM[normFlagName(name)] ?? ''; };
+// Countries the server learned from the live feeds (PGA Tour directory, ESPN) for golfers not in
+// PLAYER_FLAGS, keyed by normFlagName. Filled once per page load (see usePoolPage).
+let LEARNED_FLAGS: Record<string, string> = {};
+export const registerLearnedFlags = (flags: Record<string, string>) => { LEARNED_FLAGS = flags ?? {}; };
+export const lookupFlagCode = (rawName: string): string => {
+  const name = canonicalName(rawName);
+  const key = normFlagName(name);
+  return PLAYER_FLAGS[name] ?? PLAYER_FLAGS_NORM[key] ?? LEARNED_FLAGS[key] ?? LEARNED_FLAGS[normFlagName(rawName)] ?? '';
+};
 export const getPlayerFlag = (name: string): string => lookupFlagCode(name);
 export const getFlagSrc = (name: string): string => {
   const code = lookupFlagCode(name);
@@ -316,7 +330,7 @@ export const getFlagSrc = (name: string): string => {
   return `/flags/${svgCodes.has(code) ? code + '.svg' : code + '.png'}`;
 };
 export const FLAG_LABELS: Record<string, string> = { 'us': 'USA', 'gb-eng': 'ENG', 'gb-nir': 'NIR', 'au': 'AUS', 'ie': 'IRL', 'gb-sct': 'SCT', 'no': 'NOR', 'es': 'ESP', 'kr': 'KOR', 'jp': 'JPN', 'za': 'RSA', 'se': 'SWE', 'ca': 'CAN', 'nz': 'NZL', 'dk': 'DEN', 'de': 'GER', 'cl': 'CHI', 'co': 'COL', 'mx': 'MEX', 'ar': 'ARG', 've': 'VEN', 'be': 'BEL', 'at': 'AUT', 'fr': 'FRA', 'gb-wls': 'WAL', 'fi': 'FIN', 'cn': 'CHN', 'it': 'ITA', 'in': 'IND', 'ph': 'PHI', 'fj': 'FIJ', 'pr': 'PRI', 'tw': 'TPE', 'jm': 'JAM', 'th': 'THA', 'is': 'ISL', 'ua': 'UKR', 'nl': 'NED', 'zw': 'ZIM' };
-export const getCountryLabel = (name: string): string => FLAG_LABELS[lookupFlagCode(name)] ?? '';
+export const getCountryLabel = (name: string): string => { const code = lookupFlagCode(name); return FLAG_LABELS[code] ?? FLAG_TO_CODE3[code] ?? ''; };
 
 export const TOURNAMENT_PICKS_HEADER: Record<string, string> = {
   players: 'The Players Picks',
