@@ -88,12 +88,14 @@ body {
   width: 100%;
   min-height: 100svh;
   flex-shrink: 0;
+  --app-zoom: 1; /* matches the zoom below, for sizing things to the screen height */
 }
 
 /* iPhone 14 Pro / 15 Pro / 16 Pro / 17 Pro and similar (≤ 430px) → scale to ~Pro Max proportions */
 @media (max-width: 430px) {
   .app-root {
     zoom: 0.915;
+    --app-zoom: 0.915;
   }
 }
 
@@ -101,6 +103,7 @@ body {
 @media (max-width: 375px) {
   .app-root {
     zoom: 0.872;
+    --app-zoom: 0.872;
   }
 }
 

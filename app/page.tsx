@@ -680,6 +680,10 @@ export default function Page() {
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
+              // Fill the rest of the screen so the "Powered by" mark sits near the bottom: the header
+              // above takes ~160px on phones (~255px on desktop) plus the page's bottom padding. Phones
+              // shrink the app with CSS zoom, so the screen height is divided back by it.
+              minHeight: isMobile ? 'calc(100dvh / var(--app-zoom, 1) - 192px)' : 'calc(100vh - 300px)',
             }}
           >
             <div
@@ -956,7 +960,7 @@ export default function Page() {
                 </div>
               )}
             </div>
-            <div style={{ marginTop: isMobile ? 28 : 36, marginBottom: 8 }}>
+            <div style={{ marginTop: 'auto', paddingTop: isMobile ? 28 : 36 }}>
               <PoweredBy size={isMobile ? 0.95 : 1} />
             </div>
           </section>
