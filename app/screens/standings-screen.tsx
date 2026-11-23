@@ -119,10 +119,10 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                     const fullName = selectedTournament === 'players' ? 'The Players Championship' : selectedTournament === 'masters' ? 'The Masters Tournament' : selectedTournament === 'pga' ? 'The PGA Championship' : selectedTournament === 'us-open' ? 'U.S. Open Championship' : 'The Open Championship';
                     const fs = isSmallMobile ? 17 : isMobile ? 21 : (showLivePayoutStrip ? 25 : 30);
                     return (
-                      <h2 style={{ margin: 0, fontSize: fs, fontWeight: 800, color: '#0f1720', lineHeight: 1.15 }}>
-                        {showLivePayoutStrip ? (
-                          // Always two lines beside the payout chips (e.g. "The Masters" / "Tournament"), so the
-                          // card looks the same whether or not payout amounts are filled in.
+                      <h2 style={{ margin: 0, fontSize: fs, fontWeight: 800, color: '#0f1720', lineHeight: 1.15, whiteSpace: isMobile ? undefined : 'nowrap' }}>
+                        {showLivePayoutStrip && isMobile ? (
+                          // Phones: always two lines beside the payout chips (e.g. "The Masters" / "Tournament"), so
+                          // the card looks the same whether or not payout amounts are filled in. Desktop: one line.
                           <>{fullName.slice(0, fullName.lastIndexOf(' '))}<br />{fullName.slice(fullName.lastIndexOf(' ') + 1)}</>
                         ) : fullName}
                       </h2>
