@@ -281,7 +281,9 @@ export default function Page() {
             padding: isMobile ? (sessionUser ? '0px 12px 2px' : '2px 12px') : (sessionUser ? '10px 28px 6px' : '10px 28px'),
             boxShadow: '0 24px 64px rgba(9, 34, 51, 0.18)',
             position: 'relative',
-            overflow: 'hidden',
+            // The account menu drops below the header, so it can't clip; it sits above the page.
+            overflow: accountMenuOpen ? 'visible' : 'hidden',
+            zIndex: accountMenuOpen ? 60 : undefined,
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'center' }}>
@@ -382,7 +384,8 @@ export default function Page() {
           ) : null}
 
           {sessionUser && !canManagePool ? (
-            <div style={{ position: 'absolute', right: isMobile ? 10 : 22, bottom: isMobile ? 6 : 6, zIndex: 30 }}>
+            // Sized and placed to sit inside the tab row, below the divider line above it.
+            <div style={{ position: 'absolute', right: isMobile ? 10 : 22, bottom: isMobile ? 4 : 9, zIndex: 30 }}>
               {accountMenuOpen ? (
                 <button
                   type="button"
@@ -414,8 +417,8 @@ export default function Page() {
                 style={{
                   position: 'relative',
                   zIndex: 20,
-                  width: (isMobile && !canManagePool) ? 34 : 42,
-                  height: (isMobile && !canManagePool) ? 34 : 42,
+                  width: isMobile ? 30 : 34,
+                  height: isMobile ? 30 : 34,
                   borderRadius: 999,
                   border: '1px solid rgba(255,255,255,0.2)',
                   background: '#173b63',
@@ -426,18 +429,19 @@ export default function Page() {
                   cursor: 'pointer',
                 }}
               >
-                <CircleUserRound size={(isMobile && !canManagePool) ? 17 : 20} />
+                <CircleUserRound size={isMobile ? 16 : 18} />
               </button>
 
               {accountMenuOpen ? (
                 <div
                   onClick={(event) => event.stopPropagation()}
                   style={{
+                    // Opens downward below the button (the header clips anything above it).
                     position: isMobile ? 'fixed' : 'absolute',
                     right: isMobile ? 10 : 0,
-                    top: isMobile ? 100 : 'auto',
-                    bottom: isMobile ? 'auto' : 54,
-                    width: isMobile ? 270 : 336,
+                    top: isMobile ? 100 : 44,
+                    bottom: 'auto',
+                    width: isMobile ? 270 : 372,
                     borderRadius: 18,
                     background: '#fff',
                     color: '#0f1720',
@@ -522,7 +526,8 @@ export default function Page() {
                           minWidth: 0,
                           border: '1px solid #d7e0e8',
                           borderRadius: 12,
-                          padding: isMobile ? '11px 6px' : '12px 14px',
+                          padding: isMobile ? '11px 6px' : '12px 8px',
+                          whiteSpace: 'nowrap',
                           fontSize: isMobile ? 13.5 : 15,
                           background: '#fff',
                           color: '#0f1720',
@@ -544,7 +549,8 @@ export default function Page() {
                           minWidth: 0,
                           border: 'none',
                           borderRadius: 12,
-                          padding: isMobile ? '11px 6px' : '12px 14px',
+                          padding: isMobile ? '11px 6px' : '12px 8px',
+                          whiteSpace: 'nowrap',
                           fontSize: isMobile ? 13.5 : 15,
                           background: '#173b63',
                           color: '#fff',
@@ -657,7 +663,7 @@ export default function Page() {
                         minWidth: 0,
                         border: '1px solid #d7e0e8',
                         borderRadius: 12,
-                        padding: isMobile ? '11px 6px' : '12px 14px',
+                        padding: isMobile ? '11px 6px' : '12px 8px',
                         fontSize: isMobile ? 13.5 : 15,
                         whiteSpace: 'nowrap',
                         background: '#fff',

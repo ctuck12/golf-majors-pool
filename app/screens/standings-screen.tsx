@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, type CSSProperties } from 'react';
+import { Fragment, useLayoutEffect, useState, type CSSProperties } from 'react';
 import { CheckCircle2, Lock, Pencil, RefreshCw, Trophy } from 'lucide-react';
 import { FOUNDER_POOL_ID, REQUIRED_GOLFERS, TOURNAMENT_LEADERBOARD_HEADER, TOURNAMENT_CARD_LOGOS, TOURNAMENT_HEADING_LOGOS, FitOneLineText, formatRefresh, readJson, formatLeaderboardPosition, formatTeeTime, teeTimeIsPast, type FeedResponse } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
@@ -89,6 +89,31 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
     showPayWinnersPrompt,
     pool,
   } = p;
+  // Pre-tournament card: size the event art so the whole page (banners above it included) fits the
+  // screen and the "Powered by" line at the bottom is never cut off. Grows back when there's room.
+  const baseArt = isMobile ? 220 : 260;
+  const [artH, setArtH] = useState(baseArt);
+  useLayoutEffect(() => {
+    if (!showFutureTournamentView) return;
+    const fit = () => {
+      const mark = document.querySelector('[aria-label="Powered by Tucker App Studio"]');
+      const box = mark?.parentElement;
+      const prev = box?.previousElementSibling;
+      if (!box || !prev) return;
+      const zoom = parseFloat(getComputedStyle(document.querySelector('.app-root') ?? document.body).getPropertyValue('--app-zoom')) || 1;
+      const overflow = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+      const spare = Math.max(0, box.getBoundingClientRect().top - prev.getBoundingClientRect().bottom - parseFloat(getComputedStyle(box).paddingTop));
+      setArtH((h) => {
+        const next = Math.round(Math.max(isMobile ? 110 : 130, Math.min(baseArt, h + (spare - overflow) / zoom)));
+        return Math.abs(next - h) < 2 ? h : next;
+      });
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(document.body);
+    window.addEventListener('resize', fit);
+    return () => { ro.disconnect(); window.removeEventListener('resize', fit); };
+  }, [showFutureTournamentView, selectedTournament, isMobile, baseArt]);
   return (
     <main
             style={{
@@ -264,7 +289,7 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      minHeight: isMobile ? 220 : 260,
+                      minHeight: artH,
                     }}
                   >
                     {TOURNAMENT_CARD_LOGOS[selectedTournament] ? (
@@ -275,8 +300,8 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                         alt={tournament.name}
                         style={{
                           maxWidth: '100%',
-                          maxHeight: (isMobile ? 220 : 260) * (selectedTournament === 'pga' ? 0.86 : selectedTournament === 'us-open' ? 0.9 : 1),
-                          height: (isMobile ? 220 : 260) * (selectedTournament === 'pga' ? 0.86 : selectedTournament === 'us-open' ? 0.9 : 1),
+                          maxHeight: artH * (selectedTournament === 'pga' ? 0.86 : selectedTournament === 'us-open' ? 0.9 : 1),
+                          height: artH * (selectedTournament === 'pga' ? 0.86 : selectedTournament === 'us-open' ? 0.9 : 1),
                           objectFit: 'contain',
                           display: 'block',
                           transform: selectedTournament === 'players' && pool?.id !== FOUNDER_POOL_ID ? (isMobile ? 'scale(0.9)' : undefined) : selectedTournament === 'players' ? 'translateY(10px) scale(1.12)' : selectedTournament === 'open' ? 'scale(1.18)' : selectedTournament === 'masters' && pool?.id !== FOUNDER_POOL_ID ? 'scale(0.7)' : undefined,
