@@ -515,7 +515,8 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                         </span>
                       </div>
                     ) : tournament.id === 'masters' ? (
-                      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: isMobile ? 6 : 10, width: '100%' }}>
+                      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: isMobile ? 6 : 10, width: '100%', boxSizing: 'border-box', paddingRight: !isMobile && pool?.id === FOUNDER_POOL_ID ? 18 : undefined }}>
+                        {/* Founder league, desktop: the ⓘ hangs off the end of "Leaderboard" without taking space, so pad the right by its width to center azalea + heading + ⓘ over the search bar. */}
                         {pool?.id === FOUNDER_POOL_ID ? (
                           // Founder league only: an azalea just left of "Masters". It takes up room in the row, so the
                           // azalea + "Masters Leaderboard" group is centered over the search bar; negative top/bottom
