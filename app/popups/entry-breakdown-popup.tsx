@@ -1,8 +1,9 @@
 'use client';
 
-import { TOURNAMENT_TAB_LOGOS, pgaPhoto, playerPhotoSrc, photoOnError, formatPointValue, formatPosition, formatTeeTime, formatCurrentRoundScore } from '../pool-data';
+import { TOURNAMENT_TAB_LOGOS, pgaPhoto, playerPhotoSrc, photoOnError, formatPointValue, formatPosition, formatTeeTime, formatCurrentRoundScore, FOUNDER_POOL_ID } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
 import { GmpBadge } from '../gmp-badge';
+import { TournamentWordmark } from '../tournament-wordmark';
 import { PoweredBy } from '../powered-by';
 
 // Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
@@ -32,6 +33,7 @@ export function EntryBreakdownPopup({ p }: { p: PoolPage }) {
     standings,
     activeStandingEntry,
     activeStandingGolfers,
+    pool,
   } = p;
   // Shown only when this is true (checked in app/page.tsx too).
   if (!(activeStandingEntry)) return null;
@@ -77,7 +79,7 @@ export function EntryBreakdownPopup({ p }: { p: PoolPage }) {
                     <div style={{ fontSize: isMobile ? 18 : 21, fontWeight: 900, color: '#fff', letterSpacing: '-0.01em' }}>{activeStandingEntry.name}</div>
                     {TOURNAMENT_TAB_LOGOS[selectedTournament] && (
                       <div style={{ flexShrink: 0, marginLeft: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <GmpBadge height={46} style={{ margin: "-6px 0" }} />
+                        {pool?.id === FOUNDER_POOL_ID ? <TournamentWordmark id={selectedTournament} white alt={tournament.fullName} width={120} height={40} /> : <GmpBadge height={46} style={{ margin: "-6px 0" }} />}
                       </div>
                     )}
                     <button
