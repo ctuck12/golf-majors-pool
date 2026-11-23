@@ -1,9 +1,8 @@
 'use client';
 
-import { TOURNAMENT_TAB_LOGOS, pgaPhoto, playerPhotoSrc, photoOnError, formatPointValue, formatPosition, formatTeeTime, formatCurrentRoundScore, FOUNDER_POOL_ID } from '../pool-data';
+import { TOURNAMENT_TAB_LOGOS, pgaPhoto, playerPhotoSrc, photoOnError, formatPointValue, formatPosition, formatTeeTime, formatCurrentRoundScore, FOUNDER_POOL_ID, KNOCKOUT_TAB_LOGOS } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
 import { GmpBadge } from '../gmp-badge';
-import { TournamentWordmark } from '../tournament-wordmark';
 import { PoweredBy } from '../powered-by';
 
 // Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
@@ -79,7 +78,7 @@ export function EntryBreakdownPopup({ p }: { p: PoolPage }) {
                     <div style={{ fontSize: isMobile ? 18 : 21, fontWeight: 900, color: '#fff', letterSpacing: '-0.01em' }}>{activeStandingEntry.name}</div>
                     {TOURNAMENT_TAB_LOGOS[selectedTournament] && (
                       <div style={{ flexShrink: 0, marginLeft: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {pool?.id === FOUNDER_POOL_ID ? <TournamentWordmark id={selectedTournament} white alt={tournament.fullName} width={120} height={40} /> : <GmpBadge height={46} style={{ margin: "-6px 0" }} />}
+                        {pool?.id === FOUNDER_POOL_ID ? <img src={KNOCKOUT_TAB_LOGOS[selectedTournament] ?? TOURNAMENT_TAB_LOGOS[selectedTournament]} alt={tournament.fullName} style={{ height: selectedTournament === 'pga' ? 60 : selectedTournament === 'players' ? 52 : selectedTournament === 'open' ? 40 : selectedTournament === 'masters' ? undefined : 36, width: selectedTournament === 'masters' ? 120 : undefined, margin: selectedTournament === 'pga' ? '-12px 0' : selectedTournament === 'players' ? '-8px 0' : undefined, maxWidth: 120, objectFit: 'contain', display: 'block', flexShrink: 0 }} /> : <GmpBadge height={46} style={{ margin: "-6px 0" }} />}
                       </div>
                     )}
                     <button

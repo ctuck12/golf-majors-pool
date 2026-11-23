@@ -2,10 +2,9 @@
 
 import { type CSSProperties } from 'react';
 import { canonicalNameKey } from '@/app/lib/name-match';
-import { getPlayerFlag, getFlagSrc, getCountryLabel, TOURNAMENT_TAB_LOGOS, PGA_CLUB_PROFESSIONALS, HeaderNameFlag, fitPopupHeader, formatTeeTime, FOUNDER_POOL_ID } from '../pool-data';
+import { getPlayerFlag, getFlagSrc, getCountryLabel, TOURNAMENT_TAB_LOGOS, PGA_CLUB_PROFESSIONALS, HeaderNameFlag, fitPopupHeader, formatTeeTime, FOUNDER_POOL_ID, KNOCKOUT_TAB_LOGOS } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
 import { GmpBadge } from '../gmp-badge';
-import { TournamentWordmark } from '../tournament-wordmark';
 
 // Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
 export function ScorecardPopup({ p }: { p: PoolPage }) {
@@ -103,7 +102,7 @@ export function ScorecardPopup({ p }: { p: PoolPage }) {
                       </div>
                       {TOURNAMENT_TAB_LOGOS[selectedTournament] && (
                       <div style={{ flexShrink: 0, marginLeft: 'auto', height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {pool?.id === FOUNDER_POOL_ID ? <TournamentWordmark id={selectedTournament} white alt={tournament.fullName} width={96} height={32} scale={fitPopupHeader(scorecardGolferName ?? '', scorecardGolferName ? getCountryLabel(scorecardGolferName) : null, 1140, isMobile ? 28 : 36, selectedTournament, isMobile, true, 32).shrinkLogo ? 0.75 : 1} /> : <GmpBadge height={34 * (fitPopupHeader(scorecardGolferName ?? '', scorecardGolferName ? getCountryLabel(scorecardGolferName) : null, 1140, isMobile ? 28 : 36, selectedTournament, isMobile, true, 32).shrinkLogo ? 0.75 : 1)} />}
+                        {pool?.id === FOUNDER_POOL_ID ? <img src={KNOCKOUT_TAB_LOGOS[selectedTournament] ?? TOURNAMENT_TAB_LOGOS[selectedTournament]} alt={tournament.fullName} style={{ height: selectedTournament === 'pga' ? (fitPopupHeader(scorecardGolferName ?? '', scorecardGolferName ? getCountryLabel(scorecardGolferName) : null, 1140, isMobile ? 28 : 36, selectedTournament, isMobile, true, 32).shrinkLogo ? 38 : 48) : selectedTournament === 'players' ? (fitPopupHeader(scorecardGolferName ?? '', scorecardGolferName ? getCountryLabel(scorecardGolferName) : null, 1140, isMobile ? 28 : 36, selectedTournament, isMobile, true, 32).shrinkLogo ? 34 : 42) : selectedTournament === 'open' ? (fitPopupHeader(scorecardGolferName ?? '', scorecardGolferName ? getCountryLabel(scorecardGolferName) : null, 1140, isMobile ? 28 : 36, selectedTournament, isMobile, true, 32).shrinkLogo ? 30 : 40) : selectedTournament === 'masters' ? undefined : (fitPopupHeader(scorecardGolferName ?? '', scorecardGolferName ? getCountryLabel(scorecardGolferName) : null, 1140, isMobile ? 28 : 36, selectedTournament, isMobile, true, 32).shrinkLogo ? 24 : 30), width: selectedTournament === 'masters' ? (fitPopupHeader(scorecardGolferName ?? '', scorecardGolferName ? getCountryLabel(scorecardGolferName) : null, 1140, isMobile ? 28 : 36, selectedTournament, isMobile, true, 32).shrinkLogo ? 74 : 96) : undefined, margin: selectedTournament === 'pga' ? '-12px 0' : selectedTournament === 'players' ? '-8px 0' : undefined, maxWidth: fitPopupHeader(scorecardGolferName ?? '', scorecardGolferName ? getCountryLabel(scorecardGolferName) : null, 1140, isMobile ? 28 : 36, selectedTournament, isMobile, true, 32).shrinkLogo ? 74 : 96, objectFit: 'contain', display: 'block', flexShrink: 0 }} /> : <GmpBadge height={34 * (fitPopupHeader(scorecardGolferName ?? '', scorecardGolferName ? getCountryLabel(scorecardGolferName) : null, 1140, isMobile ? 28 : 36, selectedTournament, isMobile, true, 32).shrinkLogo ? 0.75 : 1)} />}
                       </div>
                     )}
                     <button
