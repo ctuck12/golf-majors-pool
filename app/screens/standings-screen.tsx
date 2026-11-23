@@ -517,9 +517,10 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                     ) : tournament.id === 'masters' ? (
                       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: isMobile ? 6 : 10, width: '100%' }}>
                         {pool?.id === FOUNDER_POOL_ID ? (
-                          // Founder league only: an azalea just left of "Masters". Negative margins keep it from
-                          // making the heading taller or shifting it off center.
-                          <img src="/azalea.png" alt="" width={isMobile ? 48 : 52} height={isMobile ? 41 : 44} style={{ width: isMobile ? 48 : 52, height: isMobile ? 41 : 44, alignSelf: 'center', margin: isMobile ? '-11px -4px -11px -44px' : '-12px -8px -12px -44px', flexShrink: 0 }} />
+                          // Founder league only: an azalea just left of "Masters". It takes up room in the row, so the
+                          // azalea + "Masters Leaderboard" group is centered over the search bar; negative top/bottom
+                          // margins keep the heading from getting taller.
+                          <img src="/azalea.png" alt="" width={isMobile ? 48 : 52} height={isMobile ? 41 : 44} style={{ width: isMobile ? 48 : 52, height: isMobile ? 41 : 44, alignSelf: 'center', margin: isMobile ? '-11px -4px -11px 0' : '-12px -8px -12px 0', flexShrink: 0 }} />
                         ) : null}
                         <TournamentWordmark id="masters" alt="Masters" width={isMobile ? 120 : 136} height={isMobile ? 26 : 30} onBaseline />
                         <span style={{ fontSize: isMobile ? 21 : 25, fontWeight: 900, color: '#2c6449', lineHeight: 1, position: 'relative' }}>
