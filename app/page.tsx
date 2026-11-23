@@ -272,7 +272,7 @@ export default function Page() {
       {showHeaderCutInfo && <div onClick={() => setShowHeaderCutInfo(false)} style={{ position: 'fixed', inset: 0, zIndex: 9 }} />}
       {/* On the pre-tournament card the page is short: stretch it to the screen so the
           "Powered by" mark sits near the bottom instead of right under the card. */}
-      <div style={{ maxWidth: 1280, margin: '0 auto', padding: isMobile ? '2px 10px 32px' : '32px 20px 40px', ...(sessionUser && mainTab === 'Standings' && p.showFutureTournamentView ? { display: 'flex', flexDirection: 'column', minHeight: isMobile ? 'calc(100dvh / var(--app-zoom, 1) - 20px)' : 'calc(100dvh / var(--app-zoom, 1))', boxSizing: 'border-box' as const } : {}) }}>
+      <div style={{ maxWidth: 1280, margin: '0 auto', padding: isMobile ? '2px 10px 32px' : '32px 20px 40px', ...(sessionUser && mainTab === 'Standings' && p.showFutureTournamentView ? { display: 'flex', flexDirection: 'column', minHeight: 'calc(100dvh / var(--app-zoom, 1))', boxSizing: 'border-box' as const, ...(isMobile ? { paddingBottom: 28 } : {}) } : {}) }}>
         <header
           style={{
             background: headerBg,
