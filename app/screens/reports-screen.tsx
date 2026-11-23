@@ -2,11 +2,10 @@
 
 import { Fragment, type CSSProperties } from 'react';
 import { Search } from 'lucide-react';
-import { TOURNAMENTS, getPlayerFlag, getFlagSrc, getCountryLabel, TOURNAMENT_TAB_LOGOS, PICK_HISTORY_NAMES, pgaPhoto, playerPhotoSrc, photoOnError, REPORT_OPTIONS, REPORT_TOURNAMENTS, POOL_SEASONS, REPORT_TOURNAMENT_SOLID, PPS_ALL_BAR_GRADIENT, REPORT_TOURNAMENT_CHIP, formatLeaderboardPosition, type TournamentId } from '../pool-data';
+import { TOURNAMENTS, getPlayerFlag, getFlagSrc, getCountryLabel, PICK_HISTORY_NAMES, pgaPhoto, playerPhotoSrc, photoOnError, REPORT_OPTIONS, REPORT_TOURNAMENTS, POOL_SEASONS, REPORT_TOURNAMENT_SOLID, PPS_ALL_BAR_GRADIENT, REPORT_TOURNAMENT_CHIP, formatLeaderboardPosition, type TournamentId } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
 import { SeasonStandingsReport } from '../reports/season-standings';
 import { HallOfChampionsReport } from '../reports/hall-of-champions';
-import { TournamentWordmark } from '../tournament-wordmark';
 
 // Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
 export function ReportsScreen({ p }: { p: PoolPage }) {
@@ -80,7 +79,7 @@ export function ReportsScreen({ p }: { p: PoolPage }) {
                           <select
                             value={ppsTournament}
                             onChange={(e) => { const v = e.target.value as TournamentId | 'all' | ''; setPpsTournament(v); if (v === 'all') setPpsSortBy('Picked'); }}
-                            style={{ width: '100%', appearance: 'none', WebkitAppearance: 'none', background: '#fff', border: '1px solid #cdd9e5', borderRadius: 10, padding: isMobile ? '10px 24px 10px 8px' : '10px 34px 10px 12px', fontSize: isMobile ? 12 : 14, fontWeight: 700, color: ppsTournament === 'all' ? '#0f1720' : (ppsTournament ? 'transparent' : '#94a3b8'), WebkitTextFillColor: ppsTournament === 'all' ? '#0f1720' : (ppsTournament ? 'transparent' : '#94a3b8'), cursor: 'pointer', backgroundImage: 'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%235b6b79\' stroke-width=\'2.5\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><polyline points=\'6 9 12 15 18 9\'/></svg>")', backgroundRepeat: 'no-repeat', backgroundPosition: isMobile ? 'right 8px center' : 'right 10px center' }}
+                            style={{ width: '100%', appearance: 'none', WebkitAppearance: 'none', background: '#fff', border: '1px solid #cdd9e5', borderRadius: 10, padding: isMobile ? '10px 24px 10px 8px' : '10px 34px 10px 12px', fontSize: isMobile ? 12 : 14, fontWeight: 700, color: ppsTournament ? '#0f1720' : '#94a3b8', WebkitTextFillColor: ppsTournament ? '#0f1720' : '#94a3b8', cursor: 'pointer', backgroundImage: 'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%235b6b79\' stroke-width=\'2.5\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><polyline points=\'6 9 12 15 18 9\'/></svg>")', backgroundRepeat: 'no-repeat', backgroundPosition: isMobile ? 'right 8px center' : 'right 10px center' }}
                           >
                             <option value="" disabled style={{ color: '#94a3b8', WebkitTextFillColor: '#94a3b8' }}>Select tournament</option>
                             {REPORT_TOURNAMENTS.map((t) => (
@@ -88,11 +87,6 @@ export function ReportsScreen({ p }: { p: PoolPage }) {
                             ))}
                             <option value="all" style={{ color: '#0f1720', WebkitTextFillColor: '#0f1720' }}>All</option>
                           </select>
-                          {ppsTournament && ppsTournament !== 'all' && TOURNAMENT_TAB_LOGOS[ppsTournament] && (
-                            <span style={{ position: 'absolute', left: 12, right: 34, top: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'flex-start', pointerEvents: 'none' }}>
-                              <TournamentWordmark id={ppsTournament} alt={REPORT_TOURNAMENTS.find((t) => t.id === ppsTournament)?.label ?? ''} width={120} height={34} style={{ maxWidth: '100%', objectFit: 'contain' }} />
-                            </span>
-                          )}
                         </div>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 0, flex: isMobile ? '1.15 1 84px' : '0 0 200px' }}>
@@ -438,18 +432,13 @@ export function ReportsScreen({ p }: { p: PoolPage }) {
                         <select
                           value={ppfTournament}
                           onChange={(e) => { setPpfTournament(e.target.value as TournamentId | ''); setPpfSearch(''); setPpfSortKey('finish'); setPpfSortDir('asc'); setPpfSelectedRow(null); }}
-                          style={{ width: '100%', appearance: 'none', WebkitAppearance: 'none', background: '#fff', border: '1px solid #cdd9e5', borderRadius: 10, padding: '10px 34px 10px 12px', fontSize: 14, fontWeight: 700, color: ppfTournament ? 'transparent' : '#94a3b8', WebkitTextFillColor: ppfTournament ? 'transparent' : '#94a3b8', cursor: 'pointer', backgroundImage: 'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%235b6b79\' stroke-width=\'2.5\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><polyline points=\'6 9 12 15 18 9\'/></svg>")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
+                          style={{ width: '100%', appearance: 'none', WebkitAppearance: 'none', background: '#fff', border: '1px solid #cdd9e5', borderRadius: 10, padding: '10px 34px 10px 12px', fontSize: 14, fontWeight: 700, color: ppfTournament ? '#0f1720' : '#94a3b8', WebkitTextFillColor: ppfTournament ? '#0f1720' : '#94a3b8', cursor: 'pointer', backgroundImage: 'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%235b6b79\' stroke-width=\'2.5\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><polyline points=\'6 9 12 15 18 9\'/></svg>")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
                         >
                           <option value="" disabled style={{ color: '#94a3b8', WebkitTextFillColor: '#94a3b8' }}>Select tournament</option>
                           {REPORT_TOURNAMENTS.map((t) => (
                             <option key={t.id} value={t.id} style={{ color: '#0f1720', WebkitTextFillColor: '#0f1720' }}>{t.label}</option>
                           ))}
                         </select>
-                        {ppfTournament && TOURNAMENT_TAB_LOGOS[ppfTournament] && (
-                          <span style={{ position: 'absolute', left: 12, right: 34, top: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'flex-start', pointerEvents: 'none' }}>
-                            <TournamentWordmark id={ppfTournament} alt={REPORT_TOURNAMENTS.find((t) => t.id === ppfTournament)?.label ?? ''} width={120} height={34} style={{ maxWidth: '100%', objectFit: 'contain' }} />
-                          </span>
-                        )}
                       </div>
                     </div>
                   );
@@ -571,18 +560,13 @@ export function ReportsScreen({ p }: { p: PoolPage }) {
                         <select
                           value={pshTournament}
                           onChange={(e) => { const t = e.target.value as TournamentId | ''; setPshTournament(t); if (t) openTournamentHistory(t, pshYear); else setHistoryPopup(null); }}
-                          style={{ width: '100%', appearance: 'none', WebkitAppearance: 'none', background: '#fff', border: '1px solid #cdd9e5', borderRadius: 10, padding: '10px 34px 10px 12px', fontSize: 14, fontWeight: 700, color: pshTournament ? 'transparent' : '#94a3b8', WebkitTextFillColor: pshTournament ? 'transparent' : '#94a3b8', cursor: 'pointer', backgroundImage: 'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%235b6b79\' stroke-width=\'2.5\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><polyline points=\'6 9 12 15 18 9\'/></svg>")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
+                          style={{ width: '100%', appearance: 'none', WebkitAppearance: 'none', background: '#fff', border: '1px solid #cdd9e5', borderRadius: 10, padding: '10px 34px 10px 12px', fontSize: 14, fontWeight: 700, color: pshTournament ? '#0f1720' : '#94a3b8', WebkitTextFillColor: pshTournament ? '#0f1720' : '#94a3b8', cursor: 'pointer', backgroundImage: 'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%235b6b79\' stroke-width=\'2.5\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><polyline points=\'6 9 12 15 18 9\'/></svg>")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
                         >
                           <option value="" disabled style={{ color: '#94a3b8', WebkitTextFillColor: '#94a3b8' }}>Select tournament</option>
                           {REPORT_TOURNAMENTS.map((t) => (
                             <option key={t.id} value={t.id} style={{ color: '#0f1720', WebkitTextFillColor: '#0f1720' }}>{t.label}</option>
                           ))}
                         </select>
-                        {pshTournament && TOURNAMENT_TAB_LOGOS[pshTournament] && (
-                          <span style={{ position: 'absolute', left: 12, right: 34, top: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'flex-start', pointerEvents: 'none' }}>
-                            <TournamentWordmark id={pshTournament} alt={REPORT_TOURNAMENTS.find((t) => t.id === pshTournament)?.label ?? ''} width={120} height={34} style={{ maxWidth: '100%', objectFit: 'contain' }} />
-                          </span>
-                        )}
                       </div>
                     </div>
                   );
