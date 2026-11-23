@@ -269,8 +269,9 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                   >
                     {TOURNAMENT_CARD_LOGOS[selectedTournament] ? (
                       <img
-                        // The Masters' green jacket shows only in the founder league; other leagues get an azalea.
-                        src={selectedTournament === 'masters' && pool?.id !== FOUNDER_POOL_ID ? '/azalea-card.png' : TOURNAMENT_CARD_LOGOS[selectedTournament]}
+                        // Official event art (the green jacket, the Players trophy) shows only in the founder league;
+                        // other leagues get an azalea for the Masters and a clubhouse for The Players.
+                        src={pool?.id !== FOUNDER_POOL_ID && selectedTournament === 'masters' ? '/azalea-card.png' : pool?.id !== FOUNDER_POOL_ID && selectedTournament === 'players' ? '/clubhouse-card.png' : TOURNAMENT_CARD_LOGOS[selectedTournament]}
                         alt={tournament.name}
                         style={{
                           maxWidth: '100%',
@@ -278,7 +279,7 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                           height: (isMobile ? 220 : 260) * (selectedTournament === 'pga' ? 0.86 : selectedTournament === 'us-open' ? 0.9 : 1),
                           objectFit: 'contain',
                           display: 'block',
-                          transform: selectedTournament === 'players' ? 'translateY(10px) scale(1.12)' : selectedTournament === 'open' ? 'scale(1.18)' : selectedTournament === 'masters' && pool?.id !== FOUNDER_POOL_ID ? 'scale(0.7)' : undefined,
+                          transform: selectedTournament === 'players' && pool?.id !== FOUNDER_POOL_ID ? undefined : selectedTournament === 'players' ? 'translateY(10px) scale(1.12)' : selectedTournament === 'open' ? 'scale(1.18)' : selectedTournament === 'masters' && pool?.id !== FOUNDER_POOL_ID ? 'scale(0.7)' : undefined,
                         }}
                       />
                     ) : null}
