@@ -269,7 +269,8 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                   >
                     {TOURNAMENT_CARD_LOGOS[selectedTournament] ? (
                       <img
-                        src={TOURNAMENT_CARD_LOGOS[selectedTournament]}
+                        // The Masters' green jacket shows only in the founder league; other leagues get an azalea.
+                        src={selectedTournament === 'masters' && pool?.id !== FOUNDER_POOL_ID ? '/azalea-card.png' : TOURNAMENT_CARD_LOGOS[selectedTournament]}
                         alt={tournament.name}
                         style={{
                           maxWidth: '100%',
@@ -277,7 +278,7 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                           height: (isMobile ? 220 : 260) * (selectedTournament === 'pga' ? 0.86 : selectedTournament === 'us-open' ? 0.9 : 1),
                           objectFit: 'contain',
                           display: 'block',
-                          transform: selectedTournament === 'players' ? 'translateY(10px) scale(1.12)' : selectedTournament === 'open' ? 'scale(1.18)' : undefined,
+                          transform: selectedTournament === 'players' ? 'translateY(10px) scale(1.12)' : selectedTournament === 'open' ? 'scale(1.18)' : selectedTournament === 'masters' && pool?.id !== FOUNDER_POOL_ID ? 'scale(0.85)' : undefined,
                         }}
                       />
                     ) : null}
