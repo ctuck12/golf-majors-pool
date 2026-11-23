@@ -181,7 +181,7 @@ export function Modal({ title, onClose, children, zIndex = 1050 }: { title: Reac
         }}
       >
         <div style={{ background: navy, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <div style={{ color: '#fff', fontSize: 17, fontWeight: 900, display: 'flex', alignItems: 'center', gap: 6 }}>{title}</div>
+          <div style={{ color: '#fff', fontSize: 17, fontWeight: 900, display: 'flex', alignItems: 'center', gap: 6 }}><span>{title}</span></div>
           <button
             type="button"
             onClick={onClose}
@@ -275,7 +275,7 @@ export function VenmoModal<T>({
         <ErrorText>{error}</ErrorText>
         <div style={{ display: 'flex', gap: 8 }}>
           <button type="submit" disabled={busy || !value.trim()} style={{ ...primaryButton(busy, venmoBlue), flex: 1, opacity: busy || !value.trim() ? 0.6 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
-            {busy ? 'Saving…' : <>Save <VenmoMark /></>}
+            {busy ? 'Saving…' : <span>Save <VenmoMark /></span>}
           </button>
           {currentVenmo ? (
             <button type="button" disabled={busy} onClick={() => void save('')} style={secondaryButton}>
@@ -357,7 +357,7 @@ export function VenmoPrompt({
       }}
     >
       <div style={{ flex: '1 1 220px', minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 900, color: '#0f1720', display: 'flex', alignItems: 'center', gap: 5 }}>Add your <VenmoMark tone="blue" /></div>
+        <div style={{ fontSize: 14, fontWeight: 900, color: '#0f1720', display: 'flex', alignItems: 'center', gap: 5 }}><span>Add your <VenmoMark tone="blue" /></span></div>
         <div style={{ fontSize: 13, color: '#4a5a68', lineHeight: 1.4, marginTop: 2 }}>
           {isCommissioner
             ? 'So members can pay their entry fee the moment they submit their roster.'
@@ -366,7 +366,7 @@ export function VenmoPrompt({
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
         <button type="button" onClick={onAdd} style={{ ...primaryButton(false, venmoBlue), padding: '9px 14px', fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
-          Add <VenmoMark />
+          <span>Add <VenmoMark /></span>
         </button>
         <button type="button" onClick={snooze} style={{ ...secondaryButton, padding: '8px 12px', fontSize: 13 }}>
           Not now
@@ -441,7 +441,7 @@ export function EntryFeesModal<P>({
   return (
     <Modal title={<>Entry Fees &amp; <VenmoMark /></>} onClose={onClose}>
       <div style={{ fontSize: 14, color: '#3d4b58', lineHeight: 1.5 }}>
-        When a member submits their roster, <VenmoMark tone="blue" /> opens with the entry fee and &ldquo;Golf Majors Pool ⛳&rdquo; already filled in
+        When a member submits their roster, <VenmoMark tone="blue" />{' '}opens with the entry fee and &ldquo;Golf Majors Pool ⛳&rdquo; already filled in
         {commissionerVenmo ? <>, paying you at <b>{formatVenmo(commissionerVenmo)}</b></> : null}.
       </div>
 
@@ -450,7 +450,7 @@ export function EntryFeesModal<P>({
           Add your <VenmoMark tone="blue" /> so members can pay you in the app.
           <div style={{ marginTop: 10 }}>
             <button type="button" onClick={onAddVenmo} style={{ ...primaryButton(false, venmoBlue), padding: '9px 14px', fontSize: 14, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              Add your <VenmoMark />
+              <span>Add your <VenmoMark /></span>
             </button>
           </div>
         </div>
@@ -640,7 +640,7 @@ export function PayWinnersModal<P>({
                       onClick={() => pay(row)}
                       style={{ ...primaryButton(busyPlace === row.place, venmoBlue), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
                     >
-                      Pay {formatMoney(row.amount)} on <VenmoMark /> <ExternalLink size={15} />
+                      <span>Pay {formatMoney(row.amount)} on <VenmoMark /></span> <ExternalLink size={15} />
                     </button>
                     <button
                       type="button"

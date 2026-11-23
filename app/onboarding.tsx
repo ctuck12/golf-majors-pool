@@ -279,7 +279,7 @@ export function VenmoSetupStep<T>({
           Your commissioner sends winnings straight to your <VenmoMark tone="blue" />. Without it, getting paid takes longer.
         </div>
         <button type="button" onClick={() => setWarning(false)} style={{ ...primary(false, venmoBlue), width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
-          Add my <VenmoMark />
+          <span>Add my <VenmoMark /></span>
         </button>
         <button type="button" onClick={onDone} style={{ width: '100%', border: '1px solid #d7e0e8', borderRadius: 14, padding: '12px 16px', background: '#fff', color: '#0f1720', fontSize: 15, fontWeight: 800, cursor: 'pointer' }}>
           Skip for now
@@ -293,7 +293,7 @@ export function VenmoSetupStep<T>({
 
   return (
     <section style={card}>
-      <div style={{ fontSize: 22, fontWeight: 900, color: '#0f1720', display: 'flex', alignItems: 'center', gap: 7 }}>Add your <VenmoMark tone="blue" /></div>
+      <div style={{ fontSize: 22, fontWeight: 900, color: '#0f1720', display: 'flex', alignItems: 'center', gap: 7 }}><span>Add your <VenmoMark tone="blue" /></span></div>
       <div style={{ fontSize: 15, color: '#3d4b58', lineHeight: 1.55 }}>
         This is how you get paid if you win: your commissioner sends your winnings to your <VenmoMark tone="blue" /> right from the app.
         It also lets you pay your entry fee in one tap when you submit your picks.
@@ -321,7 +321,7 @@ export function VenmoSetupStep<T>({
         />
         {error ? <div style={{ fontSize: 13, color: '#a61b1b' }}>{error}</div> : null}
         <button type="submit" disabled={busy || !value.trim()} style={{ ...primary(busy, venmoBlue), opacity: busy || !value.trim() ? 0.6 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
-          {busy ? 'Saving…' : <>Save <VenmoMark /></>}
+          {busy ? 'Saving…' : <span>Save <VenmoMark /></span>}
         </button>
       </form>
       <button type="button" onClick={() => setWarning(true)} style={{ ...link, textAlign: 'center' }}>

@@ -98,7 +98,7 @@ export function SeasonStandingsReport({ p }: { p: PoolPage }) {
                           onClick={() => openVenmoPayment({ recipient: venmo, amount: amounts[i], note: `${season} GMP Season ${ordinal(i + 1)} Place` }, setVenmoFallbackUrl)}
                           style={{ border: 'none', borderRadius: 9, padding: '6px 8px', background: '#008CFF', color: '#fff', fontWeight: 800, fontSize: 12, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
                         >
-                          Pay on <VenmoMark height="0.85em" />
+                          <span>Pay on <VenmoMark height="0.85em" /></span>
                         </button>
                       ) : null}
                     </div>

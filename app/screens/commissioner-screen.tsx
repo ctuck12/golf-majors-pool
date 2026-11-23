@@ -172,7 +172,7 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                 boxShadow: '0 18px 40px rgba(9, 34, 51, 0.08)',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: isMobile ? 6 : 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: isAppAdmin ? (isMobile ? 6 : 14) : 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12, flexWrap: 'wrap' }}>
                   <div style={{ fontSize: 13, fontWeight: 800, textTransform: 'uppercase', color: '#5b6b79' }}>
                     Pool Status
@@ -202,6 +202,9 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                 </button>
                 </div>
               </div>
+              {/* Data source, last sync, lineup lock and picks open/closed are the app admin's to run, so
+                  only the app admin sees them. Commissioners read how picks and locking work in the guide. */}
+              {isAppAdmin ? (
               <div
                 style={{
                   display: 'grid',
@@ -285,6 +288,7 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                   </div>
                 </button>
               </div>
+              ) : null}
 
               {isAppAdmin ? (
               <>
@@ -491,7 +495,7 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                   { key: 'leagues', title: 'Leagues', sub: 'Switch, join, create or invite', Icon: Layers, open: () => setLeagueModalOpen(true), everyone: true },
                   { key: 'allLeagues', title: 'All Leagues', sub: 'Every league, its commissioner and plan', Icon: Users, open: () => setAdminLeaguesOpen(true), adminOnly: true },
                   { key: 'poolMessage', title: 'Message Your Pool', sub: `Tournament-week text for ${entriesTournament.name}`, Icon: MessageSquareText, open: () => setPoolMessageOpen(true) },
-                  { key: 'entryFees', title: <>Entry Fees &amp; <VenmoMark tone="blue" /></>, sub: pool?.venmo ? `Members pay ${formatVenmo(pool.venmo.handle)}` : 'Set fees and who collects them', Icon: DollarSign, open: () => setEntryFeesOpen(true) },
+                  { key: 'entryFees', title: <span>Entry Fees &amp; <VenmoMark tone="blue" /></span>, sub: pool?.venmo ? `Members pay ${formatVenmo(pool.venmo.handle)}` : 'Set fees and who collects them', Icon: DollarSign, open: () => setEntryFeesOpen(true) },
                   { key: 'feeTracker', title: 'Entry Fee Tracker', sub: 'Who has paid, and reminders', Icon: CheckCircle2, open: () => setFeeTrackerOpen(true) },
                   { key: 'payouts', title: 'Payouts', sub: pool?.payoutPlan ? 'Worked out from the pot automatically' : 'Set how the pot is split', Icon: Trophy, open: () => setPayoutPlanOpen(true) },
                   { key: 'season', title: 'Season Championship', sub: pool?.seasonFee ? `Season buy-in ${'$'}${pool.seasonFee}` : 'Season standings and an optional season prize', Icon: Award, open: () => setSeasonSettingsOpen(true) },

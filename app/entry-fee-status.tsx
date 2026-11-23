@@ -68,7 +68,7 @@ export function EntryFeeStatus({
       </span>
       {canPayInApp ? (
         <button type="button" onClick={onPay} style={{ border: 'none', borderRadius: 10, padding: '7px 12px', background: '#008CFF', color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-          Pay on <VenmoMark height="0.85em" />
+          <span>Pay on <VenmoMark height="0.85em" /></span>
         </button>
       ) : null}
       <button type="button" disabled={busy} onClick={() => void report(true)} style={small}>I already paid</button>

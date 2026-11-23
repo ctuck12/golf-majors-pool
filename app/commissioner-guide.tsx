@@ -177,11 +177,28 @@ export function CommissionerGuide<P>({
           </ul>
         </Section>
 
-        <Section title="3. Tournament week playbook" subtitle="What to do, day by day" open={openSection === 'week'} onToggle={() => toggle('week')}>
+        <Section title="3. Tournament week playbook" subtitle="When picks open and lock, and what to do each day" open={openSection === 'week'} onToggle={() => toggle('week')}>
+          <h3 style={h3}>When picks open</h3>
+          <p style={p}>
+            Picks open in every league at once, usually Monday of tournament week, as soon as the field is final and salaries are
+            set. Golf Majors Pool opens them for you; there&apos;s nothing to switch on. Until then, members see when the tournament
+            starts and when picks will open.
+          </p>
+          <h3 style={h3}>When lineups lock</h3>
+          <p style={p}>
+            Picks lock automatically at the first tee time on Thursday, for every league at the same moment. After that, members
+            can&apos;t change their own picks.
+          </p>
+          <h3 style={h3}>Helping members after the lock</h3>
+          <p style={p}>
+            You can still make or fix picks for any member after the lock, even during the tournament. Open <b>Member Management</b>,
+            tap the member, then <b>Manage or Submit Picks</b>. Use it for someone who texted you picks late or entered something by
+            mistake; it&apos;s your call, so set your rule with the group up front.
+          </p>
           {[
             ['Monday', <>The field and salaries go up and picks open in every league automatically. Send the <b>Message Your Pool</b> text to your group chat.</>],
             ['Mon – Wed', <>Members make picks and pay. Check <b>Member Management</b> to see who&apos;s in, and nudge anyone missing. A Wednesday-night reminder helps.</>],
-            ['Thursday', <>Picks lock automatically at the first tee time. Nothing to do. If someone texts you picks late, you can enter them for that person in <b>Member Management</b> (your call; set your rule up front).</>],
+            ['Thursday', <>Picks lock automatically at the first tee time. Nothing to do. If someone texts you picks late, enter them for that person in <b>Member Management</b> → <b>Manage or Submit Picks</b> (your call; set your rule up front).</>],
             ['Thu – Sun', <>Live scoring, points, bonuses and round leaders update on their own. Enjoy it, and expect some trash talk.</>],
             ['Sunday night', <>Results go final and the tiebreaker is settled automatically. Tap <b>Pay Winners</b> under the tournament name.</>],
           ].map(([day, text]) => (
