@@ -56,7 +56,7 @@ export function PointsSystemPopup({ p }: { p: PoolPage }) {
                 return (
                   <>
                     <div style={{ background: hBg, padding: isMobile ? '14px 16px 12px' : '16px 20px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-                      <div style={{ fontSize: isMobile ? 15 : 17, fontWeight: 900, color: '#fff', letterSpacing: '-0.01em' }}>Points System</div>
+                      <div style={{ fontSize: isMobile ? 18 : 20, fontWeight: 900, color: '#fff', letterSpacing: '-0.01em' }}>Points System</div>
                       {TOURNAMENT_TAB_LOGOS[selectedTournament] && (
                         <div style={{ flexShrink: 0, marginLeft: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <GmpBadge height={46} style={{ margin: "-6px 0" }} />
