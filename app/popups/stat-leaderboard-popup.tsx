@@ -3,6 +3,7 @@
 import { type ReactNode } from 'react';
 import { getFlagSrc, getCountryLabel } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
+import { GmpBadge } from '../gmp-badge';
 
 // Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
 export function StatLeaderboardPopup({ p }: { p: PoolPage }) {
@@ -56,7 +57,7 @@ export function StatLeaderboardPopup({ p }: { p: PoolPage }) {
                     {statLeaderboardModal.tourAvg && <div style={{ fontSize: 11, fontWeight: 500, color: '#8fa3b1', marginTop: 2 }}>{statLeaderboardModal.avgLabel ?? 'Tour Avg'}: <span style={{ fontWeight: 700, color: '#b8cad6' }}>{statLeaderboardModal.tourAvg}</span></div>}
                   </div>
                   {/* Negative margins: the logo may overhang into the header padding but never makes the header taller. */}
-                  <img src="/logo-popup.png" alt="Golf Majors Pool" width={140} height={42} style={{ width: 140, height: 42, margin: '-5px 0 -5px 10px', display: 'block', flexShrink: 0 }} />
+                  <GmpBadge height={40} style={{ margin: '-5px 0 -5px 10px' }} />
                   <button onClick={() => { setStatLeaderboardModal(null); setStatLbSearch(''); }} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 999, width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', fontSize: 16, fontWeight: 700, flexShrink: 0, marginLeft: 8 }}>×</button>
                 </div>
                 <div style={{ position: 'relative' }}>
