@@ -32,7 +32,7 @@ export function PlayerInfoPopup({ p }: { p: PoolPage }) {
   return (
     <div
             onClick={() => setPickHistoryPlayerPopup(null)}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,32,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 200 }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(9,20,34,0.65)', backdropFilter: 'blur(7px)', WebkitBackdropFilter: 'blur(7px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 200 }}
           >
             <div
               onClick={(e) => e.stopPropagation()}

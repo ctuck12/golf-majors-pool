@@ -44,7 +44,7 @@ export function StatLeaderboardPopup({ p }: { p: PoolPage }) {
           const alignItems = !kbUp ? 'center' : snapToBottom ? 'flex-end' : 'flex-start';
           const padding = !kbUp ? '24px' : `4px 16px ${kbPad}px`;
           return (
-          <div onClick={() => { setStatLeaderboardModal(null); setStatLbSearch(''); }} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,32,0.72)', display: 'flex', alignItems, justifyContent: 'center', padding, zIndex: 400 }}>
+          <div onClick={() => { setStatLeaderboardModal(null); setStatLbSearch(''); }} style={{ position: 'fixed', inset: 0, background: 'rgba(9,20,34,0.72)', backdropFilter: 'blur(7px)', WebkitBackdropFilter: 'blur(7px)', display: 'flex', alignItems, justifyContent: 'center', padding, zIndex: 400 }}>
             <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 380, overflow: 'hidden', boxShadow: '0 8px 40px rgba(0,0,0,0.35)' }}>
               <div style={{ background: '#0f1720', padding: '12px 18px 10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>

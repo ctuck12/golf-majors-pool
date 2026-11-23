@@ -23,7 +23,7 @@ export function PreviousRoundsPopup({ p }: { p: PoolPage }) {
   return (
     <div
             onClick={() => setShowPreviousRounds(false)}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,32,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 90 }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(9,20,34,0.62)', backdropFilter: 'blur(7px)', WebkitBackdropFilter: 'blur(7px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 90 }}
           >
             <div
               onClick={(e) => e.stopPropagation()}

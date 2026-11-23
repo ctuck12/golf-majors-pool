@@ -28,7 +28,7 @@ export function PickedByPopup({ p }: { p: PoolPage }) {
           const close = () => setPpsPickPopup(null);
           const flagSrc = getPlayerFlag(ppsPickPopup.name) ? getFlagSrc(ppsPickPopup.name) : null;
           return (
-            <div onClick={close} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,32,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 1000 }}>
+            <div onClick={close} style={{ position: 'fixed', inset: 0, background: 'rgba(9,20,34,0.62)', backdropFilter: 'blur(7px)', WebkitBackdropFilter: 'blur(7px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 1000 }}>
               <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(420px, calc(100vw - 32px))', maxHeight: '86vh', display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: 18, boxShadow: '0 24px 60px rgba(9,34,51,0.35)', overflow: 'hidden' }}>
                 <div style={{ background: headerColor, padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', minWidth: 0, flex: 1, color: '#fff', fontWeight: 900, whiteSpace: 'nowrap' }}>

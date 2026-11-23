@@ -15,7 +15,7 @@ export function WinsListPopup({ p }: { p: PoolPage }) {
   return (
     <div
             onClick={() => setWinsListPopup(null)}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,32,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 300 }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(9,20,34,0.62)', backdropFilter: 'blur(7px)', WebkitBackdropFilter: 'blur(7px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 300 }}
           >
             <div
               onClick={(e) => e.stopPropagation()}

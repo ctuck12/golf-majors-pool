@@ -32,7 +32,7 @@ export function RosterConfirmPopup({ p }: { p: PoolPage }) {
   return (
     <div
             onClick={() => setShowRosterConfirm(false)}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(9,34,51,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(9,20,34,0.62)', backdropFilter: 'blur(7px)', WebkitBackdropFilter: 'blur(7px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
           >
             <div
               onClick={(e) => e.stopPropagation()}

@@ -405,7 +405,7 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
             {poolLockModalOpen && (
               <div
                 onClick={() => setPoolLockModalOpen(false)}
-                style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,32,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 900 }}
+                style={{ position: 'fixed', inset: 0, background: 'rgba(9,20,34,0.62)', backdropFilter: 'blur(7px)', WebkitBackdropFilter: 'blur(7px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 900 }}
               >
                 <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(430px, calc(100vw - 32px))', background: '#fff', borderRadius: 18, boxShadow: '0 24px 60px rgba(9,34,51,0.35)', overflow: 'hidden' }}>
                   <div style={{ background: entriesTournamentSolid, padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
@@ -536,7 +536,7 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
             {poolToolModal !== null && (
               <div
                 onClick={() => { setPoolToolModal(null); setPoolToolConfirm(null); }}
-                style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,32,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 900 }}
+                style={{ position: 'fixed', inset: 0, background: 'rgba(9,20,34,0.62)', backdropFilter: 'blur(7px)', WebkitBackdropFilter: 'blur(7px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 900 }}
               >
                 <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(460px, calc(100vw - 32px))', maxHeight: 'calc(100vh - 40px - var(--safe-y))', overflowY: 'auto', background: '#fff', borderRadius: 18, boxShadow: '0 24px 60px rgba(9,34,51,0.35)' }}>
                   <div style={{ background: entriesTournamentSolid, borderRadius: '18px 18px 0 0', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
@@ -629,7 +629,7 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
 
             {/* ── Confirmation modal (on top of the tool modal) ───────────── */}
             {poolToolConfirm !== null && (
-              <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 1100 }} onClick={() => setPoolToolConfirm(null)}>
+              <div style={{ position: 'fixed', inset: 0, background: 'rgba(9,20,34,0.62)', backdropFilter: 'blur(7px)', WebkitBackdropFilter: 'blur(7px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 1100 }} onClick={() => setPoolToolConfirm(null)}>
                 <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(360px, calc(100vw - 32px))', background: '#fff', borderRadius: 18, padding: '26px 24px', boxShadow: '0 24px 60px rgba(0,0,0,0.28)', textAlign: 'center' }}>
                   <div style={{ fontSize: 17, fontWeight: 800, color: '#0f1720', marginBottom: 10 }}>{poolToolConfirm.title}</div>
                   <div style={{ fontSize: 13, color: '#5b6b79', lineHeight: 1.55, marginBottom: 22 }}>{poolToolConfirm.message}</div>
@@ -792,7 +792,7 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
               return (
                 <div
                   onClick={() => setPickPopularityPlayer(null)}
-                  style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,32,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 150 }}
+                  style={{ position: 'fixed', inset: 0, background: 'rgba(9,20,34,0.62)', backdropFilter: 'blur(7px)', WebkitBackdropFilter: 'blur(7px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 150 }}
                 >
                   <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(380px, calc(100vw - 32px))', maxHeight: 'calc(100vh - 40px - var(--safe-y))', background: '#fff', borderRadius: 18, boxShadow: '0 24px 60px rgba(9,34,51,0.35)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     <div style={{ background: entriesTournamentSolid, padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexShrink: 0 }}>
@@ -850,7 +850,7 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
               return (
                 <div
                   onClick={() => setSubmittedRosterMemberId(null)}
-                  style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,32,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 150 }}
+                  style={{ position: 'fixed', inset: 0, background: 'rgba(9,20,34,0.62)', backdropFilter: 'blur(7px)', WebkitBackdropFilter: 'blur(7px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 150 }}
                 >
                   <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(440px, calc(100vw - 32px))', maxHeight: 'calc(100vh - 40px - var(--safe-y))', background: '#fff', borderRadius: 18, boxShadow: '0 24px 60px rgba(9,34,51,0.35)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     <div style={{ background: entriesTournamentSolid, padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexShrink: 0 }}>

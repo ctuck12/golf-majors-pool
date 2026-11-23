@@ -519,7 +519,7 @@ export default function CommissionerSalaryPage() {
       {confirmOpen && (
         <div
           onClick={() => setConfirmOpen(false)}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,32,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 1000 }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(9,20,34,0.62)', backdropFilter: 'blur(7px)', WebkitBackdropFilter: 'blur(7px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 1000 }}
         >
           <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(380px, calc(100vw - 32px))', background: '#fff', borderRadius: 16, padding: '24px 22px', boxShadow: '0 24px 60px rgba(9,34,51,0.3)', textAlign: 'center' }}>
             <div style={{ fontSize: 17, fontWeight: 800, color: '#0f1720', marginBottom: 10 }}>Save &amp; apply this list?</div>

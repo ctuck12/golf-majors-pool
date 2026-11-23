@@ -150,7 +150,7 @@ export function BonusPointsPopup({ p }: { p: PoolPage }) {
           return (
             <div
               onClick={closeBonusPoints}
-              style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,32,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 90 }}
+              style={{ position: 'fixed', inset: 0, background: 'rgba(9,20,34,0.65)', backdropFilter: 'blur(7px)', WebkitBackdropFilter: 'blur(7px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 90 }}
             >
               <div
                 onClick={(e) => e.stopPropagation()}
@@ -257,7 +257,7 @@ export function BonusPointsPopup({ p }: { p: PoolPage }) {
                   </div>
 
                   {bonusInfoPopup && (
-                    <div onClick={() => setBonusInfoPopup(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,32,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, zIndex: 120 }}>
+                    <div onClick={() => setBonusInfoPopup(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(9,20,34,0.62)', backdropFilter: 'blur(7px)', WebkitBackdropFilter: 'blur(7px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, zIndex: 120 }}>
                       <div onClick={(e) => e.stopPropagation()} style={{ background: selectedTournament === 'open' ? '#F4BC41' : '#fff', borderRadius: 14, width: 'min(320px, 100%)', boxShadow: '0 18px 44px rgba(9,34,51,0.35)', overflow: 'hidden' }}>
                         <div style={{ background: bpHeaderBg, padding: '10px 12px 10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
                           <div style={{ fontSize: 13, fontWeight: 800, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{bonusInfoPopup.title}</div>

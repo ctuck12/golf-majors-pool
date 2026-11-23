@@ -163,7 +163,7 @@ export function ShareImageModal({ input, fileName, onClose }: { input: ShareCard
   };
 
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(9,20,34,0.82)', zIndex: 1300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(9,20,34,0.82)', backdropFilter: 'blur(7px)', WebkitBackdropFilter: 'blur(7px)', zIndex: 1300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(440px, 100%)', maxHeight: 'calc(100svh - 32px - var(--safe-y))', overflowY: 'auto', background: '#fff', borderRadius: 20, padding: 16, display: 'grid', gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ fontSize: 17, fontWeight: 900, color: '#0f1720' }}>Share</div>

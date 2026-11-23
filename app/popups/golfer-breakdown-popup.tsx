@@ -37,7 +37,9 @@ export function GolferBreakdownPopup({ p }: { p: PoolPage }) {
             style={{
               position: 'fixed',
               inset: 0,
-              background: 'rgba(15, 23, 32, 0.45)',
+              background: 'rgba(9,20,34,0.62)',
+              backdropFilter: 'blur(7px)',
+              WebkitBackdropFilter: 'blur(7px)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',

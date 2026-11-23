@@ -31,7 +31,7 @@ export function PointsSystemPopup({ p }: { p: PoolPage }) {
                 setActiveStandingEntryId(null);
               }
             }}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,32,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 95 }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(9,20,34,0.62)', backdropFilter: 'blur(7px)', WebkitBackdropFilter: 'blur(7px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 95 }}
           >
             <div
               onClick={(e) => e.stopPropagation()}

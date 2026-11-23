@@ -32,7 +32,7 @@ export function PickSummaryPlayerPopup({ p }: { p: PoolPage }) {
           const total = rows.reduce((s, r) => s + r.count, 0);
           const flagSrc = getPlayerFlag(player.name) ? getFlagSrc(player.name) : null;
           return (
-            <div onClick={close} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,32,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 1000 }}>
+            <div onClick={close} style={{ position: 'fixed', inset: 0, background: 'rgba(9,20,34,0.62)', backdropFilter: 'blur(7px)', WebkitBackdropFilter: 'blur(7px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 1000 }}>
               <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(500px, calc(100vw - 32px))', maxHeight: '86vh', display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: 18, boxShadow: '0 24px 60px rgba(9,34,51,0.35)', overflow: 'hidden' }}>
                 <div style={{ background: '#0f1720', padding: '0 14px 0 18px', height: 72, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                   <div style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>

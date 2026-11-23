@@ -844,7 +844,7 @@ export default function Page() {
               {forgotOpen && (
                 <div
                   onClick={() => setForgotOpen(false)}
-                  style={{ position: 'fixed', inset: 0, background: 'rgba(9,34,51,0.45)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+                  style={{ position: 'fixed', inset: 0, background: 'rgba(9,20,34,0.62)', backdropFilter: 'blur(7px)', WebkitBackdropFilter: 'blur(7px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
                 >
                   <div
                     onClick={(e) => e.stopPropagation()}
@@ -1414,7 +1414,7 @@ export default function Page() {
         {showTiebreakerRules && (
           <div
             onClick={() => setShowTiebreakerRules(false)}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,32,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 1000 }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(9,20,34,0.62)', backdropFilter: 'blur(7px)', WebkitBackdropFilter: 'blur(7px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 1000 }}
           >
             <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(480px, calc(100vw - 32px))', maxHeight: '86vh', display: 'flex', flexDirection: 'column', background: selectedTournament === 'open' ? '#F4BC41' : '#fff', borderRadius: 18, boxShadow: '0 24px 60px rgba(9,34,51,0.35)', overflow: 'hidden' }}>
               <div style={{ background: headerSolid, padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexShrink: 0 }}>
@@ -1462,7 +1462,7 @@ export default function Page() {
         {showRosterConfirm && <RosterConfirmPopup p={p} />}
 
         {showSubmitToast && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(9,34,51,0.5)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(9,20,34,0.62)', backdropFilter: 'blur(7px)', WebkitBackdropFilter: 'blur(7px)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
             <div style={{ background: entriesTournamentId === 'open' ? '#F4BC41' : '#fff', borderRadius: 18, padding: '24px 28px', boxShadow: '0 18px 48px rgba(9,34,51,0.3)', display: 'flex', alignItems: 'center', gap: 12 }}>
               <CheckCircle2 size={30} color="#1f8d4e" />
               <span style={{ fontSize: 17, fontWeight: 900, color: entriesTournamentId === 'open' ? entriesTournamentBg : '#0f1720' }}>
@@ -1478,7 +1478,7 @@ export default function Page() {
         {showSubmittedPicksPopup && (
           <div
             onClick={() => { setShowSubmittedPicksPopup(false); setSubmittedPicksSort('alpha'); }}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(9,34,51,0.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(9,20,34,0.62)', backdropFilter: 'blur(7px)', WebkitBackdropFilter: 'blur(7px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
           >
             <div
               onClick={(e) => e.stopPropagation()}
