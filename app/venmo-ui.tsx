@@ -443,6 +443,14 @@ export function EntryFeesModal<P>({
       <div style={{ fontSize: 14, color: '#3d4b58', lineHeight: 1.5 }}>
         When a member submits their roster, <VenmoMark tone="blue" />{' '}opens with the entry fee and &ldquo;Golf Majors Pool ⛳&rdquo; already filled in
         {commissionerVenmo ? <>, paying you at <b>{formatVenmo(commissionerVenmo)}</b></> : null}.
+        {commissionerVenmo ? (
+          <>
+            {' '}
+            <button type="button" onClick={onAddVenmo} style={{ background: 'none', border: 'none', padding: 0, color: '#2f5f96', fontWeight: 800, fontSize: 14, cursor: 'pointer', textDecoration: 'underline' }}>
+              Change
+            </button>
+          </>
+        ) : null}
       </div>
 
       {!commissionerVenmo ? (

@@ -4,7 +4,7 @@ import { type ReactNode } from 'react';
 import { VenmoMark } from '../venmo-mark';
 import { formatVenmo } from '@/app/lib/venmo';
 import { currentTournamentMeta, effectiveLockTime } from '@/app/lib/tournament-config';
-import { AlertCircle, ArrowLeft, Award, Layers, BookOpen, ChevronRight, Calendar, CircleUserRound, CheckCircle2, DollarSign, Eye, EyeOff, Lock, MessageSquareText, Pencil, RefreshCw, Save, Search, Send, Trophy, Users, Wallet } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Award, Layers, BookOpen, ChevronRight, Calendar, CircleUserRound, CheckCircle2, DollarSign, Eye, EyeOff, Lock, MessageSquareText, Pencil, RefreshCw, Save, Search, Send, Trophy, Users } from 'lucide-react';
 import { SALARY_CAP, REQUIRED_GOLFERS, totalParFor, TOURNAMENTS, getFlagSrc, getCountryLabel, TOURNAMENT_TAB_LOGOS, TOURNAMENT_EVENT_LOGOS, eventLogoStyle, pgaPhoto, playerPhotoSrc, photoOnError, MOBILE_TWO_LINE_NAMES, MOBILE_CUSTOM_SPLITS, utcToCentralInput, shouldShowPreTournamentView, formatRefresh, fieldStyle, FOUNDER_POOL_ID } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
 import { TournamentWordmark } from '../tournament-wordmark';
@@ -500,7 +500,6 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                   { key: 'payouts', title: 'Payouts', sub: pool?.payoutPlan ? 'Worked out from the pot automatically' : 'Set how the pot is split', Icon: Trophy, open: () => setPayoutPlanOpen(true) },
                   { key: 'season', title: 'Season Championship', sub: pool?.seasonFee ? `Season buy-in ${'$'}${pool.seasonFee}` : 'Season standings and an optional season prize', Icon: Award, open: () => setSeasonSettingsOpen(true) },
                   { key: 'payWinners', title: 'Pay Winners', sub: <>Send winnings on <VenmoMark tone="blue" /> once final</>, Icon: Send, open: () => setPayWinnersOpen(true) },
-                  { key: 'myVenmo', title: 'Your Venmo', sub: sessionUser?.venmo ? formatVenmo(sessionUser.venmo) : 'Add your Venmo', Icon: Wallet, open: () => setVenmoModalOpen(true) },
                   { key: 'markStatus' as const, title: 'Mark WD / DQ / MDF', sub: "Override a player's status", Icon: AlertCircle },
                   { key: 'roundLeader' as const, title: 'Round Leader Tools', sub: 'Clear a mis-captured round leader', Icon: RefreshCw },
                   { key: 'tiebreak' as const, title: 'Tiebreak Score', sub: 'Enter / override total strokes', Icon: Save },
