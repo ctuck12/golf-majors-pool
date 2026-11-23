@@ -5,7 +5,7 @@ import { applyNameAlias } from '@/app/lib/name-aliases';
 import { SCORING_RULES } from '../lib/scoring';
 import { getFlagSrc, getCountryLabel, TOURNAMENT_TAB_LOGOS } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
-import { GmpBadge, GmpLogo } from '../gmp-badge';
+import { GmpBadge } from '../gmp-badge';
 
 // Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
 export function BonusPointsPopup({ p }: { p: PoolPage }) {
@@ -166,7 +166,7 @@ export function BonusPointsPopup({ p }: { p: PoolPage }) {
                   </div>
                   {TOURNAMENT_TAB_LOGOS[selectedTournament] && (
                     <div style={{ flexShrink: 0, marginLeft: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <GmpLogo height={50} style={{ margin: "-8px 0" }} />
+                      <GmpBadge height={46} style={{ margin: "-6px 0" }} />
                     </div>
                   )}
                   <button onClick={closeBonusPoints} style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 10, cursor: 'pointer', color: '#fff', width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0, marginLeft: 12 }}>✕</button>
