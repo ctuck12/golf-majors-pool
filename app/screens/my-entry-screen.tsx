@@ -2,7 +2,7 @@
 
 import { latestStartedSeason, picksSeason } from '@/app/lib/tournament-config';
 import { ArrowLeft, CircleUserRound, CheckCircle2, History, MoreVertical, Pencil, Search } from 'lucide-react';
-import { SALARY_CAP, REQUIRED_GOLFERS, totalParFor, TOURNAMENTS, TOURNAMENT_PICKS_HEADER, PICKS_HEADER_LOGO_H, TOURNAMENT_ENTRIES_INTRO, TOURNAMENT_TAB_LOGOS, TOURNAMENT_EVENT_LOGOS, eventLogoStyle, PICK_HISTORY_NAMES, pgaPhoto, playerPhotoSrc, photoOnError, MOBILE_TWO_LINE_NAMES, MOBILE_CUSTOM_SPLITS, rosterInSeason, fieldStyle } from '../pool-data';
+import { SALARY_CAP, REQUIRED_GOLFERS, totalParFor, TOURNAMENTS, TOURNAMENT_PICKS_HEADER, PICKS_HEADER_LOGO_H, TOURNAMENT_ENTRIES_INTRO, TOURNAMENT_TAB_LOGOS, TOURNAMENT_EVENT_LOGOS, eventLogoStyle, PICK_HISTORY_NAMES, pgaPhoto, playerPhotoSrc, photoOnError, MOBILE_TWO_LINE_NAMES, MOBILE_CUSTOM_SPLITS, rosterInSeason, fieldStyle, FOUNDER_POOL_ID } from '../pool-data';
 import { useState } from 'react';
 import { Share2 } from 'lucide-react';
 import { EntryFeeStatus } from '../entry-fee-status';
@@ -639,7 +639,7 @@ export function MyEntryScreen({ p }: { p: PoolPage }) {
                             <span style={{ fontSize: isMobile ? 12 : 14, fontStyle: 'italic' }}>Par: {entriesTournamentPar}</span>
                           </div>
                         </div>
-                        {TOURNAMENT_EVENT_LOGOS[entriesTournamentId] && (
+                        {pool?.id === FOUNDER_POOL_ID && TOURNAMENT_EVENT_LOGOS[entriesTournamentId] && (
                           <img src={TOURNAMENT_EVENT_LOGOS[entriesTournamentId]} alt={entriesTournament.name} style={eventLogoStyle(entriesTournamentId, isMobile, isLandscapePhone)} />
                         )}
                         <label
@@ -836,7 +836,7 @@ export function MyEntryScreen({ p }: { p: PoolPage }) {
                             <span style={{ fontSize: isMobile ? 12 : 14, fontStyle: 'italic' }}>Par: {entriesTournamentPar}</span>
                           </div>
                         </div>
-                        {TOURNAMENT_EVENT_LOGOS[entriesTournamentId] && (
+                        {pool?.id === FOUNDER_POOL_ID && TOURNAMENT_EVENT_LOGOS[entriesTournamentId] && (
                           <img src={TOURNAMENT_EVENT_LOGOS[entriesTournamentId]} alt={entriesTournament.name} style={eventLogoStyle(entriesTournamentId, isMobile, isLandscapePhone)} />
                         )}
                         <label
