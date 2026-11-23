@@ -467,10 +467,13 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                   </div>
                 </div>
             )}
-            {/* Last thing in the pool leaderboard box (the page-bottom one is skipped on this tab). */}
-            <div style={{ paddingTop: isMobile ? 16 : 20, paddingBottom: isMobile ? 2 : 4 }}>
-              <PoweredBy size={isMobile ? 0.8 : 0.9} />
-            </div>
+            {/* Last thing in the pool leaderboard box. The pre-tournament card has no leaderboard, so
+                there the page-bottom one shows instead (see app/page.tsx). */}
+            {!showFutureTournamentView ? (
+              <div style={{ paddingTop: isMobile ? 16 : 20, paddingBottom: isMobile ? 2 : 4 }}>
+                <PoweredBy size={isMobile ? 0.8 : 0.9} />
+              </div>
+            ) : null}
             </section>
 
             <aside style={{ display: showFutureTournamentView ? 'none' : 'grid', gap: 20, alignSelf: isMobile ? undefined : 'start' }}>
