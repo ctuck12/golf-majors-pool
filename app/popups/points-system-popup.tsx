@@ -3,6 +3,7 @@
 import { TOURNAMENT_TAB_LOGOS } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
 import { GmpBadge } from '../gmp-badge';
+import { PoweredBy } from '../powered-by';
 
 // Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
 export function PointsSystemPopup({ p }: { p: PoolPage }) {
@@ -74,6 +75,9 @@ export function PointsSystemPopup({ p }: { p: PoolPage }) {
                         <div>
                           {group('Finishing Position', [['🥇 1st Place', '+40 pts'], ['🥈 2nd Place', '+25 pts'], ['🥉 3rd Place', '+20 pts'], ['4th Place', '+18 pts'], ['5th Place', '+16 pts'], ['6th Place', '+14 pts'], ['7th Place', '+12 pts'], ['8th Place', '+10 pts'], ['9th Place', '+9 pts'], ['10th Place', '+8 pts'], ['11–15th', '+7 pts'], ['16–20th', '+6 pts'], ['21–25th', '+5 pts'], ['26–30th', '+3 pts'], ['31–40th', '+1 pt'], ['Missed Cut', '−10 pts', true]])}
                         </div>
+                      </div>
+                      <div style={{ paddingTop: isMobile ? 14 : 18 }}>
+                        <PoweredBy size={0.8} />
                       </div>
                     </div>
                   </>

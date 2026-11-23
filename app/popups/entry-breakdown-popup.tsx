@@ -3,6 +3,7 @@
 import { TOURNAMENT_TAB_LOGOS, pgaPhoto, playerPhotoSrc, photoOnError, formatPointValue, formatPosition, formatTeeTime, formatCurrentRoundScore } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
 import { GmpBadge } from '../gmp-badge';
+import { PoweredBy } from '../powered-by';
 
 // Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
 export function EntryBreakdownPopup({ p }: { p: PoolPage }) {
@@ -261,6 +262,9 @@ export function EntryBreakdownPopup({ p }: { p: PoolPage }) {
                 <div style={{ fontSize: 15, fontWeight: 900, color: '#0f1720' }}>
                   <span style={{ color: selectedTournament === 'masters' ? '#2e7d32' : '#173b63' }}>Total:</span> <span style={{ color: '#000' }}>{formatPointValue(activeStandingEntry.rosterPoints)}</span>
                 </div>
+              </div>
+              <div style={{ paddingTop: 4 }}>
+                <PoweredBy size={0.8} />
               </div>
             </div>
           </div>

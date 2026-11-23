@@ -1322,6 +1322,12 @@ export default function Page() {
 
         {mainTab === 'Commissioner Hub' && <CommissionerScreen p={p} />}
 
+        {sessionUser ? (
+          <div style={{ marginTop: isMobile ? 26 : 36 }}>
+            <PoweredBy size={isMobile ? 0.85 : 0.95} />
+          </div>
+        ) : null}
+
         {commissionerMemberModalOpen && selectedCommissionerMember ? <MemberEditModal p={p} /> : null}
 
         {activeStandingEntry ? <EntryBreakdownPopup p={p} /> : null}
