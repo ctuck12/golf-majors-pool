@@ -5,6 +5,7 @@ import { CheckCircle2, Lock, Pencil, RefreshCw, Trophy } from 'lucide-react';
 import { FOUNDER_POOL_ID, REQUIRED_GOLFERS, TOURNAMENT_LEADERBOARD_HEADER, TOURNAMENT_CARD_LOGOS, TOURNAMENT_HEADING_LOGOS, FitOneLineText, formatRefresh, readJson, formatLeaderboardPosition, formatTeeTime, teeTimeIsPast, type FeedResponse } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
 import { TournamentWordmark } from '../tournament-wordmark';
+import { PoweredBy } from '../powered-by';
 
 // Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
 export function StandingsScreen({ p }: { p: PoolPage }) {
@@ -466,6 +467,10 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                   </div>
                 </div>
             )}
+            {/* Last thing in the pool leaderboard box (the page-bottom one is skipped on this tab). */}
+            <div style={{ paddingTop: isMobile ? 16 : 20, paddingBottom: isMobile ? 2 : 4 }}>
+              <PoweredBy size={isMobile ? 0.8 : 0.9} />
+            </div>
             </section>
 
             <aside style={{ display: showFutureTournamentView ? 'none' : 'grid', gap: 20, alignSelf: isMobile ? undefined : 'start' }}>

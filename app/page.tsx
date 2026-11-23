@@ -1322,7 +1322,7 @@ export default function Page() {
 
         {mainTab === 'Commissioner Hub' && <CommissionerScreen p={p} />}
 
-        {sessionUser ? (
+        {sessionUser && mainTab !== 'Standings' ? (
           <div style={{ marginTop: isMobile ? 26 : 36 }}>
             <PoweredBy size={isMobile ? 0.85 : 0.95} />
           </div>
