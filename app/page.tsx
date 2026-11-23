@@ -40,6 +40,7 @@ import { WinsListPopup } from './popups/wins-list-popup';
 import { PickSummaryPlayerPopup } from './popups/pick-summary-player-popup';
 import { PickedByPopup } from './popups/picked-by-popup';
 import { GmpBadge } from './gmp-badge';
+import { PoweredBy } from './powered-by';
 
 // How each event reads in "It's ___ week!".
 const WEEK_NAMES: Record<TournamentId, string> = {
@@ -677,7 +678,8 @@ export default function Page() {
             style={{
               marginTop: 24,
               display: 'flex',
-              justifyContent: 'center',
+              flexDirection: 'column',
+              alignItems: 'center',
             }}
           >
             <div
@@ -953,6 +955,9 @@ export default function Page() {
                   </div>
                 </div>
               )}
+            </div>
+            <div style={{ marginTop: isMobile ? 28 : 36, marginBottom: 8 }}>
+              <PoweredBy size={isMobile ? 0.95 : 1} />
             </div>
           </section>
         ) : (
