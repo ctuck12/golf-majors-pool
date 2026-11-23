@@ -519,7 +519,7 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                         {pool?.id === FOUNDER_POOL_ID ? (
                           // Founder league only: an azalea just left of "Masters". Negative margins keep it from
                           // making the heading taller or shifting it off center.
-                          <img src="/azalea.png" alt="" width={isMobile ? 40 : 38} height={isMobile ? 34 : 32} style={{ width: isMobile ? 40 : 38, height: isMobile ? 34 : 32, alignSelf: 'center', margin: isMobile ? '-8px -2px -8px -42px' : '-8px 4px -8px -36px', flexShrink: 0 }} />
+                          <img src="/azalea.png" alt="" width={isMobile ? 40 : 52} height={isMobile ? 34 : 44} style={{ width: isMobile ? 40 : 52, height: isMobile ? 34 : 44, alignSelf: 'center', margin: isMobile ? '-8px -2px -8px -42px' : '-12px -8px -12px -44px', flexShrink: 0 }} />
                         ) : null}
                         <TournamentWordmark id="masters" alt="Masters" width={isMobile ? 120 : 136} height={isMobile ? 26 : 30} onBaseline />
                         <span style={{ fontSize: isMobile ? 21 : 25, fontWeight: 900, color: '#2c6449', lineHeight: 1, position: 'relative' }}>
