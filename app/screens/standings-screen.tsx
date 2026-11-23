@@ -200,12 +200,9 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                     </span>
                   </div>
                 ) : null}
-                {/* Trophies show only in the founder league; every other league's card leaves the spot empty. */}
+                {/* The tournament emblems show only in the founder league; every other league's card leaves the spot empty. */}
                 {pool?.id === FOUNDER_POOL_ID && (selectedTournament === 'open' || selectedTournament === 'us-open' || selectedTournament === 'pga' || selectedTournament === 'masters' || selectedTournament === 'players') && showLivePayoutStrip && (
-                  // Each major's trophy, cut from the Golf Majors Pool logo (the Masters' is the silver
-                  // clubhouse). Same box for all five. On phones the four tall trophies sit a few px lower so
-                  // their tops stay clear of the payout chips (the low clubhouse doesn't need it).
-                  <img src={`/trophies/${selectedTournament}.png`} alt="" style={{ position: 'absolute', left: '54%', top: (isTournamentFinal && !showFutureTournamentView) ? (isMobile ? '78%' : '70%') : (isMobile ? '108%' : '75%'), transform: `translate(-50%, calc(-50% + ${isMobile && selectedTournament !== 'masters' ? 5 : 0}px))`, width: isMobile ? 70 : 96, height: isMobile ? 54 : 76, objectFit: 'contain', objectPosition: 'center bottom', pointerEvents: 'none' }} />
+                  <img src={selectedTournament === 'open' ? '/open-o-logo.png' : selectedTournament === 'us-open' ? '/us-open-trophy-logo.png' : selectedTournament === 'masters' ? '/masters-map-logo.png' : selectedTournament === 'players' ? '/players-golfer-logo.png' : '/pga-seal-gold.png'} alt="" style={{ position: 'absolute', left: selectedTournament === 'us-open' ? '54.5%' : '54%', top: (isTournamentFinal && !showFutureTournamentView) ? (selectedTournament === 'us-open' ? (isMobile ? '83%' : '72%') : selectedTournament === 'players' ? (isMobile ? '85%' : '75%') : (isMobile ? '80%' : '70%')) : (isMobile ? '108%' : '75%'), transform: 'translate(-50%, -50%)', height: selectedTournament === 'us-open' ? (isMobile ? 57 : 85) : selectedTournament === 'pga' ? (isMobile ? 46 : 60) : selectedTournament === 'masters' ? (isMobile ? 46 : 60) : selectedTournament === 'players' ? (isMobile ? 63 : 86) : (isMobile ? 40 : 54), width: 'auto', objectFit: 'contain', pointerEvents: 'none' }} />
                 )}
               </div>
               {!feed?.tournamentComplete && (feed?.currentRound ?? 0) > 0 && (
