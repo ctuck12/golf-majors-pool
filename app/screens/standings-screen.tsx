@@ -2,7 +2,7 @@
 
 import { Fragment, type CSSProperties } from 'react';
 import { CheckCircle2, Lock, Pencil, RefreshCw, Trophy } from 'lucide-react';
-import { REQUIRED_GOLFERS, TOURNAMENT_LEADERBOARD_HEADER, TOURNAMENT_CARD_LOGOS, TOURNAMENT_HEADING_LOGOS, FitOneLineText, formatRefresh, readJson, formatLeaderboardPosition, formatTeeTime, teeTimeIsPast, type FeedResponse } from '../pool-data';
+import { FOUNDER_POOL_ID, REQUIRED_GOLFERS, TOURNAMENT_LEADERBOARD_HEADER, TOURNAMENT_CARD_LOGOS, TOURNAMENT_HEADING_LOGOS, FitOneLineText, formatRefresh, readJson, formatLeaderboardPosition, formatTeeTime, teeTimeIsPast, type FeedResponse } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
 import { TournamentWordmark } from '../tournament-wordmark';
 
@@ -86,6 +86,7 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
     entriesTournamentBg,
     entriesTournamentSolid,
     showPayWinnersPrompt,
+    pool,
   } = p;
   return (
     <main
@@ -192,7 +193,8 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                     </span>
                   </div>
                 ) : null}
-                {(selectedTournament === 'open' || selectedTournament === 'us-open' || selectedTournament === 'pga' || selectedTournament === 'masters' || selectedTournament === 'players') && showLivePayoutStrip && (
+                {/* Trophies show only in the founder league; every other league's card leaves the spot empty. */}
+                {pool?.id === FOUNDER_POOL_ID && (selectedTournament === 'open' || selectedTournament === 'us-open' || selectedTournament === 'pga' || selectedTournament === 'masters' || selectedTournament === 'players') && showLivePayoutStrip && (
                   // Each major's trophy, cut from the Golf Majors Pool logo (the Masters' is the silver
                   // clubhouse). Same box for all five. On phones the four tall trophies sit a few px lower so
                   // their tops stay clear of the payout chips (the low clubhouse doesn't need it).
