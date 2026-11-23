@@ -1331,7 +1331,8 @@ export default function Page() {
         {mainTab === 'Commissioner Hub' && <CommissionerScreen p={p} />}
 
         {sessionUser && (mainTab !== 'Standings' || p.showFutureTournamentView) ? (
-          <div style={{ marginTop: mainTab === 'Standings' ? 'auto' : (isMobile ? 26 : 36), paddingTop: mainTab === 'Standings' ? (isMobile ? 26 : 36) : 0 }}>
+          // Extra room underneath on phones so the line clears the home bar at the end of every page.
+          <div style={{ marginTop: mainTab === 'Standings' ? 'auto' : (isMobile ? 26 : 36), paddingTop: mainTab === 'Standings' ? (isMobile ? 26 : 36) : 0, paddingBottom: isMobile ? 18 : 0 }}>
             <PoweredBy size={isMobile ? 0.85 : 0.95} />
           </div>
         ) : null}
