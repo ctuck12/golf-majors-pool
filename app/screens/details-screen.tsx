@@ -75,7 +75,7 @@ export function DetailsScreen({ p }: { p: PoolPage }) {
                           <div style={{ marginTop: 4, fontSize: isMobile ? 20 : 30, fontWeight: 900, color: '#173b63' }}>{pool?.entryFees?.[selectedTournament] ? formatMoney(pool.entryFees[selectedTournament]!) : '—'}</div>
                         </div>
                         <div style={{ border: '1px solid #dce8f5', borderRadius: isMobile ? 10 : 12, padding: isMobile ? '8px 10px' : '10px 14px', background: '#fff', minWidth: 0 }}>
-                          {pool?.venmo || !pool?.paymentNote ? (
+                          {pool?.venmoEnabled !== false && (pool?.venmo || !pool?.paymentNote) ? (
                             <>
                               <div style={{ fontSize: 9, textTransform: 'uppercase', fontWeight: 800, color: '#5b6b79', letterSpacing: '0.07em' }}><VenmoMark tone="blue" height="11px" /></div>
                               <div style={{ marginTop: 4, fontSize: isMobile ? 13 : 16, fontWeight: 800, color: '#173b63', overflowWrap: 'anywhere' }}>{pool?.venmo ? formatVenmo(pool.venmo.handle) : '—'}</div>
@@ -83,7 +83,7 @@ export function DetailsScreen({ p }: { p: PoolPage }) {
                           ) : (
                             <>
                               <div style={{ fontSize: 9, textTransform: 'uppercase', fontWeight: 800, color: '#5b6b79', letterSpacing: '0.07em' }}>How to pay</div>
-                              <div style={{ marginTop: 4, fontSize: isMobile ? 12 : 14, fontWeight: 700, color: '#173b63', overflowWrap: 'anywhere', lineHeight: 1.35 }}>{pool.paymentNote}</div>
+                              <div style={{ marginTop: 4, fontSize: isMobile ? 12 : 14, fontWeight: 700, color: '#173b63', overflowWrap: 'anywhere', lineHeight: 1.35 }}>{pool?.paymentNote || 'Ask your commissioner'}</div>
                             </>
                           )}
                         </div>

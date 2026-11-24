@@ -115,8 +115,10 @@ export const setLeaguePayoutPlan = async (userId: string, plan: PayoutPlan | nul
   (await postgresOnly()).setLeaguePayoutPlan(userId, plan);
 export const clearPoolPayouts = async (userId: string, tournamentId: TournamentId) =>
   (await postgresOnly()).clearPoolPayouts(userId, tournamentId);
-export const createLeague = async (userId: string, input: { name: string; plan: string; memberLimit: number | null }) =>
+export const createLeague = async (userId: string, input: { name: string; plan: string; memberLimit: number | null; venmoEnabled?: boolean }) =>
   (await postgresOnly()).createLeague(userId, input);
+export const setLeagueVenmoEnabled = async (userId: string, enabled: boolean) =>
+  (await postgresOnly()).setLeagueVenmoEnabled(userId, enabled);
 export const switchActiveLeague = async (userId: string, leagueId: string) =>
   (await postgresOnly()).switchActiveLeague(userId, leagueId);
 export const setMemberRole = async (requestingUserId: string, memberId: string, role: LeagueRole) =>

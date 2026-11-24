@@ -100,7 +100,9 @@ export type SessionPool = Omit<PublicPool, 'winnerScores'> & {
   seasonExpired: boolean;
   memberCount: number;
   commissioners: LeagueContact[];
-  // The commissioner's Venmo, which entry fees go to (null until they add it).
+  // Whether this league uses Venmo (entry fees through Venmo, Pay Winners on Venmo, Venmo prompts).
+  venmoEnabled?: boolean;
+  // The commissioner's Venmo, which entry fees go to (null until they add it, or when Venmo is off).
   venmo?: LeagueVenmo | null;
   // Commissioners only: winners already paid this season, per tournament.
   payoutsSent?: Partial<Record<TournamentId, PayoutSent[]>>;

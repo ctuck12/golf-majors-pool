@@ -460,7 +460,7 @@ export default function Page() {
                       League: <span style={{ fontWeight: 800, color: '#173b63' }}>{pool.name}</span>
                     </div>
                   ) : null}
-                  {accountPreferencesView === 'root' ? (
+                  {accountPreferencesView === 'root' && pool?.venmoEnabled !== false ? (
                     <button
                       type="button"
                       onClick={() => { setAccountMenuOpen(false); setVenmoModalOpen(true); }}
@@ -1054,6 +1054,13 @@ export default function Page() {
             onClose={() => setEntryFeesOpen(false)}
             onPool={(next) => setPool((current) => (current ? { ...current, ...next } : next))}
             onAddVenmo={() => { setEntryFeesOpen(false); setVenmoModalOpen(true); }}
+            venmoEnabled={pool.venmoEnabled !== false}
+            onVenmoEnabled={async (enabled) => {
+              const res = await fetch('/api/commissioner/venmo', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled }) });
+              const payload = (await res.json().catch(() => ({}))) as SessionPayload & { error?: string };
+              if (!res.ok) throw new Error(payload.error ?? 'Unable to change that setting.');
+              applySession(payload);
+            }}
           />
         ) : null}
 
@@ -1067,6 +1074,7 @@ export default function Page() {
             payouts={selectedTournamentPayouts}
             sent={pool.payoutsSent?.[selectedTournament] ?? []}
             currentUserId={sessionUser?.id ?? ''}
+            venmoEnabled={pool.venmoEnabled !== false}
             onClose={() => setPayWinnersOpen(false)}
             onPool={(next) => setPool((current) => (current ? { ...current, ...next } : next))}
           />
@@ -1101,6 +1109,7 @@ export default function Page() {
           <CommissionerGuide<PoolInfo>
             status={{
               hasVenmo: !!sessionUser?.venmo,
+              venmoEnabled: pool.venmoEnabled !== false,
               hasPaymentNote: !!pool.paymentNote,
               hasEntryFees: Object.keys(pool.entryFees ?? {}).length > 0,
               hasPayoutPlan: !!pool.payoutPlan,
@@ -1212,6 +1221,7 @@ export default function Page() {
             ) : null}
           </div>
         ) : null}
+        {pool.venmoEnabled !== false ? (
         <VenmoPrompt
           userId={sessionUser.id}
           hasVenmo={!!sessionUser.venmo || sessionUser.venmoDeclined === true}
@@ -1220,6 +1230,7 @@ export default function Page() {
           compact={isMobile}
           marginTop={isMobile ? 10 : 16}
         />
+        ) : null}
         <PushPrompt compact={isMobile} marginTop={isMobile ? 10 : 16} onOpenTab={p.openTabFromPush} />
         {mainTab === 'Standings' ? (
           <section

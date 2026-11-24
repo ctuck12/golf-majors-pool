@@ -97,6 +97,8 @@ create index if not exists league_purchases_user_idx on league_purchases(user_id
 -- which commissioner collects entry fees, and the winners a commissioner has paid.
 alter table users add column if not exists venmo text;
 alter table leagues add column if not exists venmo_collector_id text references users(id) on delete set null;
+-- Whether the league uses Venmo at all (asked when the league is created; the commissioner can change it).
+alter table leagues add column if not exists venmo_enabled boolean not null default true;
 alter table league_tournaments add column if not exists entry_fee double precision;
 create table if not exists league_payouts_sent (
   league_id text not null references leagues(id) on delete cascade,

@@ -387,8 +387,13 @@ export function EntryFeesModal<P>({
   onClose,
   onPool,
   onAddVenmo,
+  venmoEnabled = true,
+  onVenmoEnabled,
 }: {
   open: boolean;
+  // Whether this league uses Venmo, and how to change that (the commissioner can switch any time).
+  venmoEnabled?: boolean;
+  onVenmoEnabled?: (enabled: boolean) => Promise<void>;
   tournaments: { id: TournamentId; label: string }[];
   entryFees: Partial<Record<TournamentId, number>>;
   // How members pay when the commissioner has no Venmo (e.g. "Cash or Zelle to Clayton").
@@ -406,8 +411,22 @@ export function EntryFeesModal<P>({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
+  const [toggling, setToggling] = useState(false);
 
   if (!open) return null;
+
+  const toggleVenmo = async (enabled: boolean) => {
+    if (!onVenmoEnabled) return;
+    setError('');
+    setToggling(true);
+    try {
+      await onVenmoEnabled(enabled);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to change that setting.');
+    } finally {
+      setToggling(false);
+    }
+  };
 
   const save = async () => {
     setError('');
@@ -439,7 +458,31 @@ export function EntryFeesModal<P>({
   };
 
   return (
-    <Modal title={<>Entry Fees &amp; <VenmoMark /></>} onClose={onClose}>
+    <Modal title={venmoEnabled ? <>Entry Fees &amp; <VenmoMark /></> : 'Entry Fees'} onClose={onClose}>
+      {onVenmoEnabled ? (
+        <div style={{ border: '1px solid #dce5ee', borderRadius: 12, padding: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14.5, fontWeight: 900, color: '#0f1720' }}>Use <VenmoMark tone="blue" /> in this league</div>
+            <div style={{ fontSize: 12.5, color: '#5b6b79', marginTop: 2, lineHeight: 1.4 }}>
+              {venmoEnabled
+                ? 'On: members pay with one tap when they submit, and you pay winners in a few taps.'
+                : 'Off: members pay you however you tell them below, and you mark payments and winners paid yourself.'}
+            </div>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={venmoEnabled}
+            aria-label="Use Venmo in this league"
+            disabled={toggling}
+            onClick={() => void toggleVenmo(!venmoEnabled)}
+            style={{ width: 52, height: 30, borderRadius: 999, border: 'none', padding: 3, cursor: toggling ? 'wait' : 'pointer', background: venmoEnabled ? venmoBlue : '#c9d3dd', flexShrink: 0, display: 'flex', justifyContent: venmoEnabled ? 'flex-end' : 'flex-start', transition: 'background 0.15s ease' }}
+          >
+            <span style={{ width: 24, height: 24, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.25)' }} />
+          </button>
+        </div>
+      ) : null}
+      {venmoEnabled ? (
       <div style={{ fontSize: 14, color: '#3d4b58', lineHeight: 1.5 }}>
         When a member submits their roster, <VenmoMark tone="blue" />{' '}opens with the entry fee and &ldquo;Golf Majors Pool ⛳&rdquo; already filled in
         {commissionerVenmo ? <>, paying you at <b>{formatVenmo(commissionerVenmo)}</b></> : null}.
@@ -452,8 +495,9 @@ export function EntryFeesModal<P>({
           </>
         ) : null}
       </div>
+      ) : null}
 
-      {!commissionerVenmo ? (
+      {venmoEnabled && !commissionerVenmo ? (
         <div style={{ background: '#fff7e6', border: '1px solid #f3d38b', borderRadius: 12, padding: 12, fontSize: 13.5, color: '#5c4310', lineHeight: 1.45 }}>
           Add your <VenmoMark tone="blue" /> so members can pay you in the app.
           <div style={{ marginTop: 10 }}>
@@ -464,9 +508,9 @@ export function EntryFeesModal<P>({
         </div>
       ) : null}
 
-      {!commissionerVenmo ? (
+      {!venmoEnabled || !commissionerVenmo ? (
         <div>
-          <label htmlFor="payment-note" style={{ ...sectionLabel, display: 'block' }}>Don&apos;t use Venmo? How members pay you</label>
+          <label htmlFor="payment-note" style={{ ...sectionLabel, display: 'block' }}>{venmoEnabled ? <>Don&apos;t use Venmo? How members pay you</> : 'How members pay you'}</label>
           <textarea
             id="payment-note"
             value={note}
@@ -535,8 +579,11 @@ export function PayWinnersModal<P>({
   currentUserId,
   onClose,
   onPool,
+  venmoEnabled = true,
 }: {
   open: boolean;
+  // Off: no Venmo buttons; the commissioner pays however they like and marks each winner paid.
+  venmoEnabled?: boolean;
   currentUserId: string;
   tournamentId: TournamentId;
   tournamentLabel: string;
@@ -590,7 +637,9 @@ export function PayWinnersModal<P>({
       ) : (
         <>
           <div style={{ fontSize: 14, color: '#3d4b58', lineHeight: 1.5 }}>
-            Tap <b>Pay</b>{' '}and <VenmoMark tone="blue" /> opens with the amount and what it&apos;s for filled in. Check it and send.
+            {venmoEnabled
+              ? <>Tap <b>Pay</b>{' '}and <VenmoMark tone="blue" /> opens with the amount and what it&apos;s for filled in. Check it and send.</>
+              : <>Pay each winner the way your league pays (cash, Zelle…), then tap <b>Mark as paid</b> so they know it&apos;s done.</>}
           </div>
           <div style={{ display: 'grid', gap: 10 }}>
             {rows.map((row) => (
@@ -599,9 +648,11 @@ export function PayWinnersModal<P>({
                   <span style={{ fontSize: 26, lineHeight: 1 }}>{MEDALS[row.place]}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 16, fontWeight: 900, color: '#0f1720' }}>{row.name}</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: row.venmo ? venmoBlue : '#8a6d1d' }}>
-                      {row.venmo ? formatVenmo(row.venmo) : <>No <VenmoMark tone="blue" /> on their account: pick them in <VenmoMark tone="blue" /></>}
-                    </div>
+                    {venmoEnabled ? (
+                      <div style={{ fontSize: 13, fontWeight: 700, color: row.venmo ? venmoBlue : '#8a6d1d' }}>
+                        {row.venmo ? formatVenmo(row.venmo) : <>No <VenmoMark tone="blue" /> on their account: pick them in <VenmoMark tone="blue" /></>}
+                      </div>
+                    ) : null}
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: 18, fontWeight: 900, color: '#0f7a3d', fontVariantNumeric: 'tabular-nums' }}>{formatMoney(row.amount)}</div>
@@ -617,7 +668,7 @@ export function PayWinnersModal<P>({
                       <Check size={16} /> Paid {new Date(row.sent.sentAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                     </span>
                     <span style={{ flex: 1 }} />
-                    {row.userId !== currentUserId ? (
+                    {venmoEnabled && row.userId !== currentUserId ? (
                       <button type="button" onClick={() => pay(row)} style={{ ...secondaryButton, padding: '7px 12px', fontSize: 13 }}>
                         Pay again
                       </button>
@@ -639,6 +690,15 @@ export function PayWinnersModal<P>({
                     style={secondaryButton}
                   >
                     That&apos;s you: mark as paid
+                  </button>
+                ) : !venmoEnabled ? (
+                  <button
+                    type="button"
+                    disabled={busyPlace === row.place}
+                    onClick={() => void record(row.place, row.userId, row.amount, true)}
+                    style={{ ...primaryButton(busyPlace === row.place, navy), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                  >
+                    <Check size={16} /> Mark {formatMoney(row.amount)} as paid
                   </button>
                 ) : (
                   <div style={{ display: 'grid', gap: 8 }}>

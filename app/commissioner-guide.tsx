@@ -56,6 +56,7 @@ function Step({ done, title, children, action }: { done: boolean; title: string;
 
 export type GuideStatus = {
   hasVenmo: boolean;
+  venmoEnabled?: boolean;
   hasPaymentNote: boolean;
   hasEntryFees: boolean;
   hasPayoutPlan: boolean;
@@ -85,7 +86,7 @@ export function CommissionerGuide<P>({
   openInvite: () => void;
   openMessage: () => void;
 }) {
-  const setupDone = [status.hasVenmo || status.hasPaymentNote, status.hasEntryFees, status.hasPayoutPlan, status.memberCount > 1].filter(Boolean).length;
+  const setupDone = [status.venmoEnabled === false ? status.hasPaymentNote : status.hasVenmo || status.hasPaymentNote, status.hasEntryFees, status.hasPayoutPlan, status.memberCount > 1].filter(Boolean).length;
   const [openSection, setOpenSection] = useState<string | null>(setupDone < 4 ? 'setup' : 'week');
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
@@ -119,14 +120,24 @@ export function CommissionerGuide<P>({
 
       <div style={{ display: 'grid', gap: 10 }}>
         <Section title="1. Get set up" subtitle={setupDone === 4 ? 'All done ✓' : `${setupDone} of 4 done · about 5 minutes`} open={openSection === 'setup'} onToggle={() => toggle('setup')}>
-          <Step
-            done={status.hasVenmo || status.hasPaymentNote}
-            title="Add your Venmo"
-            action={<button type="button" onClick={openVenmo} style={linkButton}>{status.hasVenmo ? 'Change your Venmo' : 'Add your Venmo'} →</button>}
-          >
-            Entry fees go straight to you. With your Venmo on file, members tap <b>Submit &amp; Pay</b> and Venmo opens with your name, the fee and the note filled in.
-            {!status.hasVenmo ? <> No Venmo? Write how members should pay you in <b>Entry Fees</b> instead (see How the money works).</> : null}
-          </Step>
+          {status.venmoEnabled === false ? (
+            <Step
+              done={status.hasPaymentNote}
+              title="Tell members how to pay you"
+              action={<button type="button" onClick={openEntryFees} style={linkButton}>Open Entry Fees →</button>}
+            >
+              Venmo is off for this league, so write how members should pay you (cash, Zelle, PayPal…) in <b>Entry Fees</b>. You can switch Venmo on there any time.
+            </Step>
+          ) : (
+            <Step
+              done={status.hasVenmo || status.hasPaymentNote}
+              title="Add your Venmo"
+              action={<button type="button" onClick={openVenmo} style={linkButton}>{status.hasVenmo ? 'Change your Venmo' : 'Add your Venmo'} →</button>}
+            >
+              Entry fees go straight to you. With your Venmo on file, members tap <b>Submit &amp; Pay</b> and Venmo opens with your name, the fee and the note filled in.
+              {!status.hasVenmo ? <> No Venmo? Write how members should pay you in <b>Entry Fees</b> instead, or turn Venmo off there.</> : null}
+            </Step>
+          )}
           <Step
             done={status.hasEntryFees}
             title="Set your entry fee"
@@ -160,7 +171,7 @@ export function CommissionerGuide<P>({
           <ul style={{ margin: '0 0 10px', paddingLeft: 18 }}>
             <li style={li}>A member picks 6 golfers in the salary cap sheet and taps <b>Submit &amp; Pay</b>. Their picks are saved, then <VenmoMark tone="blue" /> opens with your Venmo, the fee and &ldquo;Golf Majors Pool ⛳&rdquo; filled in. They just hit Pay.</li>
             <li style={li}>That&apos;s why your Venmo matters: without it, members only see a plain Submit button.</li>
-            <li style={li}><b>No Venmo?</b> In <b>Entry Fees</b>, write how to pay you, like &ldquo;Cash, or Zelle to Sam at 555-123-4567&rdquo; (Cash App and PayPal work too). Members see it when they submit, on the tournament details and in your weekly text.</li>
+            <li style={li}><b>No Venmo?</b> Switch it off in <b>Entry Fees</b> and write how to pay you, like &ldquo;Cash, or Zelle to Sam at 555-123-4567&rdquo; (Cash App and PayPal work too). Members see it when they submit, on the tournament details and in your weekly text.</li>
             <li style={li}>To check who&apos;s paid, compare your Venmo (or Zelle) with the entries in <b>Member Management</b>.</li>
           </ul>
           <h3 style={h3}>The pot and payouts</h3>

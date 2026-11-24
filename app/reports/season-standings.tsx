@@ -92,7 +92,7 @@ export function SeasonStandingsReport({ p }: { p: PoolPage }) {
                       <div style={{ fontSize: 11, fontWeight: 800, color: '#5b6b79', textTransform: 'uppercase' }}>{ordinal(i + 1)}</div>
                       <div style={{ fontSize: 18, fontWeight: 900, color: '#0f1720' }}>{formatMoney(amounts[i] ?? 0)}</div>
                       {winner ? <div style={{ fontSize: 12.5, fontWeight: 700, color: '#173b63', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{winner.name}</div> : null}
-                      {winner && isCommissioner && amounts[i] > 0 ? (
+                      {winner && isCommissioner && amounts[i] > 0 && pool?.venmoEnabled !== false ? (
                         <button
                           type="button"
                           onClick={() => openVenmoPayment({ recipient: venmo, amount: amounts[i], note: `${season} GMP Season ${ordinal(i + 1)} Place` }, setVenmoFallbackUrl)}

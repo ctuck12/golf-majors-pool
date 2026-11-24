@@ -127,8 +127,14 @@ function JoinForm<T extends SessionLike>({
 
 function CreateForm<T extends SessionLike>({ onSession }: { onSession: (payload: T) => void }) {
   const [name, setName] = useState('');
+  const [venmo, setVenmo] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const choice = (on: boolean) => ({
+    flex: 1, padding: '10px 8px', borderRadius: 10, fontSize: 13.5, fontWeight: 800, cursor: 'pointer',
+    border: venmo === on ? '2px solid #008CFF' : '1px solid #cfd8e3',
+    background: venmo === on ? '#e8f4ff' : '#fff', color: venmo === on ? '#0b3a66' : '#334',
+  });
 
   return (
     <form
@@ -137,8 +143,9 @@ function CreateForm<T extends SessionLike>({ onSession }: { onSession: (payload:
         setBusy(true);
         setError('');
         try {
-          onSession(await postJson<T>('/api/leagues', { name }));
+          onSession(await postJson<T>('/api/leagues', { name, venmoEnabled: venmo !== false }));
           setName('');
+          setVenmo(null);
         } catch (err) {
           setError(err instanceof Error ? err.message : 'Unable to create the league.');
         } finally {
@@ -154,8 +161,23 @@ function CreateForm<T extends SessionLike>({ onSession }: { onSession: (payload:
         maxLength={60}
         style={inputStyle}
       />
+      <div style={{ border: '1px solid #dbe4ee', borderRadius: 12, padding: '12px 12px 10px', background: '#f7fafd', textAlign: 'left' }}>
+        <div style={{ fontSize: 14.5, fontWeight: 900, color: '#0b2540', marginBottom: 6 }}>Will your league use Venmo?</div>
+        <div style={{ fontSize: 12.5, color: '#4a5a6b', marginBottom: 6 }}>With Venmo turned on:</div>
+        <ul style={{ margin: '0 0 10px', paddingLeft: 18, fontSize: 12.5, lineHeight: 1.45, color: '#2b3b4c' }}>
+          <li>Members pay their entry fee in one tap right after they submit picks</li>
+          <li>The amount and a note are filled in for them, so nobody types it wrong</li>
+          <li>When a tournament ends, you pay the winners in a few taps from Pay Winners</li>
+          <li>Who has paid, and who you&apos;ve paid, is tracked for you automatically</li>
+        </ul>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button type="button" onClick={() => setVenmo(true)} style={choice(true)}>Yes, use Venmo</button>
+          <button type="button" onClick={() => setVenmo(false)} style={choice(false)}>No, we&apos;ll pay another way</button>
+        </div>
+        <div style={{ fontSize: 11.5, color: '#6a7a8b', marginTop: 8 }}>You can turn this on or off any time in Admin → Entry Fees.</div>
+      </div>
       {error ? <div style={{ fontSize: 13, color: '#a61b1b' }}>{error}</div> : null}
-      <button type="submit" disabled={busy || name.trim().length < 3} style={primaryButton(busy)}>
+      <button type="submit" disabled={busy || name.trim().length < 3 || venmo === null} style={primaryButton(busy)}>
         {busy ? 'Creating…' : 'Create League'}
       </button>
     </form>

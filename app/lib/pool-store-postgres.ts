@@ -60,6 +60,7 @@ type LeagueRow = {
   member_limit: number | null;
   paid_season: number | null;
   venmo_collector_id: string | null;
+  venmo_enabled?: boolean;
   role: LeagueRole;
 };
 
@@ -111,7 +112,7 @@ function toPublicUser(user: UserRow, poolIds: string[], data: RosterData): Publi
 
 async function findActiveLeague(sql: AnySql, userId: string): Promise<LeagueRow | null> {
   const [league] = await sql<LeagueRow[]>`
-    select l.id, l.name, l.join_code, l.plan, l.member_limit, l.paid_season, l.venmo_collector_id, m.role
+    select l.id, l.name, l.join_code, l.plan, l.member_limit, l.paid_season, l.venmo_collector_id, l.venmo_enabled, m.role
     from league_members m
     join leagues l on l.id = m.league_id
     join users u on u.id = m.user_id
@@ -449,6 +450,15 @@ export async function renewSession(token: string): Promise<boolean> {
   return rows.length > 0;
 }
 
+// Turns Venmo on or off for the commissioner's current league.
+export async function setLeagueVenmoEnabled(userId: string, enabled: boolean) {
+  await db().begin(async (sql) => {
+    const league = await requireActiveLeague(sql, userId);
+    if (league.role !== 'commissioner') throw new Error('Only the commissioner can change this.');
+    await sql`update leagues set venmo_enabled = ${enabled} where id = ${league.id}`;
+  });
+}
+
 // Who members pay entry fees to: the league's commissioner, once they've added their Venmo.
 function leagueVenmo(members: MemberRow[]): LeagueVenmo | null {
   const commissioner = members.find((member) => member.role === 'commissioner' && member.venmo);
@@ -575,7 +585,9 @@ export async function getSessionContext(token: string | undefined): Promise<Sess
       commissioners: members
         .filter((member) => member.role === 'commissioner')
         .map((member) => ({ id: member.id, name: member.display_name, email: member.email, venmo: member.venmo ?? null })),
-      venmo: leagueVenmo(members),
+      // A league that doesn't use Venmo has no Venmo to pay: every Venmo feature keys off this.
+      venmoEnabled: league.venmo_enabled !== false,
+      venmo: league.venmo_enabled !== false ? leagueVenmo(members) : null,
       payoutsSent,
     },
     entries,
@@ -1043,7 +1055,7 @@ function validLeagueName(input: string) {
 // Creates a league with the user as its commissioner and makes it their active league.
 export async function createLeague(
   userId: string,
-  input: { name: string; plan: string; memberLimit: number | null; paidSeason?: number | null },
+  input: { name: string; plan: string; memberLimit: number | null; paidSeason?: number | null; venmoEnabled?: boolean },
 ) {
   const name = validLeagueName(input.name);
   return db().begin((sql) => createLeagueTx(sql, userId, { ...input, name }));
@@ -1052,7 +1064,7 @@ export async function createLeague(
 async function createLeagueTx(
   sql: TxSql,
   userId: string,
-  input: { name: string; plan: string; memberLimit: number | null; paidSeason?: number | null },
+  input: { name: string; plan: string; memberLimit: number | null; paidSeason?: number | null; venmoEnabled?: boolean },
 ) {
   const name = input.name;
   {
@@ -1070,8 +1082,8 @@ async function createLeagueTx(
 
     const id = randomBytes(12).toString('hex');
     await sql`
-      insert into leagues (id, name, join_code, plan, member_limit, paid_season, created_by)
-      values (${id}, ${name}, ${joinCode}, ${input.plan}, ${input.memberLimit}, ${input.paidSeason ?? null}, ${userId})
+      insert into leagues (id, name, join_code, plan, member_limit, paid_season, created_by, venmo_enabled)
+      values (${id}, ${name}, ${joinCode}, ${input.plan}, ${input.memberLimit}, ${input.paidSeason ?? null}, ${userId}, ${input.venmoEnabled !== false})
     `;
     await sql`insert into league_members (league_id, user_id, role) values (${id}, ${userId}, 'commissioner')`;
     await sql`update users set active_league_id = ${id} where id = ${userId}`;
