@@ -35,8 +35,10 @@ export function CutScorecardPopup({ p }: { p: PoolPage }) {
               {(() => {
                 const hBg = selectedTournament === 'pga' ? '#B09963' : selectedTournament === 'masters' ? '#2c6449' : selectedTournament === 'us-open' ? '#BE3436' : '#173b63';
                 return (
-                  <div style={{ background: hBg, padding: isMobile ? '16px 18px 14px' : '18px 22px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexShrink: 0 }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ background: hBg, padding: isMobile ? '16px 18px 14px' : '18px 22px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                    {/* Centered on the logo and close button; when the country code hangs under the flag, the
+                        block makes room for it so the name, flag and code sit centered as a group. */}
+                    <div style={{ flex: 1, minWidth: 0, paddingBottom: fitPopupHeader(cutScorecardGolfer.name, getCountryLabel(cutScorecardGolfer.name), 1140, isMobile ? 36 : 44, selectedTournament, isMobile, false, 32).stacked ? 12 : 0 }}>
                       <div style={{ fontSize: fitPopupHeader(cutScorecardGolfer.name, getCountryLabel(cutScorecardGolfer.name), 1140, isMobile ? 36 : 44, selectedTournament, isMobile, false, 32).fontSize, fontWeight: 900, color: '#fff', letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', minWidth: 0, whiteSpace: 'nowrap' }}><HeaderNameFlag name={cutScorecardGolfer.name} flagSrc={getPlayerFlag(cutScorecardGolfer.name) ? getFlagSrc(cutScorecardGolfer.name) : null} abbr={getCountryLabel(cutScorecardGolfer.name) || null} base={fitPopupHeader(cutScorecardGolfer.name, getCountryLabel(cutScorecardGolfer.name), 1140, isMobile ? 36 : 44, selectedTournament, isMobile, false, 32).fontSize} min={isMobile ? 13 : 15} allowStack={true} initialStacked={fitPopupHeader(cutScorecardGolfer.name, getCountryLabel(cutScorecardGolfer.name), 1140, isMobile ? 36 : 44, selectedTournament, isMobile, false, 32).stacked} />{getPlayerFlag(cutScorecardGolfer.name) && <>{(PGA_CLUB_PROFESSIONALS.has(cutScorecardGolfer.name) || clubProKeys.has(canonicalNameKey(cutScorecardGolfer.name))) && <img src="/pga-seal-gold.png" alt="PGA" style={{ marginLeft: 6, height: 38, verticalAlign: 'middle', display: 'inline-block', objectFit: 'contain' }} />}</>}</div>
                     </div>
                     {TOURNAMENT_TAB_LOGOS[selectedTournament] && (
