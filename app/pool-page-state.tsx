@@ -893,6 +893,19 @@ export function usePoolPage() {
     return () => window.clearInterval(timer);
   }, [selectedTournament]);
 
+  // Switching tournaments starts that tournament's leaderboard back at the top (the table scrolls in
+  // its own box, so it would otherwise keep where you left the last one).
+  useEffect(() => {
+    const reset = () => {
+      document.querySelectorAll<HTMLElement>('[data-leaderboard-table="true"], [data-leaderboard-scroll="true"]').forEach((el) => { el.scrollTop = 0; });
+    };
+    reset();
+    // Again once the new tournament's rows have rendered.
+    const frame = requestAnimationFrame(reset);
+    const timer = window.setTimeout(reset, 400);
+    return () => { cancelAnimationFrame(frame); window.clearTimeout(timer); };
+  }, [selectedTournament]);
+
   useEffect(() => {
     if (!isMobile) return;
     const el = document.querySelector<HTMLElement>('[data-leaderboard-table="true"]');
