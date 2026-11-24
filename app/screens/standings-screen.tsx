@@ -294,10 +294,11 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                   >
                     {TOURNAMENT_CARD_LOGOS[selectedTournament] ? (
                       <img
-                        // Official event art (the green jacket, the Players trophy) shows only in the founder league;
-                        // other leagues get an azalea for the Masters, an island-green scene for The Players and The Open's
+                        // Official event art (the green jacket) shows only in the founder league; the Players trophy
+                        // (lettering removed) shows in every league;
+                        // other leagues get an azalea for the Masters and The Open's
                         // lettering without the jug or ® mark.
-                        src={pool?.id !== FOUNDER_POOL_ID && selectedTournament === 'masters' ? '/azalea-card.png' : pool?.id !== FOUNDER_POOL_ID && selectedTournament === 'players' ? '/players-island-card.webp' : pool?.id !== FOUNDER_POOL_ID && selectedTournament === 'open' ? '/open-card-plain.png' : TOURNAMENT_CARD_LOGOS[selectedTournament]}
+                        src={pool?.id !== FOUNDER_POOL_ID && selectedTournament === 'masters' ? '/azalea-card.png' : pool?.id !== FOUNDER_POOL_ID && selectedTournament === 'open' ? '/open-card-plain.png' : TOURNAMENT_CARD_LOGOS[selectedTournament]}
                         alt={tournament.name}
                         style={{
                           maxWidth: '100%',
@@ -305,7 +306,7 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                           height: artH * (selectedTournament === 'pga' ? 0.86 : selectedTournament === 'us-open' ? 0.9 : 1),
                           objectFit: 'contain',
                           display: 'block',
-                          transform: selectedTournament === 'players' && pool?.id !== FOUNDER_POOL_ID ? undefined : selectedTournament === 'players' ? 'translateY(10px) scale(1.12)' : selectedTournament === 'open' ? 'scale(1.18)' : selectedTournament === 'masters' && pool?.id !== FOUNDER_POOL_ID ? 'scale(0.7)' : undefined,
+                          transform: selectedTournament === 'players' ? 'translateY(10px) scale(1.12)' : selectedTournament === 'open' ? 'scale(1.18)' : selectedTournament === 'masters' && pool?.id !== FOUNDER_POOL_ID ? 'scale(0.7)' : undefined,
                         }}
                       />
                     ) : null}
