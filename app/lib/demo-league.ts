@@ -26,6 +26,8 @@ export const DEMO_SEASON = 2026;
 const SALARY_CAP = 50000;
 const TEAM_SIZE = 6;
 const ENTRY_FEE = 25;
+// Demo teams use golfers ranked this high or better (all have headshots).
+const KNOWN_RANK = 150;
 const SEASON_FEE = 50;
 const PAYOUT_PLAN = { places: [{ mode: 'percent', value: 67.5 }, { mode: 'rest', value: 0 }, { mode: 'fee', value: 2 }], roundTo: 5 };
 const SEASON_PAYOUT_PLAN = { places: [{ mode: 'percent', value: 60 }, { mode: 'rest', value: 0 }, { mode: 'fee', value: 1 }], roundTo: 5 };
@@ -99,7 +101,7 @@ export async function fillDemoLeague(leagueId: string): Promise<DemoFillResult> 
   if (!isDemoLeagueName(league.name)) throw new Error('Only a league with "Demo" in its name can be filled with demo data.');
 
   // The 2026 events already played, each with its salary list (the field and prices that week).
-  const events: { tournamentId: string; field: { id: number; salary: number }[]; lockAt: string }[] = [];
+  const events: { tournamentId: string; field: { id: number; salary: number }[]; lockAt: string; standIn: boolean }[] = [];
   const skipped: string[] = [];
   for (const tid of TOURNAMENT_IDS) {
     const meta = getTournamentMeta(tid, DEMO_SEASON);
@@ -110,9 +112,12 @@ export async function fillDemoLeague(leagueId: string): Promise<DemoFillResult> 
     // the field from the event's final leaderboard instead, pricing players by world ranking so the
     // teams mix stars and value picks the same way.
     const finished = await fieldFromFinalLeaderboard(tid);
-    const regular = new Set<number>(PLAYER_POOL_WITH_PGA_IDS.map((p) => p.id));
-    field = field.filter((p) => regular.has(p.id));
-    if (field.length < TEAM_SIZE * 3) field = finished;
+    // Regular pool golfers ranked in the world top 150: they all have headshots, where some
+    // amateurs and lower-ranked invitees only have a blank silhouette.
+    const known = new Set<number>(PLAYER_POOL_WITH_PGA_IDS.filter((p) => p.worldRank > 0 && p.worldRank <= KNOWN_RANK).map((p) => p.id));
+    field = field.filter((p) => known.has(p.id));
+    const standIn = field.length < TEAM_SIZE * 3;
+    if (standIn) field = finished;
     // Only golfers who actually played that week (a salary list can include late withdrawals, who
     // would leave a team one golfer short in the results).
     else if (finished.length >= TEAM_SIZE * 3) {
@@ -120,7 +125,7 @@ export async function fillDemoLeague(leagueId: string): Promise<DemoFillResult> 
       field = field.filter((p) => played.has(p.id));
     }
     if (field.length < TEAM_SIZE * 3) { skipped.push(tid); continue; }
-    events.push({ tournamentId: tid, field, lockAt: meta.lockAtUtc });
+    events.push({ tournamentId: tid, field, lockAt: meta.lockAtUtc, standIn });
   }
   if (events.length === 0) throw new Error(`No ${DEMO_SEASON} salary lists or final leaderboards were found, so there are no teams to build.`);
 
@@ -182,6 +187,10 @@ export async function fillDemoLeague(leagueId: string): Promise<DemoFillResult> 
         on conflict (league_id, tournament_id) do update set entry_fee = coalesce(league_tournaments.entry_fee, excluded.entry_fee)
       `;
     }
+    // Stand-in salaries for the events that had no salary list, so every team shows its prices (and
+    // they add up to $50,000 or less, like a real pick sheet).
+    const demoSalaries = Object.fromEntries(events.filter((e) => e.standIn).map((e) => [e.tournamentId, Object.fromEntries(e.field.map((p) => [String(p.id), p.salary]))]));
+    await tx`update leagues set demo_salaries = ${tx.json(demoSalaries as never)} where id = ${league.id}`;
     await tx`update leagues set is_demo = true, payout_plan = coalesce(payout_plan, ${tx.json(PAYOUT_PLAN as never)}) where id = ${league.id}`;
     // The sample season ran a season-long pool (the current season is left for the commissioner to decide).
     await tx`
@@ -225,7 +234,7 @@ async function fieldFromFinalLeaderboard(tournamentId: string): Promise<{ id: nu
   // a finishing position.
   for (const row of players.filter((r) => r.position && r.position !== '--' && r.scoreBreakdown)) {
     const p = byName.get(canonicalNameKey(row.canonicalName ?? ''));
-    if (!p || field.has(p.id)) continue;
+    if (!p || field.has(p.id) || !p.worldRank || p.worldRank > KNOWN_RANK) continue;
     const rank = p.worldRank && p.worldRank > 0 ? p.worldRank : 300;
     field.set(p.id, Math.max(5000, Math.round((12500 - 85 * (rank - 1)) / 100) * 100));
   }

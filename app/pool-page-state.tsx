@@ -1600,8 +1600,13 @@ export function usePoolPage() {
   const [salaryByTournament, setSalaryByTournament] = useState<Record<string, SalaryMaps>>({});
   // Every season's lists (season -> tournament -> maps), for past standings and Reports by year.
   const [salaryBySeason, setSalaryBySeason] = useState<Record<number, Record<string, SalaryMaps>>>({});
+  // The demo league's sample season falls back to its own stand-in salaries for events that never
+  // had a salary list.
   const salariesFor = (tournamentId: string, season: number): SalaryMaps | undefined =>
-    salaryBySeason[season]?.[tournamentId] ?? (season === picksSeason(tournamentId) ? salaryByTournament[tournamentId] : undefined);
+    salaryBySeason[season]?.[tournamentId] ?? (season === picksSeason(tournamentId) ? salaryByTournament[tournamentId] : undefined)
+      ?? (pool?.isDemo && season < picksSeason(tournamentId) && pool.demoSalaries?.[tournamentId]
+        ? { salaries: Object.fromEntries(Object.entries(pool.demoSalaries[tournamentId]).map(([id, v]) => [Number(id), v])), worldRanks: {} }
+        : undefined);
   // Players the commissioner's salary upload auto-added because they weren't in the static pool.
   const [dynamicPlayers, setDynamicPlayers] = useState<Array<{ id: number; name: string; pgaTourId: number; worldRank: number; defaultOdds: string }>>([]);
   const [salaryListLoaded, setSalaryListLoaded] = useState(false); // false until the fetch resolves

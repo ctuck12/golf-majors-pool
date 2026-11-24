@@ -102,6 +102,8 @@ alter table leagues add column if not exists venmo_enabled boolean not null defa
 -- The App Review demo league (filled by the admin's demo tool): shows finished results, never a
 -- pre-tournament card.
 alter table leagues add column if not exists is_demo boolean not null default false;
+-- The demo league's stand-in salaries for sample events that had no salary list: { tournamentId: { golferId: salary } }.
+alter table leagues add column if not exists demo_salaries jsonb;
 alter table league_tournaments add column if not exists entry_fee double precision;
 create table if not exists league_payouts_sent (
   league_id text not null references leagues(id) on delete cascade,

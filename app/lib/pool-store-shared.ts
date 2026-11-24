@@ -111,6 +111,8 @@ export type SessionPool = Omit<PublicPool, 'winnerScores'> & {
   venmoEnabled?: boolean;
   // The App Review demo league: results only, no pre-tournament cards.
   isDemo?: boolean;
+  // Its stand-in salaries for sample events that had no salary list ({ tournamentId: { golferId: salary } }).
+  demoSalaries?: Record<string, Record<string, number>> | null;
   // The commissioner's Venmo, which entry fees go to (null until they add it, or when Venmo is off).
   venmo?: LeagueVenmo | null;
   // Commissioners only: winners already paid this season, per tournament.
