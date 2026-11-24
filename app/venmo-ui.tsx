@@ -163,7 +163,8 @@ export function VenmoFallbackNotice({ url, onClose }: { url: string | null; onCl
 
 // ── Shared modal frame ───────────────────────────────────────────────────────
 
-export function Modal({ title, onClose, children, zIndex = 1050 }: { title: ReactNode; onClose: () => void; children: ReactNode; zIndex?: number }) {
+// `compact`: tighter padding and spacing, for popups that must fit on a phone screen without scrolling.
+export function Modal({ title, onClose, children, zIndex = 1050, compact = false }: { title: ReactNode; onClose: () => void; children: ReactNode; zIndex?: number; compact?: boolean }) {
   return (
     <div
       onClick={onClose}
@@ -191,7 +192,7 @@ export function Modal({ title, onClose, children, zIndex = 1050 }: { title: Reac
             <X size={16} />
           </button>
         </div>
-        <div style={{ padding: 20, display: 'grid', gap: 18 }}>{children}</div>
+        <div style={{ padding: compact ? '14px 18px 18px' : 20, display: 'grid', gap: compact ? 12 : 18 }}>{children}</div>
       </div>
     </div>
   );
@@ -458,15 +459,15 @@ export function EntryFeesModal<P>({
   };
 
   return (
-    <Modal title={venmoEnabled ? <>Entry Fees &amp; <VenmoMark /></> : 'Entry Fees'} onClose={onClose}>
+    <Modal compact title={venmoEnabled ? <>Entry Fees &amp; <VenmoMark /></> : 'Entry Fees'} onClose={onClose}>
       {onVenmoEnabled ? (
-        <div style={{ border: '1px solid #dce5ee', borderRadius: 12, padding: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ border: '1px solid #dce5ee', borderRadius: 12, padding: '9px 12px', display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 14.5, fontWeight: 900, color: '#0f1720' }}>Use <VenmoMark tone="blue" /> in this league</div>
             <div style={{ fontSize: 12.5, color: '#5b6b79', marginTop: 2, lineHeight: 1.4 }}>
               {venmoEnabled
-                ? 'On: members pay with one tap when they submit, and you pay winners in a few taps.'
-                : 'Off: members pay you however you tell them below, and you mark payments and winners paid yourself.'}
+                ? 'On: one-tap entry fees and winner payouts.'
+                : 'Off: members pay you the way you describe below.'}
             </div>
           </div>
           <button
@@ -483,13 +484,13 @@ export function EntryFeesModal<P>({
         </div>
       ) : null}
       {venmoEnabled ? (
-      <div style={{ fontSize: 14, color: '#3d4b58', lineHeight: 1.5 }}>
-        When a member submits their roster, <VenmoMark tone="blue" />{' '}opens with the entry fee and &ldquo;Golf Majors Pool ⛳&rdquo; already filled in
+      <div style={{ fontSize: 13.5, color: '#3d4b58', lineHeight: 1.45 }}>
+        When members submit, <VenmoMark tone="blue" />{' '}opens with the fee filled in
         {commissionerVenmo ? <>, paying you at <b>{formatVenmo(commissionerVenmo)}</b></> : null}.
         {commissionerVenmo ? (
           <>
             {' '}
-            <button type="button" onClick={onAddVenmo} style={{ background: 'none', border: 'none', padding: 0, color: '#2f5f96', fontWeight: 800, fontSize: 14, cursor: 'pointer', textDecoration: 'underline' }}>
+            <button type="button" onClick={onAddVenmo} style={{ background: 'none', border: 'none', padding: 0, color: '#2f5f96', fontWeight: 800, fontSize: 13.5, cursor: 'pointer', textDecoration: 'underline' }}>
               Change
             </button>
           </>
@@ -498,41 +499,38 @@ export function EntryFeesModal<P>({
       ) : null}
 
       {venmoEnabled && !commissionerVenmo ? (
-        <div style={{ background: '#fff7e6', border: '1px solid #f3d38b', borderRadius: 12, padding: 12, fontSize: 13.5, color: '#5c4310', lineHeight: 1.45 }}>
-          Add your <VenmoMark tone="blue" /> so members can pay you in the app.
-          <div style={{ marginTop: 10 }}>
-            <button type="button" onClick={onAddVenmo} style={{ ...primaryButton(false, venmoBlue), padding: '9px 14px', fontSize: 14, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <span>Add your <VenmoMark /></span>
-            </button>
-          </div>
+        <div style={{ background: '#fff7e6', border: '1px solid #f3d38b', borderRadius: 12, padding: '9px 12px', fontSize: 13, color: '#5c4310', lineHeight: 1.4, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ flex: 1, minWidth: 0 }}>Add your <VenmoMark tone="blue" /> so members can pay you in the app.</span>
+          <button type="button" onClick={onAddVenmo} style={{ ...primaryButton(false, venmoBlue), padding: '7px 12px', fontSize: 13.5, flexShrink: 0 }}>
+            <span>Add <VenmoMark /></span>
+          </button>
         </div>
       ) : null}
 
       {!venmoEnabled || !commissionerVenmo ? (
         <div>
           <label htmlFor="payment-note" style={{ ...sectionLabel, display: 'block' }}>{venmoEnabled ? <>Don&apos;t use Venmo? How members pay you</> : 'How members pay you'}</label>
-          <textarea
+          <input
             id="payment-note"
             value={note}
             maxLength={200}
-            rows={2}
             onChange={(event) => { setSaved(false); setNote(event.target.value); }}
             placeholder="e.g. Cash, or Zelle to Clayton at 555-123-4567"
-            style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.4 }}
+            style={{ ...inputStyle, padding: '9px 12px' }}
           />
-          <div style={{ fontSize: 12.5, color: '#6b7b88', marginTop: 6, lineHeight: 1.4 }}>
-            Members see this when they submit their picks, and it goes in your tournament-week text.
+          <div style={{ fontSize: 12, color: '#6b7b88', marginTop: 4, lineHeight: 1.35 }}>
+            Shown when members submit and in your tournament-week text.
           </div>
         </div>
       ) : null}
 
       <div>
         <div style={sectionLabel}>Entry fee per tournament</div>
-        <div style={{ display: 'grid', gap: 8 }}>
+        <div style={{ display: 'grid', gap: 6 }}>
           {tournaments.map((t) => (
             <label key={t.id} htmlFor={`entry-fee-${t.id}`} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, color: '#0f1720' }}>{t.label}</span>
-              <span style={{ position: 'relative', width: 120, flexShrink: 0 }}>
+              <span style={{ flex: 1, minWidth: 0, fontSize: 14.5, fontWeight: 700, color: '#0f1720' }}>{t.label}</span>
+              <span style={{ position: 'relative', width: 112, flexShrink: 0 }}>
                 <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#6b7b88', fontWeight: 700 }}>$</span>
                 <input
                   id={`entry-fee-${t.id}`}
@@ -543,19 +541,19 @@ export function EntryFeesModal<P>({
                     setFees((current) => ({ ...current, [t.id]: event.target.value }));
                   }}
                   placeholder="None"
-                  style={{ ...inputStyle, padding: '10px 12px 10px 24px', textAlign: 'right' }}
+                  style={{ ...inputStyle, padding: '7px 12px 7px 24px', textAlign: 'right' }}
                 />
               </span>
             </label>
           ))}
         </div>
-        <div style={{ fontSize: 12.5, color: '#6b7b88', marginTop: 8, lineHeight: 1.4 }}>
-          Leave a tournament blank and members just submit, without paying in the app.
+        <div style={{ fontSize: 12, color: '#6b7b88', marginTop: 6, lineHeight: 1.35 }}>
+          Leave one blank for no fee that tournament.
         </div>
       </div>
 
       <ErrorText>{error}</ErrorText>
-      <button type="button" onClick={() => void save()} disabled={busy} style={primaryButton(busy)}>
+      <button type="button" onClick={() => void save()} disabled={busy} style={{ ...primaryButton(busy), padding: '11px 16px' }}>
         {busy ? 'Saving…' : saved ? 'Saved ✓' : 'Save'}
       </button>
     </Modal>
