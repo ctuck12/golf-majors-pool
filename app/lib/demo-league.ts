@@ -110,6 +110,8 @@ export async function fillDemoLeague(leagueId: string): Promise<DemoFillResult> 
     // the field from the event's final leaderboard instead, pricing players by world ranking so the
     // teams mix stars and value picks the same way.
     const finished = await fieldFromFinalLeaderboard(tid);
+    const regular = new Set<number>(PLAYER_POOL_WITH_PGA_IDS.map((p) => p.id));
+    field = field.filter((p) => regular.has(p.id));
     if (field.length < TEAM_SIZE * 3) field = finished;
     // Only golfers who actually played that week (a salary list can include late withdrawals, who
     // would leave a team one golfer short in the results).
@@ -213,9 +215,11 @@ async function finalFeed(tournamentId: string) {
 async function fieldFromFinalLeaderboard(tournamentId: string): Promise<{ id: number; salary: number }[]> {
   const players = await finalFeed(tournamentId).catch(() => null);
   if (!players) return [];
-  const dynamic = await getDynamicPlayers().catch(() => []);
-  const pool = [...PLAYER_POOL_WITH_PGA_IDS, ...dynamic] as { id: number; name: string; worldRank?: number }[];
-  const byName = new Map(pool.map((p) => [canonicalNameKey(p.name), p]));
+  // Regular pool players only: golfers added just for one week aren't loaded when a past event's
+  // teams are shown, so a team with one would look a golfer short.
+  const pool = PLAYER_POOL_WITH_PGA_IDS as readonly { id: number; name: string; worldRank?: number }[];
+  const byName = new Map<string, (typeof pool)[number]>();
+  for (const p of pool) if (!byName.has(canonicalNameKey(p.name))) byName.set(canonicalNameKey(p.name), p);
   const field = new Map<number, number>();
   // The feed also lists pool golfers who weren't in the field (with odds only): skip anyone without
   // a finishing position.
