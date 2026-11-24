@@ -8,8 +8,9 @@
 #            is set up; until then updates ship with in-app purchases off
 #
 # A change that needs a new Xcode build (a new plugin, permission or icon) makes this fail rather
-# than upload: ship the new build through the App Store first, then re-run it from the Actions tab
-# ("Run workflow").
+# than upload: ship the new build through the App Store (or install it from Xcode / TestFlight)
+# first, then re-run it from the Actions tab ("Run workflow") with "I've installed a new Xcode/
+# TestFlight build" ticked, which uploads once despite the plugin change.
 name: App update
 
 on:
@@ -18,6 +19,11 @@ on:
     types: [completed]
     branches: [main]
   workflow_dispatch:
+    inputs:
+      native_build_installed:
+        description: "I've installed a new Xcode/TestFlight build with the latest plugins (upload even though plugins changed)"
+        type: boolean
+        default: false
 
 concurrency:
   group: app-update
@@ -35,6 +41,8 @@ jobs:
       NEXT_TELEMETRY_DISABLED: '1'
       CAPGO_TOKEN: ${{ secrets.CAPGO_TOKEN }}
       NEXT_PUBLIC_REVENUECAT_IOS_KEY: ${{ vars.NEXT_PUBLIC_REVENUECAT_IOS_KEY }}
+      # Ticked on a manual run after a new native build is out: skip the native-plugin check once.
+      ALLOW_NATIVE_CHANGE: ${{ github.event_name == 'workflow_dispatch' && inputs.native_build_installed && '1' || '' }}
     steps:
       - uses: actions/checkout@v4
         with:

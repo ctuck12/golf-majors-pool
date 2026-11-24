@@ -159,11 +159,11 @@ await check('Past Results are kept per league', async () => {
 
 await check('season championship and league history', async () => {
   const plan = { places: [{ mode: 'percent', value: 70 }, { mode: 'rest', value: 0 }], roundTo: 5 };
-  let r = await call('admin', '/api/commissioner/season', 'PATCH', { fee: 20, plan });
+  let r = await call('admin', '/api/commissioner/season', 'PATCH', { enabled: true, fee: 20, plan });
   assert.equal(r.status, 200, JSON.stringify(r.json));
   assert.equal(r.json.pool.seasonFee, 20);
   assert.deepEqual(r.json.pool.seasonPayoutPlan, plan);
-  assert.equal((await call('bob', '/api/commissioner/season', 'PATCH', { fee: null, plan: null })).status, 403);
+  assert.equal((await call('bob', '/api/commissioner/season', 'PATCH', { enabled: false, fee: null, plan: null })).status, 403);
   r = await call('bob', '/api/standings-archive', 'POST', { tournamentId: 'pga', year: 2026, standings: [{ id: jar.bobId, place: 1, name: 'Bob Birdie', points: 90, holesRemaining: 0, tieBreak: 280, golfers: [] }] });
   assert.equal(r.status, 200, JSON.stringify(r.json));
   r = await call('bob', '/api/league-history');
