@@ -47,7 +47,7 @@ function Segmented<T extends string | number>({ options, value, onChange }: { op
             key={String(option.value)}
             type="button"
             onClick={() => onChange(option.value)}
-            style={{ border: 'none', borderRadius: 9, padding: '9px 6px', background: active ? '#fff' : 'transparent', boxShadow: active ? '0 1px 4px rgba(9,34,51,0.15)' : 'none', color: active ? '#0f1720' : '#5b6b79', fontSize: 13.5, fontWeight: 800, cursor: 'pointer' }}
+            style={{ border: 'none', borderRadius: 9, padding: '7px 6px', background: active ? '#fff' : 'transparent', boxShadow: active ? '0 1px 4px rgba(9,34,51,0.15)' : 'none', color: active ? '#0f1720' : '#5b6b79', fontSize: 13.5, fontWeight: 800, cursor: 'pointer' }}
           >
             {option.label}
           </button>
@@ -62,9 +62,9 @@ function AmountsRow({ amounts, places }: { amounts: Amounts; places: number }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: `repeat(${places}, 1fr)`, gap: 8 }}>
       {list.map((amount, i) => (
-        <div key={i} style={{ background: '#fff', border: '1px solid #e2e9ef', borderRadius: 12, padding: '9px 6px', textAlign: 'center' }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: '#5b6b79', textTransform: 'uppercase' }}>{ordinal(i + 1)}</div>
-          <div style={{ fontSize: 18, fontWeight: 900, color: '#0f1720', marginTop: 2 }}>{formatMoney(amount)}</div>
+        <div key={i} style={{ background: '#fff', border: '1px solid #e2e9ef', borderRadius: 10, padding: '5px 6px', textAlign: 'center' }}>
+          <div style={{ fontSize: 10.5, fontWeight: 800, color: '#5b6b79', textTransform: 'uppercase' }}>{ordinal(i + 1)}</div>
+          <div style={{ fontSize: 16, fontWeight: 900, color: '#0f1720' }}>{formatMoney(amount)}</div>
         </div>
       ))}
     </div>
@@ -141,18 +141,18 @@ export function PlanEditor({
   };
 
   return (
-    <div style={{ display: 'grid', gap: 14 }}>
+    <div style={{ display: 'grid', gap: 10 }}>
         <Segmented
-          options={[{ value: 1, label: 'Winner takes all' }, { value: 2, label: 'Top 2' }, { value: 3, label: 'Top 3' }]}
+          options={[{ value: 1, label: 'Winner only' }, { value: 2, label: 'Top 2' }, { value: 3, label: 'Top 3' }]}
           value={paidPlaces}
           onChange={setCount}
         />
 
-        <div style={{ display: 'grid', gap: 8 }}>
+        <div style={{ display: 'grid', gap: 6 }}>
           {places.map((rule, i) => (
             <div key={i} style={{ display: 'grid', gridTemplateColumns: '38px 1fr 104px', gap: 8, alignItems: 'center' }}>
               <div style={{ fontSize: 15, fontWeight: 900, color: '#0f1720' }}>{ordinal(i + 1)}</div>
-              <select aria-label={`How ${ordinal(i + 1)} place is paid`} value={rule.mode} onChange={(e) => setMode(i, e.target.value as PayoutMode)} style={{ ...input, padding: '10px 8px' }}>
+              <select aria-label={`How ${ordinal(i + 1)} place is paid`} value={rule.mode} onChange={(e) => setMode(i, e.target.value as PayoutMode)} style={{ ...input, padding: '8px 8px' }}>
                 {(Object.keys(MODE_LABELS) as PayoutMode[]).map((mode) => (
                   <option key={mode} value={mode}>{MODE_LABELS[mode]}</option>
                 ))}
@@ -167,7 +167,7 @@ export function PlanEditor({
                     aria-label={`${ordinal(i + 1)} place ${MODE_LABELS[rule.mode]}`}
                     value={values[i] ?? ''}
                     onChange={(e) => { setValues((v) => v.map((x, j) => (j === i ? e.target.value.replace(/[^0-9.]/g, '') : x))); setSaved(''); }}
-                    style={{ ...input, paddingLeft: rule.mode === 'fixed' ? 22 : 12, paddingRight: rule.mode === 'fixed' ? 12 : 28, textAlign: 'right' }}
+                    style={{ ...input, paddingTop: 8, paddingBottom: 8, paddingLeft: rule.mode === 'fixed' ? 22 : 12, paddingRight: rule.mode === 'fixed' ? 12 : 28, textAlign: 'right' }}
                   />
                   {rule.mode !== 'fixed' ? <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#6b7b88', fontWeight: 700 }}>{rule.mode === 'percent' ? '%' : '×'}</span> : null}
                 </span>
@@ -176,9 +176,8 @@ export function PlanEditor({
           ))}
         </div>
 
-        <div style={{ fontSize: 12.5, color: '#6b7b88', lineHeight: 1.45 }}>
-          <b>× {feeWord}</b>: 2× means that place doubles their money. {hasFixed ? <><b>% of pot</b> splits what&apos;s left after the $ and × {feeWord} amounts. </> : null}
-          <b>The rest</b> gets whatever is left over.
+        <div style={{ fontSize: 12, color: '#6b7b88', lineHeight: 1.4 }}>
+          <b>× {feeWord}</b>: 2× doubles their money.{' '}{hasFixed ? <><b>%</b> splits what&apos;s left after those.{' '}</> : null}<b>The rest</b>: what&apos;s left.
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -189,16 +188,17 @@ export function PlanEditor({
         </div>
 
         {/* Preview */}
-        <div style={{ background: '#f4f8fb', border: '1px solid #e2e9ef', borderRadius: 14, padding: 14, display: 'grid', gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ background: '#f4f8fb', border: '1px solid #e2e9ef', borderRadius: 12, padding: 10, display: 'grid', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ ...sectionLabel, marginBottom: 0, flex: 1 }}>Try it</span>
-            <button type="button" aria-label={`Fewer ${unitWord}`} onClick={() => setPreviewEntries((n) => Math.max(1, n - 1))} style={{ ...secondaryButton, padding: 6, display: 'grid', placeItems: 'center' }}><Minus size={16} /></button>
-            <span style={{ fontSize: 14, fontWeight: 800, color: '#0f1720', minWidth: 78, textAlign: 'center' }}>{previewEntries} {unitWord}</span>
-            <button type="button" aria-label={`More ${unitWord}`} onClick={() => setPreviewEntries((n) => n + 1)} style={{ ...secondaryButton, padding: 6, display: 'grid', placeItems: 'center' }}><Plus size={16} /></button>
+            <button type="button" aria-label={`Fewer ${unitWord}`} onClick={() => setPreviewEntries((n) => Math.max(1, n - 1))} style={{ ...secondaryButton, padding: 5, display: 'grid', placeItems: 'center' }}><Minus size={15} /></button>
+            <span style={{ fontSize: 13.5, fontWeight: 800, color: '#0f1720', textAlign: 'center', whiteSpace: 'nowrap' }}>
+              {previewEntries} {unitWord}{fee > 0 ? <span style={{ fontWeight: 600, color: '#3d4b58' }}>{' '}= {formatMoney(previewPot)}</span> : null}
+            </span>
+            <button type="button" aria-label={`More ${unitWord}`} onClick={() => setPreviewEntries((n) => n + 1)} style={{ ...secondaryButton, padding: 5, display: 'grid', placeItems: 'center' }}><Plus size={15} /></button>
           </div>
           {fee > 0 ? (
             <>
-              <div style={{ fontSize: 13.5, color: '#3d4b58' }}>{previewEntries} × {formatMoney(fee)} = <b>{formatMoney(previewPot)}</b> pot</div>
               {problem ? null : <AmountsRow amounts={computePayouts(draft, previewPot, fee)} places={paidPlaces} />}
             </>
           ) : (
@@ -208,7 +208,7 @@ export function PlanEditor({
 
         <ErrorText>{problem ?? error}</ErrorText>
         {saved ? <div style={{ fontSize: 13, color: '#1f7a4a', fontWeight: 700 }}>{saved}</div> : null}
-        <button type="button" disabled={busy || !!problem} onClick={() => void save()} style={{ ...primaryButton(busy), opacity: busy || problem ? 0.55 : 1 }}>
+        <button type="button" disabled={busy || !!problem} onClick={() => void save()} style={{ ...primaryButton(busy), padding: '11px 16px', opacity: busy || problem ? 0.55 : 1 }}>
           {busy ? 'Saving…' : saveLabel}
         </button>
     </div>
@@ -269,9 +269,33 @@ export function PayoutPlanModal<P>({
   const switchToPlan = () => run(() => patch('/api/commissioner/payouts', { tournamentId, usePlan: true }), `${tournamentLabel} is back on the payout plan.`);
 
   const current = info;
+  // Two views so each fits on a phone screen: this tournament's payouts, and the plan editor.
+  const [planOpen, setPlanOpen] = useState(!plan);
+
+  if (planOpen) {
+    return (
+      <Modal compact title="Payout Plan" onClose={onClose}>
+        <button type="button" onClick={() => setPlanOpen(false)} style={{ justifySelf: 'start', background: 'none', border: 'none', padding: 0, color: '#2f5f96', fontWeight: 800, fontSize: 13.5, cursor: 'pointer' }}>
+          ← {tournamentLabel} payouts
+        </button>
+        <div style={{ fontSize: 13, color: '#3d4b58', lineHeight: 1.4 }}>Set once; every tournament&apos;s payouts work out from it.</div>
+        <PlanEditor
+          initialPlan={plan}
+          fee={entryFee}
+          defaultEntries={Math.max(info?.entries || memberCount || 10, 1)}
+          saveLabel="Save payout plan"
+          onSave={async (draft) => {
+            const payload = await patch<{ pool: P }>('/api/commissioner/payout-plan', { plan: draft });
+            onPool(payload.pool);
+            return 'Payout plan saved. Every tournament now uses it.';
+          }}
+        />
+      </Modal>
+    );
+  }
 
   return (
-    <Modal title="Payouts" onClose={onClose}>
+    <Modal compact title="Payouts" onClose={onClose}>
       {/* ── Right now ─────────────────────────────────────────────── */}
       <div style={{ background: '#f4f8fb', border: '1px solid #e2e9ef', borderRadius: 14, padding: 14, display: 'grid', gap: 10 }}>
         <div style={{ ...sectionLabel, marginBottom: 0 }}>{tournamentLabel} right now</div>
@@ -327,27 +351,13 @@ export function PayoutPlanModal<P>({
         {saved ? <div style={{ fontSize: 13, color: '#1f7a4a', fontWeight: 700 }}>{saved}</div> : null}
       </div>
 
-      {/* ── The plan ──────────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gap: 14 }}>
-        <div>
-          <div style={sectionLabel}>Payout plan (every tournament)</div>
-          <div style={{ fontSize: 13.5, color: '#3d4b58', lineHeight: 1.5 }}>
-            Set it once: the pot is the entry fee times the number of entries, and each place&apos;s amount works itself out.
-          </div>
-        </div>
-
-        <PlanEditor
-          initialPlan={plan}
-          fee={entryFee}
-          defaultEntries={Math.max(info?.entries || memberCount || 10, 1)}
-          saveLabel="Save payout plan"
-          onSave={async (draft) => {
-            const payload = await patch<{ pool: P }>('/api/commissioner/payout-plan', { plan: draft });
-            onPool(payload.pool);
-            return 'Payout plan saved. Every tournament now uses it.';
-          }}
-        />
-      </div>
+      <button type="button" onClick={() => setPlanOpen(true)} style={{ ...secondaryButton, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, textAlign: 'left' }}>
+        <span>
+          <span style={{ display: 'block', fontSize: 14.5, fontWeight: 900, color: '#0f1720' }}>Payout plan (every tournament)</span>
+          <span style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: '#5b6b79' }}>{plan ? 'How the pot is split. Tap to change it.' : 'Not set yet. Tap to set it.'}</span>
+        </span>
+        <span aria-hidden="true" style={{ fontSize: 18, color: '#5b6b79' }}>›</span>
+      </button>
     </Modal>
   );
 }
