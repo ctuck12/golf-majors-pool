@@ -515,7 +515,7 @@ export function EntryFeesModal<P>({
             value={note}
             maxLength={200}
             onChange={(event) => { setSaved(false); setNote(event.target.value); }}
-            placeholder="e.g. Cash, or Zelle to Clayton at 555-123-4567"
+            placeholder="e.g. Cash, or Zelle to 555-123-4567"
             style={{ ...inputStyle, padding: '9px 12px' }}
           />
           <div style={{ fontSize: 12, color: '#6b7b88', marginTop: 4, lineHeight: 1.35 }}>
