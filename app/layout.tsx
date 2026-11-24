@@ -1,6 +1,7 @@
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
+import { StatusTint } from './status-tint';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -45,6 +46,7 @@ export default function RootLayout({
     <html lang="en" className={inter.className}>
       <body>
         <div className="app-root">{children}</div>
+        <StatusTint />
       </body>
     </html>
   );
