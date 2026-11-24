@@ -3,6 +3,10 @@ import { db } from './db';
 import { DEFAULT_POOL_ID, TOURNAMENT_IDS } from './pool-store-shared';
 import { getManualSalaries } from './salary-overrides-store';
 import { eventHasStarted, getTournamentMeta } from './tournament-config';
+import { computePayouts, type PayoutPlan } from './payout-plan';
+import { canonicalNameKey } from './name-match';
+import { PLAYER_POOL_WITH_PGA_IDS } from './player-pool';
+import { getDynamicPlayers } from './dynamic-pool-store';
 
 // The Demo League (the one App Review signs in to) filled with a finished season, so the standings,
 // entries, payouts and reports all have something to show while picks are closed.
@@ -11,6 +15,9 @@ import { eventHasStarted, getTournamentMeta } from './tournament-config';
 // - a valid team for every member, real ones included, in each 2026 major already played, built
 //   from that event's own salary list (6 golfers, under the cap) with a tie-break guess
 // - entry fees, a payout plan and a season buy-in, and most members' fees marked paid
+// - each event's final standings saved to Past Results, worked out here from the stored final
+//   leaderboard (the same golfer points the app shows), so Season Standings and the Hall of
+//   Champions are complete, The Players included, without anyone opening each tab
 //
 // Only a league whose name contains "demo" can be filled, never the founder league. Running it
 // again rebuilds the made-up members' teams; real members' own picks are never changed.
@@ -82,7 +89,7 @@ export function isDemoLeagueName(name: string) {
   return /demo/i.test(name);
 }
 
-export type DemoFillResult = { members: number; demoMembers: number; teams: number; tournaments: string[]; skipped: string[] };
+export type DemoFillResult = { members: number; demoMembers: number; teams: number; tournaments: string[]; skipped: string[]; standingsSaved: string[] };
 
 export async function fillDemoLeague(leagueId: string): Promise<DemoFillResult> {
   const sql = db();
@@ -181,8 +188,101 @@ export async function fillDemoLeague(leagueId: string): Promise<DemoFillResult> 
     `;
   });
 
+  const standingsSaved: string[] = [];
+  for (const event of events) {
+    const saved = await saveFinalStandings(league.id, event.tournamentId, new Map(event.field.map((p) => [p.id, p.salary]))).catch(() => false);
+    if (saved) standingsSaved.push(event.tournamentId);
+  }
+
   const [{ n }] = await sql<{ n: number }[]>`select count(*)::int as n from league_members where league_id = ${league.id}`;
-  return { members: n, demoMembers: DEMO_NAMES.length, teams, tournaments: events.map((e) => e.tournamentId), skipped };
+  return { members: n, demoMembers: DEMO_NAMES.length, teams, tournaments: events.map((e) => e.tournamentId), skipped, standingsSaved };
+}
+
+type FeedPlayer = { canonicalName?: string; position?: string; score?: string; thru?: string; total?: string; scoreBreakdown?: { totalPoints?: number } };
+
+// A finished event's standings for the league, ranked the way the app ranks them (points, then the
+// tie-break guess closest to the winner's strokes, then picking the winner, then best golfer), and
+// saved as that event's Past Results. Only when the stored leaderboard is still that season's final.
+async function saveFinalStandings(leagueId: string, tournamentId: string, salaries: Map<number, number>) {
+  const { GET } = await import('../api/leaderboard/route');
+  const res = await GET(new Request(`http://internal/api/leaderboard?tournamentId=${tournamentId}`));
+  const feed = (await res.json()) as { season?: number; tournamentComplete?: boolean; players?: FeedPlayer[] };
+  if (feed.season !== DEMO_SEASON || !feed.players?.length) return false;
+  const done = (p: FeedPlayer) => p.thru === 'F' || ['CUT', 'WD', 'DQ', 'MDF', 'MC'].includes(String(p.score).toUpperCase());
+  if (!feed.tournamentComplete && !feed.players.every(done)) return false;
+
+  const dynamic = await getDynamicPlayers().catch(() => []);
+  const pool = [...PLAYER_POOL_WITH_PGA_IDS, ...dynamic];
+  const idByName = new Map(pool.map((p) => [canonicalNameKey(p.name), p.id]));
+  const nameById = new Map(pool.map((p) => [p.id, p.name]));
+  const byId = new Map<number, FeedPlayer>();
+  for (const row of feed.players) {
+    const id = idByName.get(canonicalNameKey(row.canonicalName ?? ''));
+    if (id != null && !byId.has(id)) byId.set(id, row);
+  }
+  const champion = feed.players.find((p) => String(p.position).trim() === '1');
+  const championId = champion ? idByName.get(canonicalNameKey(champion.canonicalName ?? '')) ?? null : null;
+  const winnerStrokes = champion?.total ? parseInt(String(champion.total), 10) : NaN;
+
+  const sql = db();
+  const rows = await sql<{ user_id: string; display_name: string; golfer_ids: number[]; tie_break: number | null }[]>`
+    select r.user_id, u.display_name, r.golfer_ids, r.tie_break
+    from rosters r
+    join league_members m on m.league_id = r.league_id and m.user_id = r.user_id
+    join users u on u.id = r.user_id
+    where r.league_id = ${leagueId} and r.tournament_id = ${tournamentId} and r.season = ${DEMO_SEASON}
+      and r.golfer_ids is not null and cardinality(r.golfer_ids) = ${TEAM_SIZE}
+  `;
+  if (rows.length === 0) return false;
+
+  const entries = rows.map((r) => {
+    const golfers = r.golfer_ids.map((id) => {
+      const g = byId.get(id);
+      return {
+        name: g?.canonicalName ?? nameById.get(id) ?? 'Unknown',
+        score: g?.score ?? 'CUT',
+        points: g?.scoreBreakdown?.totalPoints ?? 0,
+        position: g?.position ?? '--',
+        salary: salaries.get(id) ?? 0,
+      };
+    });
+    const tieBreak = r.tie_break ?? 275;
+    return {
+      id: r.user_id,
+      name: r.display_name,
+      points: Math.round(golfers.reduce((sum, g) => sum + g.points, 0) * 10) / 10,
+      tieBreak,
+      hasChampion: championId != null && r.golfer_ids.includes(championId),
+      golfers,
+    };
+  });
+  entries.sort((a, b) => {
+    if (b.points !== a.points) return b.points - a.points;
+    if (!Number.isNaN(winnerStrokes)) {
+      const diff = Math.abs(a.tieBreak - winnerStrokes) - Math.abs(b.tieBreak - winnerStrokes);
+      if (diff !== 0) return diff;
+    }
+    if (a.hasChampion !== b.hasChampion) return a.hasChampion ? -1 : 1;
+    const ap = a.golfers.map((g) => g.points).sort((x, y) => y - x);
+    const bp = b.golfers.map((g) => g.points).sort((x, y) => y - x);
+    for (let i = 0; i < TEAM_SIZE; i++) if (ap[i] !== bp[i]) return (bp[i] ?? 0) - (ap[i] ?? 0);
+    return 0;
+  });
+  const standings = entries.map((e, index) => ({
+    id: e.id, place: index + 1, name: e.name, points: e.points, holesRemaining: 0, tieBreak: e.tieBreak, golfers: e.golfers,
+  }));
+
+  const [league] = await sql<{ payout_plan: PayoutPlan | null }[]>`select payout_plan from leagues where id = ${leagueId}`;
+  const [fees] = await sql<{ entry_fee: number | null }[]>`select entry_fee from league_tournaments where league_id = ${leagueId} and tournament_id = ${tournamentId}`;
+  const fee = fees?.entry_fee ?? 0;
+  const payouts = league?.payout_plan && fee > 0 ? computePayouts(league.payout_plan, fee * standings.length, fee) : null;
+
+  await sql`
+    insert into league_standings_archive (league_id, tournament_id, season, standings, payouts)
+    values (${leagueId}, ${tournamentId}, ${DEMO_SEASON}, ${sql.json(standings as never)}, ${payouts ? sql.json(payouts as never) : null})
+    on conflict (league_id, tournament_id, season) do update set standings = excluded.standings, payouts = excluded.payouts, saved_at = now()
+  `;
+  return true;
 }
 
 // Takes the made-up members (and everything of theirs) back out of the league.
@@ -192,5 +292,7 @@ export async function clearDemoLeague(leagueId: string): Promise<number> {
   if (!league || league.id === DEFAULT_POOL_ID || !isDemoLeagueName(league.name)) throw new Error('Not a demo league.');
   const ids = DEMO_NAMES.map((_, i) => demoUserId(league.id, i));
   const removed = await sql`delete from users where id in ${sql(ids)} returning 1`;
+  // Their Past Results rows go too (the real members' views save fresh ones).
+  await sql`delete from league_standings_archive where league_id = ${league.id} and season = ${DEMO_SEASON}`;
   return removed.length;
 }

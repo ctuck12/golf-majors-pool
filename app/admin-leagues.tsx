@@ -92,11 +92,11 @@ export function AdminLeaguesModal({ open, onClose }: { open: boolean; onClose: (
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      const data = (await res.json()) as { members?: Member[]; error?: string; demo?: { teams: number; tournaments: string[]; skipped: string[] } };
+      const data = (await res.json()) as { members?: Member[]; error?: string; demo?: { teams: number; tournaments: string[]; skipped: string[]; standingsSaved: string[] } };
       if (!res.ok) throw new Error(data.error ?? 'Something went wrong.');
       setMembers(data.members ?? []);
       setNote(data.demo
-        ? `${done} ${data.demo.teams} teams across ${data.demo.tournaments.length} majors.${data.demo.skipped.length ? ` No salary list for: ${data.demo.skipped.join(', ')}.` : ''} Open each tournament tab in this league once so its final standings are saved for Season Standings and Hall of Champions.`
+        ? `${done} ${data.demo.teams} teams across ${data.demo.tournaments.length} majors.${data.demo.skipped.length ? ` No salary list for: ${data.demo.skipped.join(', ')}.` : ''} Final standings saved for ${data.demo.standingsSaved.length} of ${data.demo.tournaments.length}${data.demo.standingsSaved.length < data.demo.tournaments.length ? ' (open the other tabs once to save theirs)' : ''}.`
         : done);
       await load();
     } catch (err) {
