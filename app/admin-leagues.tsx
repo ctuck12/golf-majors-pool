@@ -96,7 +96,7 @@ export function AdminLeaguesModal({ open, onClose }: { open: boolean; onClose: (
       if (!res.ok) throw new Error(data.error ?? 'Something went wrong.');
       setMembers(data.members ?? []);
       setNote(data.demo
-        ? `${done} ${data.demo.teams} teams across ${data.demo.tournaments.length} majors.${data.demo.skipped.length ? ` No salary list for: ${data.demo.skipped.join(', ')}.` : ''} Final standings saved for ${data.demo.standingsSaved.length} of ${data.demo.tournaments.length}${data.demo.standingsSaved.length < data.demo.tournaments.length ? ' (open the other tabs once to save theirs)' : ''}.`
+        ? `${done} ${data.demo.teams} teams across ${data.demo.tournaments.length} majors.${data.demo.skipped.length ? ` Couldn't build (no salary list or final results saved): ${data.demo.skipped.join(', ')}.` : ''} Final standings saved for ${data.demo.standingsSaved.length} of ${data.demo.tournaments.length}${data.demo.standingsSaved.length < data.demo.tournaments.length ? ' (open the other tabs once to save theirs)' : ''}.`
         : done);
       await load();
     } catch (err) {

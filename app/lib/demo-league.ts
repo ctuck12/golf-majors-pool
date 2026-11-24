@@ -105,11 +105,15 @@ export async function fillDemoLeague(leagueId: string): Promise<DemoFillResult> 
     const meta = getTournamentMeta(tid, DEMO_SEASON);
     if (!meta || !eventHasStarted(tid, DEMO_SEASON)) continue;
     const salaries = await getManualSalaries(tid, DEMO_SEASON);
-    const field = salaries ? Object.entries(salaries.map).map(([id, e]) => ({ id: Number(id), salary: e.salary })) : [];
+    let field = salaries ? Object.entries(salaries.map).map(([id, e]) => ({ id: Number(id), salary: e.salary })) : [];
+    // No salary list was saved for that week (the early 2026 events predate per-event lists): build
+    // the field from the event's final leaderboard instead, pricing players by world ranking so the
+    // teams mix stars and value picks the same way.
+    if (field.length < TEAM_SIZE * 3) field = await fieldFromFinalLeaderboard(tid);
     if (field.length < TEAM_SIZE * 3) { skipped.push(tid); continue; }
     events.push({ tournamentId: tid, field, lockAt: meta.lockAtUtc });
   }
-  if (events.length === 0) throw new Error(`No ${DEMO_SEASON} salary lists were found, so there are no teams to build.`);
+  if (events.length === 0) throw new Error(`No ${DEMO_SEASON} salary lists or final leaderboards were found, so there are no teams to build.`);
 
   let teams = 0;
   await sql.begin(async (tx) => {
@@ -198,18 +202,42 @@ export async function fillDemoLeague(leagueId: string): Promise<DemoFillResult> 
   return { members: n, demoMembers: DEMO_NAMES.length, teams, tournaments: events.map((e) => e.tournamentId), skipped, standingsSaved };
 }
 
+// The stored final leaderboard for a 2026 event, when it's still that season's and finished.
+async function finalFeed(tournamentId: string) {
+  const { GET } = await import('../api/leaderboard/route');
+  const res = await GET(new Request(`http://internal/api/leaderboard?tournamentId=${tournamentId}`));
+  const feed = (await res.json()) as { season?: number; tournamentComplete?: boolean; players?: FeedPlayer[] };
+  if (feed.season !== DEMO_SEASON || !feed.players?.length) return null;
+  const done = (p: FeedPlayer) => p.thru === 'F' || ['CUT', 'WD', 'DQ', 'MDF', 'MC'].includes(String(p.score).toUpperCase());
+  if (!feed.tournamentComplete && !feed.players.every(done)) return null;
+  return feed.players;
+}
+
+async function fieldFromFinalLeaderboard(tournamentId: string): Promise<{ id: number; salary: number }[]> {
+  const players = await finalFeed(tournamentId).catch(() => null);
+  if (!players) return [];
+  const dynamic = await getDynamicPlayers().catch(() => []);
+  const pool = [...PLAYER_POOL_WITH_PGA_IDS, ...dynamic] as { id: number; name: string; worldRank?: number }[];
+  const byName = new Map(pool.map((p) => [canonicalNameKey(p.name), p]));
+  const field = new Map<number, number>();
+  for (const row of players) {
+    const p = byName.get(canonicalNameKey(row.canonicalName ?? ''));
+    if (!p || field.has(p.id)) continue;
+    const rank = p.worldRank && p.worldRank > 0 ? p.worldRank : 300;
+    field.set(p.id, Math.max(5000, Math.round((12500 - 85 * (rank - 1)) / 100) * 100));
+  }
+  return [...field.entries()].map(([id, salary]) => ({ id, salary }));
+}
+
 type FeedPlayer = { canonicalName?: string; position?: string; score?: string; thru?: string; total?: string; scoreBreakdown?: { totalPoints?: number } };
 
 // A finished event's standings for the league, ranked the way the app ranks them (points, then the
 // tie-break guess closest to the winner's strokes, then picking the winner, then best golfer), and
 // saved as that event's Past Results. Only when the stored leaderboard is still that season's final.
 async function saveFinalStandings(leagueId: string, tournamentId: string, salaries: Map<number, number>) {
-  const { GET } = await import('../api/leaderboard/route');
-  const res = await GET(new Request(`http://internal/api/leaderboard?tournamentId=${tournamentId}`));
-  const feed = (await res.json()) as { season?: number; tournamentComplete?: boolean; players?: FeedPlayer[] };
-  if (feed.season !== DEMO_SEASON || !feed.players?.length) return false;
-  const done = (p: FeedPlayer) => p.thru === 'F' || ['CUT', 'WD', 'DQ', 'MDF', 'MC'].includes(String(p.score).toUpperCase());
-  if (!feed.tournamentComplete && !feed.players.every(done)) return false;
+  const feedPlayers = await finalFeed(tournamentId);
+  if (!feedPlayers) return false;
+  const feed = { players: feedPlayers };
 
   const dynamic = await getDynamicPlayers().catch(() => []);
   const pool = [...PLAYER_POOL_WITH_PGA_IDS, ...dynamic];
