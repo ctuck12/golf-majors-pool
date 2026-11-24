@@ -89,6 +89,28 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
     showPayWinnersPrompt,
     pool,
   } = p;
+  // Each tournament's "<Event> Leaderboard ⓘ" heading is centered over the search bar as a whole:
+  // from the first thing in it (azalea or the event lettering) to the right edge of the ⓘ, which
+  // hangs off the end of "Leaderboard". Measured, so it holds for every event's lettering width.
+  useLayoutEffect(() => {
+    const row = document.querySelector<HTMLElement>('[data-lb-title="true"]');
+    if (!row) return;
+    const center = () => {
+      const first = row.firstElementChild as HTMLElement | null;
+      const info = row.querySelector<HTMLElement>('[data-lb-info="true"]');
+      if (!first || !info) return;
+      const box = row.getBoundingClientRect();
+      const left = first.getBoundingClientRect().left - box.left;
+      const right = info.getBoundingClientRect().right - box.left;
+      const shift = box.width / 2 - (left + right) / 2;
+      row.style.transform = Math.abs(shift) < 0.5 ? '' : `translateX(${shift.toFixed(1)}px)`;
+    };
+    center();
+    const ro = new ResizeObserver(center);
+    ro.observe(row);
+    row.querySelectorAll('img').forEach((img) => { if (!img.complete) img.addEventListener('load', center, { once: true }); });
+    return () => ro.disconnect();
+  });
   // Pre-tournament card: size the event art so the whole page (banners above it included) fits the
   // screen and the "Powered by" line at the bottom is never cut off. Grows back when there's room.
   const baseArt = isMobile ? 220 : 260;
@@ -522,30 +544,29 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                 >
                   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', gap: 16 }}>
                     {tournament.id === 'us-open' ? (
-                      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: isMobile ? 7 : 6, width: '100%' }}>
+                      <div data-lb-title="true" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: isMobile ? 7 : 6, width: '100%' }}>
                         <TournamentWordmark id="us-open" alt="U.S. Open" width={isMobile ? 104 : 116} height={isMobile ? 26 : 30} onBaseline />
                         <span style={{ fontSize: isMobile ? 24 : 25, fontWeight: 900, color: '#173b63', lineHeight: 1, position: 'relative' }}>
                           Leaderboard
                           <span style={{ position: 'absolute', left: '100%', top: '50%', transform: 'translateY(-50%)', display: 'inline-flex', alignItems: 'center', paddingLeft: 3 }}>
-                            <button onClick={() => setShowHeaderCutInfo((v) => !v)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: isMobile ? 14 : 15, color: '#607282', lineHeight: 1, touchAction: 'manipulation' }} aria-label="Cut line info">ⓘ</button>
+                            <button onClick={() => setShowHeaderCutInfo((v) => !v)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: isMobile ? 14 : 15, color: '#607282', lineHeight: 1, touchAction: 'manipulation' }} aria-label="Cut line info" data-lb-info="true">ⓘ</button>
                             {showHeaderCutInfo && (<><div style={{ position: 'absolute', bottom: '100%', right: 0, marginBottom: 6, background: '#fff', border: '1px solid #d1dae3', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', boxShadow: '0 2px 10px rgba(0,0,0,0.13)', zIndex: 10 }}>Cut Line: Top 60 & ties</div></>)}
                           </span>
                         </span>
                       </div>
                     ) : tournament.id === 'pga' ? (
-                      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 1.5, width: '100%' }}>
+                      <div data-lb-title="true" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 1.5, width: '100%' }}>
                         <TournamentWordmark id="pga" alt="PGA" width={isMobile ? 104 : 116} height={isMobile ? 26 : 30} onBaseline style={{ marginRight: 6 }} />
                         <span style={{ fontSize: isMobile ? 21 : 25, fontWeight: 900, color: '#173b63', lineHeight: 1, position: 'relative' }}>
                           Leaderboard
                           <span style={{ position: 'absolute', left: '100%', top: '50%', transform: 'translateY(-50%)', display: 'inline-flex', alignItems: 'center', paddingLeft: 3 }}>
-                            <button onClick={() => setShowHeaderCutInfo((v) => !v)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: isMobile ? 14 : 15, color: '#607282', lineHeight: 1, touchAction: 'manipulation' }} aria-label="Cut line info">ⓘ</button>
+                            <button onClick={() => setShowHeaderCutInfo((v) => !v)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: isMobile ? 14 : 15, color: '#607282', lineHeight: 1, touchAction: 'manipulation' }} aria-label="Cut line info" data-lb-info="true">ⓘ</button>
                             {showHeaderCutInfo && (<><div style={{ position: 'absolute', bottom: '100%', right: 0, marginBottom: 6, background: '#fff', border: '1px solid #d1dae3', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', boxShadow: '0 2px 10px rgba(0,0,0,0.13)', zIndex: 10 }}>Cut Line: Top 70 & ties</div></>)}
                           </span>
                         </span>
                       </div>
                     ) : tournament.id === 'masters' ? (
-                      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: isMobile ? 6 : 10, width: '100%', boxSizing: 'border-box', paddingRight: pool?.id === FOUNDER_POOL_ID ? (isMobile ? 16 : 18) : undefined }}>
-                        {/* Founder league: the ⓘ hangs off the end of "Leaderboard" without taking space, so pad the right by its width to center azalea + heading + ⓘ over the search bar. */}
+                      <div data-lb-title="true" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: isMobile ? 6 : 10, width: '100%' }}>
                         {pool?.id === FOUNDER_POOL_ID ? (
                           // Founder league only: an azalea just left of "Masters". It takes up room in the row, so the
                           // azalea + "Masters Leaderboard" group is centered over the search bar; negative top/bottom
@@ -556,29 +577,29 @@ export function StandingsScreen({ p }: { p: PoolPage }) {
                         <span style={{ fontSize: isMobile ? 21 : 25, fontWeight: 900, color: '#2c6449', lineHeight: 1, position: 'relative' }}>
                           Leaderboard
                           <span style={{ position: 'absolute', left: '100%', top: '50%', transform: 'translateY(-50%)', display: 'inline-flex', alignItems: 'center', paddingLeft: 3 }}>
-                            <button onClick={() => setShowHeaderCutInfo((v) => !v)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: isMobile ? 14 : 15, color: '#607282', lineHeight: 1, touchAction: 'manipulation' }} aria-label="Cut line info">ⓘ</button>
+                            <button onClick={() => setShowHeaderCutInfo((v) => !v)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: isMobile ? 14 : 15, color: '#607282', lineHeight: 1, touchAction: 'manipulation' }} aria-label="Cut line info" data-lb-info="true">ⓘ</button>
                             {showHeaderCutInfo && (<><div style={{ position: 'absolute', bottom: '100%', right: 0, marginBottom: 6, background: '#fff', border: '1px solid #d1dae3', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', boxShadow: '0 2px 10px rgba(0,0,0,0.13)', zIndex: 10 }}>Cut Line: Top 50 & ties</div></>)}
                           </span>
                         </span>
                       </div>
                     ) : tournament.id === 'open' ? (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: isMobile ? 7 : 10, width: '100%' }}>
+                      <div data-lb-title="true" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: isMobile ? 7 : 10, width: '100%' }}>
                         <TournamentWordmark id="open" alt="The Open" width={isMobile ? 104 : 116} height={isMobile ? 38 : 42} />
                         <span style={{ fontSize: isMobile ? 21 : 25, fontWeight: 900, color: '#0c1f3a', lineHeight: 1, position: 'relative' }}>
                           Leaderboard
                           <span style={{ position: 'absolute', left: '100%', top: '50%', transform: 'translateY(-50%)', display: 'inline-flex', alignItems: 'center', paddingLeft: 3 }}>
-                            <button onClick={() => setShowHeaderCutInfo((v) => !v)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: isMobile ? 14 : 15, color: '#000000', lineHeight: 1, touchAction: 'manipulation' }} aria-label="Cut line info">ⓘ</button>
+                            <button onClick={() => setShowHeaderCutInfo((v) => !v)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: isMobile ? 14 : 15, color: '#000000', lineHeight: 1, touchAction: 'manipulation' }} aria-label="Cut line info" data-lb-info="true">ⓘ</button>
                             {showHeaderCutInfo && (<><div style={{ position: 'absolute', bottom: '100%', right: 0, marginBottom: 6, background: '#173b63', border: '1px solid #0c1f3a', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600, color: '#ffffff', whiteSpace: 'nowrap', boxShadow: '0 2px 10px rgba(0,0,0,0.13)', zIndex: 10 }}>Cut Line: Top 70 & ties</div></>)}
                           </span>
                         </span>
                       </div>
                     ) : tournament.id === 'players' ? (
-                      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: isMobile ? 6 : 10, width: '100%' }}>
-                        <TournamentWordmark id="players" alt="The Players" width={isMobile ? 186 : 225} height={isMobile ? 26 : 30} onBaseline />
+                      <div data-lb-title="true" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: isMobile ? 6 : 10, width: '100%' }}>
+                        <TournamentWordmark id="players" alt="The Players" width={isMobile ? 158 : 190} height={isMobile ? 26 : 30} onBaseline />
                         <span style={{ fontSize: isMobile ? 21 : 25, fontWeight: 900, color: '#173b63', lineHeight: 1, position: 'relative' }}>
                           Leaderboard
                           <span style={{ position: 'absolute', left: '100%', top: '50%', transform: 'translateY(-50%)', display: 'inline-flex', alignItems: 'center', paddingLeft: 3 }}>
-                            <button onClick={() => setShowHeaderCutInfo((v) => !v)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: isMobile ? 14 : 15, color: '#607282', lineHeight: 1, touchAction: 'manipulation' }} aria-label="Cut line info">ⓘ</button>
+                            <button onClick={() => setShowHeaderCutInfo((v) => !v)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: isMobile ? 14 : 15, color: '#607282', lineHeight: 1, touchAction: 'manipulation' }} aria-label="Cut line info" data-lb-info="true">ⓘ</button>
                             {showHeaderCutInfo && (<><div style={{ position: 'absolute', bottom: '100%', right: 0, marginBottom: 6, background: '#fff', border: '1px solid #d1dae3', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', boxShadow: '0 2px 10px rgba(0,0,0,0.13)', zIndex: 10 }}>Cut Line: Top 65 & ties</div></>)}
                           </span>
                         </span>
