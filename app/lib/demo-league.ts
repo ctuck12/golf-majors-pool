@@ -179,7 +179,7 @@ export async function fillDemoLeague(leagueId: string): Promise<DemoFillResult> 
         on conflict (league_id, tournament_id) do update set entry_fee = coalesce(league_tournaments.entry_fee, excluded.entry_fee)
       `;
     }
-    await tx`update leagues set payout_plan = coalesce(payout_plan, ${tx.json(PAYOUT_PLAN as never)}) where id = ${league.id}`;
+    await tx`update leagues set is_demo = true, payout_plan = coalesce(payout_plan, ${tx.json(PAYOUT_PLAN as never)}) where id = ${league.id}`;
     // The sample season ran a season-long pool (the current season is left for the commissioner to decide).
     await tx`
       insert into league_season_pools (league_id, season, enabled, fee, plan)
@@ -292,6 +292,7 @@ export async function clearDemoLeague(leagueId: string): Promise<number> {
   if (!league || league.id === DEFAULT_POOL_ID || !isDemoLeagueName(league.name)) throw new Error('Not a demo league.');
   const ids = DEMO_NAMES.map((_, i) => demoUserId(league.id, i));
   const removed = await sql`delete from users where id in ${sql(ids)} returning 1`;
+  await sql`update leagues set is_demo = false where id = ${league.id}`;
   // Their Past Results rows go too (the real members' views save fresh ones).
   await sql`delete from league_standings_archive where league_id = ${league.id} and season = ${DEMO_SEASON}`;
   return removed.length;

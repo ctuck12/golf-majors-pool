@@ -466,7 +466,18 @@ export function usePoolPage() {
       setLeagueModalOpen(true);
     }
   }, [sessionUser, pool, pendingJoinCode]);
-  const tournamentCardStatuses = getTournamentCardStatuses(new Date(nowTick));
+  // The App Review demo league never shows a pre-tournament card: a tournament waiting on its next
+  // event stays on its last event's final results instead.
+  const tournamentCardStatuses = (() => {
+    const statuses = getTournamentCardStatuses(new Date(nowTick));
+    if (!pool?.isDemo) return statuses;
+    for (const t of TOURNAMENTS) {
+      if (statuses[t.id]?.label === 'UP NEXT' && latestStartedSeason(t.id, new Date(nowTick)) !== null) {
+        statuses[t.id] = { label: 'LOCKED', color: '#be123c', icon: 'lock' };
+      }
+    }
+    return statuses;
+  })();
   // Reports privacy gate: another member's picks for a tournament are only revealed once that
   // tournament has actually started (its status is IN PROGRESS) or concluded (LOCKED). While it's
   // sitting in its pre-tournament / upcoming window (UP NEXT / ACTIVE / future), picks stay hidden.

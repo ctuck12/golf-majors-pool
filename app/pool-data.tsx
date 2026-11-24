@@ -941,6 +941,7 @@ export type PoolInfo = {
   // Entry fee per tournament and the Venmo that collects it (null until a commissioner adds one).
   entryFees?: Partial<Record<TournamentId, number>>;
   venmoEnabled?: boolean;
+  isDemo?: boolean;
   venmo?: { userId: string; name: string; handle: string } | null;
   // How the league splits the pot, and per tournament the entries, pot and whether amounts were typed in.
   payoutPlan?: PayoutPlan | null;

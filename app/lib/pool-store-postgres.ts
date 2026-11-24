@@ -62,6 +62,7 @@ type LeagueRow = {
   paid_season: number | null;
   venmo_collector_id: string | null;
   venmo_enabled?: boolean;
+  is_demo?: boolean;
   role: LeagueRole;
 };
 
@@ -113,7 +114,7 @@ function toPublicUser(user: UserRow, poolIds: string[], data: RosterData): Publi
 
 async function findActiveLeague(sql: AnySql, userId: string): Promise<LeagueRow | null> {
   const [league] = await sql<LeagueRow[]>`
-    select l.id, l.name, l.join_code, l.plan, l.member_limit, l.paid_season, l.venmo_collector_id, l.venmo_enabled, m.role
+    select l.id, l.name, l.join_code, l.plan, l.member_limit, l.paid_season, l.venmo_collector_id, l.venmo_enabled, l.is_demo, m.role
     from league_members m
     join leagues l on l.id = m.league_id
     join users u on u.id = m.user_id
@@ -599,6 +600,7 @@ export async function getSessionContext(token: string | undefined): Promise<Sess
         .map((member) => ({ id: member.id, name: member.display_name, email: member.email, venmo: member.venmo ?? null })),
       // A league that doesn't use Venmo has no Venmo to pay: every Venmo feature keys off this.
       venmoEnabled: league.venmo_enabled !== false,
+      isDemo: league.is_demo === true,
       venmo: league.venmo_enabled !== false ? leagueVenmo(members) : null,
       payoutsSent,
     },

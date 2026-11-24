@@ -109,6 +109,8 @@ export type SessionPool = Omit<PublicPool, 'winnerScores'> & {
   commissioners: LeagueContact[];
   // Whether this league uses Venmo (entry fees through Venmo, Pay Winners on Venmo, Venmo prompts).
   venmoEnabled?: boolean;
+  // The App Review demo league: results only, no pre-tournament cards.
+  isDemo?: boolean;
   // The commissioner's Venmo, which entry fees go to (null until they add it, or when Venmo is off).
   venmo?: LeagueVenmo | null;
   // Commissioners only: winners already paid this season, per tournament.
