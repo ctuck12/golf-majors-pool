@@ -19,9 +19,9 @@ const comment = commentIndex > -1 ? process.argv[commentIndex + 1] : undefined;
 
 execSync('node scripts/build-mobile.mjs --no-sync', { stdio: 'inherit' });
 
-// --delta: phones download only the files that changed since their current version, not the whole
-// ~50 MB bundle (most of it is images that rarely change).
-const args = ['capgo', 'bundle', 'upload', '--channel', 'production', '--bundle', bundle, '--delta'];
+// --delta-only: phones download only the files that changed since their current version, not the
+// whole bundle (every installed copy has an updater new enough for this).
+const args = ['capgo', 'bundle', 'upload', '--channel', 'production', '--bundle', bundle, '--delta-only'];
 if (comment) args.push('--comment', comment);
 // On GitHub Actions nobody is there to answer Capgo's prompt when a change needs a new Xcode build
 // (a new plugin, say): stop instead of sending phones screens their installed app can't run.
