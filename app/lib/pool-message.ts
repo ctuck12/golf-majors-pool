@@ -95,9 +95,9 @@ export function buildPoolMessage(input: PoolMessageInput) {
     if (input.venmoHandle) {
       lines.push(`💵 Entry fee: ${fee}. Once your ${input.rosterSize} golfers are set in the salary cap sheet, tap Submit & Pay: it submits your picks and opens Venmo with your ${fee} to ${formatVenmo(input.venmoHandle)} ready to send.`);
     } else if (input.paymentNote) {
-      lines.push(`💵 Entry fee: ${fee}. Pay it once your picks are in: ${input.paymentNote.trim().replace(/\.?$/, '.')}`);
+      lines.push(`💵 Entry fee: ${fee}. Once your ${input.rosterSize} golfers are set in the salary cap sheet, tap Submit, then pay: ${input.paymentNote.trim().replace(/\.?$/, '.')}`);
     } else {
-      lines.push(`💵 Entry fee: ${fee}. Pay ${input.commissionerName ?? 'your commissioner'} once your picks are in.`);
+      lines.push(`💵 Entry fee: ${fee}. Once your ${input.rosterSize} golfers are set in the salary cap sheet, tap Submit, then pay ${input.commissionerName ?? 'your commissioner'}.`);
     }
   }
   lines.push(...payoutLines(input));

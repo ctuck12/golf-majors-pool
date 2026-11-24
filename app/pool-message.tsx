@@ -149,7 +149,7 @@ export function PoolMessageModal({
           style={{ width: '100%', boxSizing: 'border-box', borderRadius: 12, border: '1px solid #d7e0e8', padding: '12px 14px', fontSize: 16, lineHeight: 1.45, color: '#0f1720', background: '#f7fafc', resize: 'vertical', fontFamily: 'inherit' }}
         />
         <div style={{ fontSize: 12.5, color: '#6b7b88', marginTop: 6, lineHeight: 1.4 }}>
-          Lock time is shown in your time zone. Entry fee, Venmo and payouts come from your pool settings.
+          Lock time is shown in your time zone. The entry fee, how to pay and payouts come from your pool settings, so this text changes when they do.
         </div>
       </div>
 
