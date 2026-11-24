@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { VenmoMark } from '../venmo-mark';
 import { formatVenmo } from '@/app/lib/venmo';
 import { currentTournamentMeta, effectiveLockTime } from '@/app/lib/tournament-config';
@@ -128,7 +128,21 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
     entriesTournamentDisplayName,
     entriesWarningPalette,
     salaryColor,
+    setPool,
   } = p;
+  // This season's season-long pool answer (undefined: the commissioner hasn't been asked yet).
+  const seasonPool = pool?.poolSeason ? pool.seasonPools?.[pool.poolSeason] : undefined;
+  const [seasonAnswerBusy, setSeasonAnswerBusy] = useState(false);
+  const answerNoSeasonPool = async () => {
+    setSeasonAnswerBusy(true);
+    try {
+      const res = await fetch('/api/commissioner/season', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: false, fee: null, plan: null }) });
+      const payload = (await res.json().catch(() => ({}))) as { pool?: NonNullable<typeof pool> };
+      if (res.ok && payload.pool) setPool((current) => (current ? { ...current, ...payload.pool } : payload.pool!));
+    } finally {
+      setSeasonAnswerBusy(false);
+    }
+  };
   const guideStepsLeft = [!!(sessionUser?.venmo || pool?.paymentNote), !!Object.keys(pool?.entryFees ?? {}).length, !!pool?.payoutPlan, (pool?.memberCount ?? 0) > 1].filter((done) => !done).length;
   return (
     <main style={{ marginTop: isMobile ? 12 : 24, display: 'grid', gap: isMobile ? 12 : 20 }}>
@@ -163,6 +177,25 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                   </div>
                   <ChevronRight size={18} style={{ flexShrink: 0, opacity: 0.8 }} />
                 </button>
+              ) : null}
+              {pool?.role === 'commissioner' && pool.poolSeason && seasonPool === undefined ? (
+                <div style={{ borderRadius: 16, padding: isMobile ? '13px 14px' : '16px 18px', background: '#fff8e6', border: '1px solid #f3d38b', display: 'grid', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Award size={20} color="#8a6410" style={{ flexShrink: 0 }} />
+                    <div style={{ fontSize: isMobile ? 14.5 : 15.5, fontWeight: 900, color: '#3f2d06' }}>Running a season-long pool in {pool.poolSeason}?</div>
+                  </div>
+                  <div style={{ fontSize: 13, color: '#5c4310', lineHeight: 1.45 }}>
+                    A separate buy-in and prize for the best total across all the majors. Season Standings show in Reports either way; this just decides whether there&apos;s money on them.
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button type="button" onClick={() => setSeasonSettingsOpen(true)} style={{ flex: 1, border: 'none', borderRadius: 11, padding: '10px 8px', background: '#173b63', color: '#fff', fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>
+                      Yes, set it up
+                    </button>
+                    <button type="button" disabled={seasonAnswerBusy} onClick={() => void answerNoSeasonPool()} style={{ flex: 1, border: '1px solid #e2c98a', borderRadius: 11, padding: '10px 8px', background: '#fff', color: '#3f2d06', fontWeight: 800, fontSize: 14, cursor: 'pointer', opacity: seasonAnswerBusy ? 0.6 : 1 }}>
+                      No, tournaments only
+                    </button>
+                  </div>
+                </div>
               ) : null}
             <section
               style={{
@@ -498,7 +531,7 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                   { key: 'entryFees', title: pool?.venmoEnabled === false ? 'Entry Fees' : <span>Entry Fees &amp; <VenmoMark tone="blue" /></span>, sub: pool?.venmoEnabled === false ? 'Set fees and how members pay you' : pool?.venmo ? `Members pay ${formatVenmo(pool.venmo.handle)}` : 'Set fees and who collects them', Icon: DollarSign, open: () => setEntryFeesOpen(true) },
                   { key: 'feeTracker', title: 'Entry Fee Tracker', sub: 'Who has paid, and reminders', Icon: CheckCircle2, open: () => setFeeTrackerOpen(true) },
                   { key: 'payouts', title: 'Payouts', sub: pool?.payoutPlan ? 'Worked out from the pot automatically' : 'Set how the pot is split', Icon: Trophy, open: () => setPayoutPlanOpen(true) },
-                  { key: 'season', title: 'Season Championship', sub: pool?.seasonFee ? `Season buy-in ${'$'}${pool.seasonFee}` : 'Season standings and an optional season prize', Icon: Award, open: () => setSeasonSettingsOpen(true) },
+                  { key: 'season', title: 'Season Pool', sub: seasonPool === undefined ? `Running one in ${pool?.poolSeason ?? ''}? Not set yet` : seasonPool.enabled && pool?.seasonFee ? `${pool?.poolSeason} buy-in ${'$'}${pool.seasonFee}` : `No season pool in ${pool?.poolSeason ?? ''}`, Icon: Award, open: () => setSeasonSettingsOpen(true) },
                   { key: 'payWinners', title: 'Pay Winners', sub: pool?.venmoEnabled === false ? 'Mark winners paid once final' : <>Send winnings on <VenmoMark tone="blue" /> once final</>, Icon: Send, open: () => setPayWinnersOpen(true) },
                   { key: 'markStatus' as const, title: 'Mark WD / DQ / MDF', sub: "Override a player's status", Icon: AlertCircle },
                   { key: 'roundLeader' as const, title: 'Round Leader Tools', sub: 'Clear a mis-captured round leader', Icon: RefreshCw },

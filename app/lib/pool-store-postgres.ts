@@ -28,6 +28,7 @@ import {
   type PublicPool,
   type PublicPoolEntry,
   type PublicUser,
+  type SeasonPool,
   type SessionContext,
   type TournamentId,
   type TournamentPayouts,
@@ -151,7 +152,14 @@ async function loadPool(sql: AnySql, league: { id: string; name: string; join_co
     select tournament_id, picks_open, lineup_locked, payout_first, payout_second, payout_third, winner_score, entry_fee, state_season, payouts_season
     from league_tournaments where league_id = ${league.id}
   `;
-  const [planRow] = await sql<{ payout_plan: PayoutPlan | null; payment_note: string | null; season_fee: number | null; season_payout_plan: PayoutPlan | null }[]>`select payout_plan, payment_note, season_fee, season_payout_plan from leagues where id = ${league.id}`;
+  const [planRow] = await sql<{ payout_plan: PayoutPlan | null; payment_note: string | null }[]>`select payout_plan, payment_note from leagues where id = ${league.id}`;
+  const seasonRows = await sql<{ season: number; enabled: boolean; fee: number | null; plan: PayoutPlan | null }[]>`
+    select season, enabled, fee, plan from league_season_pools where league_id = ${league.id}
+  `;
+  const seasonPools: Record<number, SeasonPool> = {};
+  for (const r of seasonRows) seasonPools[r.season] = { enabled: r.enabled, fee: r.fee, plan: r.plan };
+  const poolSeason = currentSeason();
+  const thisSeason = seasonPools[poolSeason];
   const payoutPlan = planRow?.payout_plan ?? null;
   // Entries per tournament and season: members who have picks in.
   const counts = await sql<{ tournament_id: string; season: number; entries: number }[]>`
@@ -185,8 +193,10 @@ async function loadPool(sql: AnySql, league: { id: string; name: string; join_co
     payoutPlan,
     payoutInfo: {},
     entryPayments: {},
-    seasonFee: planRow?.season_fee ?? null,
-    seasonPayoutPlan: planRow?.season_payout_plan ?? null,
+    seasonFee: thisSeason?.enabled ? thisSeason.fee : null,
+    seasonPayoutPlan: thisSeason?.enabled ? thisSeason.plan : null,
+    poolSeason,
+    seasonPools,
     paymentNote: planRow?.payment_note ?? null,
   };
 
@@ -569,6 +579,8 @@ export async function getSessionContext(token: string | undefined): Promise<Sess
       paymentNote: pool.paymentNote ?? null,
       seasonFee: pool.seasonFee ?? null,
       seasonPayoutPlan: pool.seasonPayoutPlan ?? null,
+      poolSeason: pool.poolSeason,
+      seasonPools: pool.seasonPools ?? {},
       // Members see only their own entry fee status; the commissioner sees everyone's.
       entryPayments: isCommissioner
         ? pool.entryPayments
@@ -1381,14 +1393,21 @@ export async function updateEntryFees(requestingUserId: string, fees: Partial<Re
   });
 }
 
-// The season championship's buy-in (null/0: none) and payout plan. Commissioner only.
-export async function setSeasonSettings(requestingUserId: string, fee: number | null, plan: PayoutPlan | null) {
-  if (fee !== null && (!Number.isFinite(fee) || fee < 0 || fee > 10000)) throw new Error('Enter a season buy-in between $0 and $10,000.');
+// This season's season-long pool: whether the league runs one, and its buy-in and payout plan
+// (both required when it does). Commissioner only.
+export async function setSeasonSettings(requestingUserId: string, enabled: boolean, fee: number | null, plan: PayoutPlan | null) {
+  if (enabled) {
+    if (fee === null || !Number.isFinite(fee) || fee <= 0 || fee > 10000) throw new Error('Enter a season buy-in between $1 and $10,000.');
+    if (!plan) throw new Error('Set how the season pot is paid out.');
+  }
+  const season = currentSeason();
   return db().begin(async (sql) => {
     const league = await requireCommissionerLeague(sql, requestingUserId);
+    const keptFee = enabled && fee ? Math.round(fee * 100) / 100 : null;
     await sql`
-      update leagues set season_fee = ${fee ? Math.round(fee * 100) / 100 : null}, season_payout_plan = ${plan ? sql.json(plan as never) : null}
-      where id = ${league.id}
+      insert into league_season_pools (league_id, season, enabled, fee, plan, updated_at)
+      values (${league.id}, ${season}, ${enabled}, ${keptFee}, ${enabled && plan ? sql.json(plan as never) : null}, now())
+      on conflict (league_id, season) do update set enabled = excluded.enabled, fee = excluded.fee, plan = excluded.plan, updated_at = now()
     `;
     return loadPool(sql, league);
   });

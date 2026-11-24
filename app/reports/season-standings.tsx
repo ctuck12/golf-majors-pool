@@ -12,7 +12,8 @@ import { seasonComplete, seasonsIn, seasonStandings, TOURNAMENT_ORDER, useLeague
 import { TournamentWordmark } from '../tournament-wordmark';
 
 // Season Standings: every member's points added up across the season's majors, the season
-// champion once The Open is final, and the season pot (if the commissioner set a buy-in).
+// champion once The Open is final, and, in a season the league runs a season-long pool, what each
+// paying place wins (as bubbles like a tournament's) and the pot.
 export function SeasonStandingsReport({ p }: { p: PoolPage }) {
   const { pool, poolEntries, isMobile, setVenmoFallbackUrl } = p;
   const { events, error } = useLeagueHistory(pool?.id);
@@ -29,8 +30,10 @@ export function SeasonStandingsReport({ p }: { p: PoolPage }) {
   const rows = seasonStandings(events, season, names);
   const complete = seasonComplete(events, season);
   const played = TOURNAMENT_ORDER.filter((tid) => events.some((e) => e.season === season && e.tournamentId === tid));
-  const fee = pool?.seasonFee ?? 0;
-  const plan = pool?.seasonPayoutPlan ?? null;
+  // Money only for a season the league ran a season-long pool in; the standings show regardless.
+  const seasonPool = pool?.seasonPools?.[season];
+  const fee = seasonPool?.enabled ? seasonPool.fee ?? 0 : 0;
+  const plan = seasonPool?.enabled ? seasonPool.plan ?? null : null;
   const pot = fee * rows.length;
   const payouts = fee > 0 && plan ? computePayouts(plan, pot, fee) : null;
   const amounts = payouts ? [payouts.first, payouts.second, payouts.third] : [];
@@ -52,6 +55,15 @@ export function SeasonStandingsReport({ p }: { p: PoolPage }) {
           <div style={{ fontSize: isMobile ? 20 : 26, fontWeight: 900, color: '#0f1720' }}>Season Standings</div>
           <div style={{ fontSize: 13, color: '#5b6b79', marginTop: 2 }}>Points from every major added up. Updated when each major goes final.</div>
         </div>
+        {payouts ? (
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {plan!.places.map((_, i) => (
+              <span key={i} style={{ borderRadius: 999, padding: isMobile ? '6px 12px' : '7px 14px', background: '#173b63', color: '#fff', fontSize: isMobile ? 13 : 14, fontWeight: 800, boxShadow: '0 4px 10px rgba(23,59,99,0.22)', whiteSpace: 'nowrap' }}>
+                {ordinal(i + 1)}: {formatMoney(amounts[i] ?? 0)}
+              </span>
+            ))}
+          </div>
+        ) : null}
         {seasons.length > 1 ? (
           <select value={season} onChange={(e) => setChosen(Number(e.target.value))} style={{ border: '1px solid #cdd9e5', borderRadius: 10, padding: '9px 12px', fontSize: 14, fontWeight: 700, background: '#fff', color: '#0f1720' }}>
             {seasons.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -83,7 +95,7 @@ export function SeasonStandingsReport({ p }: { p: PoolPage }) {
               <div style={{ fontSize: 13.5, color: '#3d4b58' }}>
                 <b>Season pot:</b> {rows.length} players × {formatMoney(fee)} = <b>{formatMoney(pot)}</b>{complete ? '' : ' (so far)'}
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${plan!.places.length}, 1fr)`, gap: 8 }}>
+              {complete ? <div style={{ display: 'grid', gridTemplateColumns: `repeat(${plan!.places.length}, 1fr)`, gap: 8 }}>
                 {plan!.places.map((_, i) => {
                   const winner = complete ? rows.find((_, j) => ranks[j] === i + 1) : null;
                   const venmo = winner?.id ? venmoById.get(winner.id) ?? null : null;
@@ -104,7 +116,7 @@ export function SeasonStandingsReport({ p }: { p: PoolPage }) {
                     </div>
                   );
                 })}
-              </div>
+              </div> : null}
             </div>
           ) : null}
 

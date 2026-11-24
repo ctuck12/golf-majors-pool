@@ -106,8 +106,8 @@ export const membersWithPicks = async (tournamentId: TournamentId, season: numbe
 export const setTournamentStateEverywhere = async (userId: string, tournamentId: TournamentId, change: { picksOpen?: boolean; locked?: boolean }) =>
   (await postgresOnly()).setTournamentStateEverywhere(userId, tournamentId, change);
 export const allLeagueMemberIds = async () => (await postgresOnly()).allLeagueMemberIds();
-export const setSeasonSettings = async (userId: string, fee: number | null, plan: PayoutPlan | null) =>
-  (await postgresOnly()).setSeasonSettings(userId, fee, plan);
+export const setSeasonSettings = async (userId: string, enabled: boolean, fee: number | null, plan: PayoutPlan | null) =>
+  (await postgresOnly()).setSeasonSettings(userId, enabled, fee, plan);
 export const readLeagueHistory = async (leagueId: string) => (await postgresOnly()).readLeagueHistory(leagueId);
 export const setPaymentNote = async (userId: string, note: string | null) =>
   (await postgresOnly()).setPaymentNote(userId, note);

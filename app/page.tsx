@@ -1082,8 +1082,10 @@ export default function Page() {
 
         {seasonSettingsOpen && pool && pool.role === 'commissioner' ? (
           <SeasonSettingsModal<PoolInfo>
-            fee={pool.seasonFee ?? null}
-            plan={pool.seasonPayoutPlan ?? null}
+            season={pool.poolSeason ?? new Date().getFullYear()}
+            enabled={pool.seasonPools?.[pool.poolSeason ?? 0]?.enabled ?? null}
+            fee={pool.seasonPools?.[pool.poolSeason ?? 0]?.fee ?? null}
+            plan={pool.seasonPools?.[pool.poolSeason ?? 0]?.plan ?? null}
             memberCount={pool.memberCount ?? 0}
             onPool={(next) => setPool((current) => (current ? { ...current, ...next } : next))}
             onClose={() => setSeasonSettingsOpen(false)}

@@ -949,6 +949,9 @@ export type PoolInfo = {
   paymentNote?: string | null;
   seasonFee?: number | null;
   seasonPayoutPlan?: PayoutPlan | null;
+  // The current pool season and each season's season-long pool setting (missing: not decided yet).
+  poolSeason?: number;
+  seasonPools?: Record<number, { enabled: boolean; fee: number | null; plan: PayoutPlan | null }>;
   // Entry fee status per tournament, by member id (members get only their own).
   entryPayments?: Partial<Record<TournamentId, Record<string, 'reported' | 'confirmed'>>>;
   // Commissioners only: winners already paid this season.

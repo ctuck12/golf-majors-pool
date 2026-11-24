@@ -69,12 +69,19 @@ export type PublicPool = {
   payoutInfo?: Partial<Record<TournamentId, PayoutInfo>>;
   // How to pay the entry fee when it isn't through the commissioner's Venmo.
   paymentNote?: string | null;
-  // The season championship's buy-in and payout plan (both optional).
+  // The season championship's buy-in and payout plan for the current season (null unless the league
+  // is running a season-long pool this season).
   seasonFee?: number | null;
   seasonPayoutPlan?: PayoutPlan | null;
+  // The current pool season, and each season's answer to "running a season-long pool?" (a season
+  // missing here hasn't been decided yet).
+  poolSeason?: number;
+  seasonPools?: Record<number, SeasonPool>;
   // Entry fee status per tournament (for the event on show), by member id. Members get only theirs.
   entryPayments?: Partial<Record<TournamentId, Record<string, PaymentStatus>>>;
 };
+
+export type SeasonPool = { enabled: boolean; fee: number | null; plan: PayoutPlan | null };
 
 // 'reported': the member says they paid; 'confirmed': the commissioner checked it.
 export type PaymentStatus = 'reported' | 'confirmed';

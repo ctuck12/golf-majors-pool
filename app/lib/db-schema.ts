@@ -212,6 +212,31 @@ end $$;
 
 -- Entry fee tracking: a member says they paid (Submit & Pay, or "I paid"), the commissioner
 -- confirms it. One row per member per event; no row means not paid.
+-- Season-long pools, decided each season: whether the league runs one that season, and if so its
+-- buy-in and how that pot is split. No row for a season means the commissioner hasn't said yet.
+-- (Season Standings always show; this only decides whether there's money on them.)
+create table if not exists league_season_pools (
+  league_id text not null references leagues(id) on delete cascade,
+  season integer not null,
+  enabled boolean not null,
+  fee double precision,
+  plan jsonb,
+  updated_at timestamptz not null default now(),
+  primary key (league_id, season)
+);
+do $$
+declare applied integer;
+begin
+  insert into app_migrations (name) values ('season-pools-from-league-settings') on conflict do nothing;
+  get diagnostics applied = row_count;
+  if applied = 1 then
+    insert into league_season_pools (league_id, season, enabled, fee, plan)
+    select id, s.season, true, season_fee, season_payout_plan from leagues, (values (2026), (2027)) as s(season)
+    where season_fee is not null and season_fee > 0
+    on conflict do nothing;
+  end if;
+end $$;
+
 create table if not exists league_entry_payments (
   league_id text not null references leagues(id) on delete cascade,
   tournament_id text not null,
@@ -271,6 +296,7 @@ alter table app_migrations enable row level security;
 alter table league_standings_archive enable row level security;
 alter table redis_backups enable row level security;
 alter table league_entry_payments enable row level security;
+alter table league_season_pools enable row level security;
 alter table league_reminders_sent enable row level security;
 alter table push_tokens enable row level security;
 `;

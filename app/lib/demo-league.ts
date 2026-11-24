@@ -179,12 +179,12 @@ export async function fillDemoLeague(leagueId: string): Promise<DemoFillResult> 
         on conflict (league_id, tournament_id) do update set entry_fee = coalesce(league_tournaments.entry_fee, excluded.entry_fee)
       `;
     }
+    await tx`update leagues set payout_plan = coalesce(payout_plan, ${tx.json(PAYOUT_PLAN as never)}) where id = ${league.id}`;
+    // The sample season ran a season-long pool (the current season is left for the commissioner to decide).
     await tx`
-      update leagues set
-        payout_plan = coalesce(payout_plan, ${tx.json(PAYOUT_PLAN as never)}),
-        season_fee = coalesce(season_fee, ${SEASON_FEE}),
-        season_payout_plan = coalesce(season_payout_plan, ${tx.json(SEASON_PAYOUT_PLAN as never)})
-      where id = ${league.id}
+      insert into league_season_pools (league_id, season, enabled, fee, plan)
+      values (${league.id}, ${DEMO_SEASON}, true, ${SEASON_FEE}, ${tx.json(SEASON_PAYOUT_PLAN as never)})
+      on conflict (league_id, season) do nothing
     `;
   });
 
