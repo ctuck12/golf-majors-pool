@@ -1225,7 +1225,7 @@ export default function Page() {
         <VenmoPrompt
           userId={sessionUser.id}
           hasVenmo={!!sessionUser.venmo || sessionUser.venmoDeclined === true}
-          isCommissioner={pool.role === 'commissioner'}
+          isCommissioner={false}
           onAdd={() => setVenmoModalOpen(true)}
           compact={isMobile}
           marginTop={isMobile ? 10 : 16}
