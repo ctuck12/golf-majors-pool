@@ -3,8 +3,29 @@
 import { VenmoMark } from '../venmo-mark';
 import { formatMoney, formatVenmo } from '@/app/lib/venmo';
 import type { PoolPage } from '../pool-page-state';
+import { ordinal, type PayoutPlan } from '@/app/lib/payout-plan';
+import { REPORT_TOURNAMENTS } from '../pool-data';
 
-// Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
+// A payout plan in plain words: "1st 67.5% of the pot, 2nd the rest, 3rd double their entry".
+function describePlan(plan: PayoutPlan, feeWord: string) {
+  const hasFixed = plan.places.some((r) => r.mode === 'fixed' || r.mode === 'fee');
+  return plan.places
+    .map((r, i) => {
+      const what = r.mode === 'percent'
+        ? `${r.value}% of the ${hasFixed ? 'rest of the pot' : 'pot'}`
+        : r.mode === 'fixed'
+          ? formatMoney(r.value)
+          : r.mode === 'fee'
+            ? r.value === 2 ? `double their ${feeWord}` : `${r.value}× the ${feeWord}`
+            : 'the rest';
+      return `${ordinal(i + 1)} ${what}`;
+    })
+    .join(', ');
+}
+
+// The Details tab: how the pool works. The scoring and cap are the same everywhere; the money lines
+// (entry fee, payouts, how to pay, the season pool) are written from what this league's
+// commissioner has set up. `p` is the page's state (usePoolPage()).
 export function DetailsScreen({ p }: { p: PoolPage }) {
   const {
     selectedTournament,
@@ -14,6 +35,33 @@ export function DetailsScreen({ p }: { p: PoolPage }) {
     isFounderPool,
     headerSolid,
   } = p;
+  // What this league has set up, for this tournament.
+  const tournamentName = REPORT_TOURNAMENTS.find((t) => t.id === selectedTournament)?.label ?? 'this tournament';
+  const fee = pool?.entryFees?.[selectedTournament] ?? 0;
+  const amounts = pool?.payouts?.[selectedTournament];
+  const paid = amounts ? [amounts.first, amounts.second, amounts.third].filter((n) => n > 0) : [];
+  const plan = pool?.payoutPlan ?? null;
+  const venmoOn = pool?.venmoEnabled !== false && !!pool?.venmo;
+  const season = pool?.poolSeason;
+  const seasonPool = season ? pool?.seasonPools?.[season] : undefined;
+  const moneyLines = [
+    fee > 0 || paid.length > 0
+      ? <>{fee > 0 ? <>Entry fee for {tournamentName}: <strong>{formatMoney(fee)}</strong>. </> : null}{plan && !pool?.payoutInfo?.[selectedTournament]?.manual
+          ? <><strong>{plan.places.length === 1 ? 'Winner takes all' : `Top ${plan.places.length} paid`}</strong>: {describePlan(plan, 'entry fee')}.</>
+          : paid.length ? <><strong>{paid.length === 1 ? 'Winner takes all' : `Top ${paid.length} paid`}.</strong></> : <>Your commissioner will set the payouts.</>}
+          {paid.length ? <> Right now: {paid.map((n, i) => `${ordinal(i + 1)} ${formatMoney(n)}`).join(', ')}{plan && !pool?.payoutInfo?.[selectedTournament]?.manual ? ' (grows as entries come in)' : ''}.</> : null}</>
+      : <>No entry fee for {tournamentName}: <strong>bragging rights only.</strong></>,
+    fee > 0
+      ? venmoOn
+        ? <>Pay with one tap on <VenmoMark tone="blue" height="0.9em" /> when you submit your picks{pool?.venmo ? <> (to <strong>{formatVenmo(pool.venmo.handle)}</strong>)</> : null}.</>
+        : pool?.paymentNote
+          ? <>How to pay: <strong>{pool.paymentNote}</strong></>
+          : <>Ask your commissioner how to pay.</>
+      : null,
+    seasonPool?.enabled && seasonPool.fee
+      ? <><strong>Season pool:</strong> {formatMoney(seasonPool.fee)} buy-in. Points from every tournament add up, and the leader after The Open wins{seasonPool.plan ? <> ({describePlan(seasonPool.plan, 'buy-in')})</> : null}. See <strong>Reports → Season Standings</strong>.</>
+      : null,
+  ].filter(Boolean);
   return (
     <main style={{ marginTop: isMobile ? 12 : 24 }}>
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1.4fr', gap: isMobile ? 10 : 16, alignItems: isMobile ? 'start' : 'stretch' }}>
@@ -30,9 +78,9 @@ export function DetailsScreen({ p }: { p: PoolPage }) {
                         <>Participants have a fixed salary cap of <strong>$50,000</strong> to build their 6-player roster.</>,
                         <>Golfers <strong>can be picked more than once per season.</strong> Points are awarded hole-by-hole plus tournament standings. Cut players receive <strong>−10 pts.</strong></>,
                         <>All <strong>6 golfers</strong> on your roster contribute to your total score.</>,
-                        <><strong>1st, 2nd, and 3rd place pay out.</strong> Amounts vary based on the size of the pool field.</>,
+                        ...moneyLines,
                         <>Complete breakdown of tiebreak rules can be found <span onClick={() => setShowTiebreakerRules(true)} style={{ textDecoration: 'underline', textUnderlineOffset: 2, cursor: 'pointer', fontWeight: 700 }}>here</span>.</>,
-                      ] as const).map((text, i, arr) => (
+                      ]).map((text, i, arr) => (
                         <div key={i} style={{ borderLeft: `3px solid ${headerSolid}`, paddingLeft: isMobile ? 10 : 14, paddingTop: isMobile ? 7 : 9, paddingBottom: isMobile ? 7 : 9, marginLeft: 2, borderBottom: i < arr.length - 1 ? (selectedTournament === 'open' ? '1px solid rgba(0,0,0,0.08)' : '1px solid #f0f3f6') : 'none', fontSize: isMobile ? 12 : 14, color: selectedTournament === 'open' ? '#000000' : '#374151', lineHeight: 1.55 }}>
                           {text}
                         </div>
@@ -68,7 +116,7 @@ export function DetailsScreen({ p }: { p: PoolPage }) {
                   </div>
                   ) : (
                   <div style={{ padding: isMobile ? '0 14px 14px' : '0 22px 22px', display: 'grid', gap: isMobile ? 6 : 10 }}>
-                    {pool?.entryFees?.[selectedTournament] || pool?.venmo || pool?.paymentNote ? (
+                    {fee > 0 ? (
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: isMobile ? 6 : 10 }}>
                         <div style={{ border: '1px solid #dce8f5', borderRadius: isMobile ? 10 : 12, padding: isMobile ? '8px 10px' : '10px 14px', background: '#fff' }}>
                           <div style={{ fontSize: 9, textTransform: 'uppercase', fontWeight: 800, color: '#5b6b79', letterSpacing: '0.07em' }}>Entry Fee</div>

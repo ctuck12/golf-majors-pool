@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { VenmoMark } from '../venmo-mark';
 import { formatVenmo } from '@/app/lib/venmo';
 import { currentTournamentMeta, effectiveLockTime } from '@/app/lib/tournament-config';
@@ -9,6 +9,7 @@ import { SALARY_CAP, REQUIRED_GOLFERS, totalParFor, TOURNAMENTS, getFlagSrc, get
 import type { PoolPage } from '../pool-page-state';
 import { TournamentWordmark } from '../tournament-wordmark';
 import { GmpBadge } from '../gmp-badge';
+import { AdminSetupCard } from '../admin-setup-card';
 
 // Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
 export function CommissionerScreen({ p }: { p: PoolPage }) {
@@ -20,7 +21,6 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
     preTournamentTick,
     preTournamentBusy,
     savePreTournamentOverride,
-    sessionUser,
     pool,
     setLeagueModalOpen,
     authBusy,
@@ -52,7 +52,6 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
     setCommissionerMemberSearch,
     commissionerMemberSort,
     setCommissionerMemberSort,
-    setVenmoModalOpen,
     setEntryFeesOpen,
     setAdminLeaguesOpen,
     setPayWinnersOpen,
@@ -131,20 +130,48 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
     setPool,
     setPaywallMode,
   } = p;
-  // This season's season-long pool answer (undefined: the commissioner hasn't been asked yet).
-  const seasonPool = pool?.poolSeason ? pool.seasonPools?.[pool.poolSeason] : undefined;
-  const [seasonAnswerBusy, setSeasonAnswerBusy] = useState(false);
   const answerNoSeasonPool = async () => {
-    setSeasonAnswerBusy(true);
-    try {
-      const res = await fetch('/api/commissioner/season', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: false, fee: null, plan: null }) });
-      const payload = (await res.json().catch(() => ({}))) as { pool?: NonNullable<typeof pool> };
-      if (res.ok && payload.pool) setPool((current) => (current ? { ...current, ...payload.pool } : payload.pool!));
-    } finally {
-      setSeasonAnswerBusy(false);
-    }
+    const res = await fetch('/api/commissioner/season', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: false, fee: null, plan: null }) });
+    const payload = (await res.json().catch(() => ({}))) as { pool?: NonNullable<typeof pool> };
+    if (res.ok && payload.pool) setPool((current) => (current ? { ...current, ...payload.pool } : payload.pool!));
   };
-  const guideStepsLeft = [!!(sessionUser?.venmo || pool?.paymentNote), !!Object.keys(pool?.entryFees ?? {}).length, !!pool?.payoutPlan, (pool?.memberCount ?? 0) > 1].filter((done) => !done).length;
+  const isCommissioner = pool?.role === 'commissioner';
+  // One tool tile (same look for every group).
+  const toolTile = (t: { key: string; title: ReactNode; sub: ReactNode; Icon: typeof Trophy; open: () => void; href?: string }) => {
+    const Icon = t.Icon;
+    const inner = (
+      <>
+        <div style={{ width: isMobile ? 34 : 40, height: isMobile ? 34 : 40, borderRadius: 10, background: entriesTournamentBg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <Icon size={isMobile ? 18 : 22} />
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: isMobile ? 14 : 15, fontWeight: 800, color: '#0f1720' }}>{t.title}</div>
+          <div style={{ marginTop: 2, fontSize: isMobile ? 11.5 : 12, color: '#5b6b79' }}>{t.sub}</div>
+        </div>
+      </>
+    );
+    const style = { textAlign: 'left' as const, textDecoration: 'none', border: '1px solid #e6edf1', borderRadius: 14, padding: isMobile ? '11px 13px' : '14px 16px', background: 'linear-gradient(180deg, #ffffff 0%, #f7fafc 100%)', boxShadow: '0 4px 12px rgba(9, 34, 51, 0.05)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: isMobile ? 11 : 13 };
+    return t.href ? <a key={t.key} href={t.href} style={style}>{inner}</a> : <button key={t.key} type="button" onClick={t.open} style={style}>{inner}</button>;
+  };
+  const toolGroup = (title: string, tools: Parameters<typeof toolTile>[0][], note?: string) => (
+    <section key={title} style={{ background: '#fff', borderRadius: 20, padding: isMobile ? 14 : 20, boxShadow: '0 18px 40px rgba(9, 34, 51, 0.08)' }}>
+      <div style={{ fontSize: 13, fontWeight: 800, textTransform: 'uppercase', color: '#5b6b79', marginBottom: note ? 2 : 12 }}>{title}</div>
+      {note ? <div style={{ fontSize: 12, color: '#8a99a6', marginBottom: 12 }}>{note}</div> : null}
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(220px, 1fr))', gap: isMobile ? 8 : 12 }}>
+        {tools.map(toolTile)}
+      </div>
+    </section>
+  );
+  const openMembers = () => { setCommissionerRosterMemberId(null); setCommissionerMemberSearch(''); setShowAddMemberForm(false); setCommissionerConsoleView('members'); };
+  const openPoolTool = (key: 'tiebreak' | 'roundLeader' | 'markStatus') => { setPoolToolConfirm(null); setPoolToolModal(key); };
+  const openPoolLock = () => {
+    const current = effectiveLockTime(lockTimeOverrides[entriesTournamentId], currentTournamentMeta(entriesTournamentId)?.lockAtUtc);
+    setPoolLockInput(current ? utcToCentralInput(current) : '');
+    setPoolLockMsg('');
+    setPoolLockModalOpen(true);
+  };
+  const seasonNow = pool?.poolSeason;
+  const seasonPoolNow = seasonNow ? pool?.seasonPools?.[seasonNow] : undefined;
   return (
     <main style={{ marginTop: isMobile ? 12 : 24, display: 'grid', gap: isMobile ? 12 : 20 }}>
             {commissionerConsoleView === 'dashboard' ? (
@@ -159,6 +186,18 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                   </button>
                 </div>
               ) : null}
+              {isCommissioner && pool ? (
+                <AdminSetupCard
+                  pool={pool}
+                  isMobile={isMobile}
+                  onRenew={() => setPaywallMode({ kind: 'renew', leagueId: pool.id, leagueName: pool.name, memberCount: pool.memberCount ?? 0 })}
+                  onSeasonPool={() => setSeasonSettingsOpen(true)}
+                  onNoSeasonPool={answerNoSeasonPool}
+                  onEntryFees={() => setEntryFeesOpen(true)}
+                  onPayouts={() => setPayoutPlanOpen(true)}
+                  onInvite={() => setLeagueModalOpen(true)}
+                />
+              ) : null}
               {pool?.role === 'commissioner' ? (
                 <button
                   type="button"
@@ -170,284 +209,15 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: isMobile ? 15 : 16, fontWeight: 900 }}>
-                      Commissioner Guide{guideStepsLeft > 0 ? <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 900, background: '#F4BC41', color: '#173b63', borderRadius: 999, padding: '2px 8px', verticalAlign: 'middle' }}>START HERE</span> : null}
-                    </div>
+                      Commissioner Guide</div>
                     <div style={{ marginTop: 2, fontSize: isMobile ? 12 : 13, color: 'rgba(255,255,255,0.82)' }}>
-                      {guideStepsLeft > 0 ? `${guideStepsLeft} setup ${guideStepsLeft === 1 ? 'step' : 'steps'} left · how it all works · our blueprint` : 'Setup, tournament week, payouts and our blueprint'}
+                      How a season runs, start to finish
                     </div>
                   </div>
                   <ChevronRight size={18} style={{ flexShrink: 0, opacity: 0.8 }} />
                 </button>
               ) : null}
-              {pool?.role === 'commissioner' && pool.poolSeason && seasonPool === undefined ? (
-                <div style={{ borderRadius: 16, padding: isMobile ? '13px 14px' : '16px 18px', background: '#fff8e6', border: '1px solid #f3d38b', display: 'grid', gap: 10 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <Award size={20} color="#8a6410" style={{ flexShrink: 0 }} />
-                    <div style={{ fontSize: isMobile ? 14.5 : 15.5, fontWeight: 900, color: '#3f2d06' }}>Running a season-long pool in {pool.poolSeason}?</div>
-                  </div>
-                  <div style={{ fontSize: 13, color: '#5c4310', lineHeight: 1.45 }}>
-                    A separate buy-in and prize for the best total across all the majors. Season Standings show in Reports either way; this just decides whether there&apos;s money on them.
-                  </div>
-                  {pool.seasonExpired ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fbf1f1', border: '1px solid #e7a3a3', borderRadius: 11, padding: '9px 11px' }}>
-                      <div style={{ flex: 1, fontSize: 13, color: '#a61b1b', fontWeight: 700, lineHeight: 1.4 }}>
-                        First, renew {pool.name} for {pool.poolSeason}. Members can&apos;t make picks or join until you do.
-                      </div>
-                      <button type="button" onClick={() => setPaywallMode({ kind: 'renew', leagueId: pool.id, leagueName: pool.name, memberCount: pool.memberCount ?? 0 })} style={{ border: 'none', borderRadius: 10, padding: '8px 12px', background: '#173b63', color: '#fff', fontWeight: 800, fontSize: 13.5, cursor: 'pointer', flexShrink: 0 }}>
-                        Renew
-                      </button>
-                    </div>
-                  ) : null}
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button type="button" onClick={() => setSeasonSettingsOpen(true)} style={{ flex: 1, border: 'none', borderRadius: 11, padding: '10px 8px', background: '#173b63', color: '#fff', fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>
-                      Yes, set it up
-                    </button>
-                    <button type="button" disabled={seasonAnswerBusy} onClick={() => void answerNoSeasonPool()} style={{ flex: 1, border: '1px solid #e2c98a', borderRadius: 11, padding: '10px 8px', background: '#fff', color: '#3f2d06', fontWeight: 800, fontSize: 14, cursor: 'pointer', opacity: seasonAnswerBusy ? 0.6 : 1 }}>
-                      No, tournaments only
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-            <section
-              style={{
-                background: '#fff',
-                borderRadius: 24,
-                padding: isMobile ? '9px 14px' : '15px 22px',
-                boxShadow: '0 18px 40px rgba(9, 34, 51, 0.08)',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: isAppAdmin ? (isMobile ? 6 : 14) : 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12, flexWrap: 'wrap' }}>
-                  <div style={{ fontSize: 13, fontWeight: 800, textTransform: 'uppercase', color: '#5b6b79' }}>
-                    Pool Status
-                  </div>
-                  {TOURNAMENT_TAB_LOGOS[tournament.id] && (
-                    <TournamentWordmark id={tournament.id} alt={tournament.name} width={isMobile ? 172 : 240} height={isMobile ? 40 : 52} />
-                  )}
-                </div>
-                <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                <button
-                  onClick={() => void handleLogout()}
-                  disabled={authBusy}
-                  style={{
-                    padding: isMobile ? '7px 15px' : '9px 18px',
-                    fontSize: isMobile ? 13 : 14,
-                    fontWeight: 800,
-                    borderRadius: 9,
-                    border: '1px solid #e2e8ef',
-                    background: '#fff',
-                    color: '#5b6b79',
-                    cursor: authBusy ? 'not-allowed' : 'pointer',
-                    opacity: authBusy ? 0.6 : 1,
-                    flexShrink: 0,
-                  }}
-                >
-                  Sign Out
-                </button>
-                </div>
-              </div>
-              {/* Data source, last sync, lineup lock and picks open/closed are the app admin's to run, so
-                  only the app admin sees them. Commissioners read how picks and locking work in the guide. */}
-              {isAppAdmin ? (
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: isMobile ? 'repeat(2, minmax(0, 1fr))' : 'repeat(auto-fit, minmax(220px, 1fr))',
-                  gap: isMobile ? 8 : 14,
-                  gridAutoRows: '1fr', // equal-height rows so all four status boxes match
-                }}
-              >
-                {/* Where scores come from and when they last synced: the app admin's concern only. */}
-                {isAppAdmin ? (
-                <>
-                <div style={{ border: '1px solid #e6edf1', borderRadius: isMobile ? 12 : 18, padding: isMobile ? 10 : 16, background: '#f8fbfd', display: 'flex', flexDirection: 'column' }}>
-                  <div style={{ fontSize: 11, textTransform: 'uppercase', fontWeight: 800, color: '#5b6b79' }}>
-                    Data source
-                  </div>
-                  <div style={{ marginTop: isMobile ? 4 : 8, flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: isMobile ? 12 : 16 }}>
-                    {/* ESPN then PGA Tour just to its right, PGA sized bigger (near-square badge vs wide ESPN).
-                        Heights kept modest so this box doesn't drive the equal-height grid taller. */}
-                    <img src="/espn-logo.png" alt="ESPN" style={{ height: isMobile ? 26 : 34, maxHeight: '100%', width: 'auto', objectFit: 'contain', display: 'block' }} />
-                    <img src="/pga-tour-logo.png" alt="PGA Tour" style={{ height: isMobile ? 38 : 46, maxHeight: '100%', width: 'auto', objectFit: 'contain', display: 'block' }} />
-                  </div>
-                </div>
-                <div style={{ border: '1px solid #e6edf1', borderRadius: isMobile ? 12 : 18, padding: isMobile ? 10 : 16, background: '#f8fbfd' }}>
-                  <div style={{ fontSize: 11, textTransform: 'uppercase', fontWeight: 800, color: '#5b6b79' }}>
-                    Last sync
-                  </div>
-                  <div style={{ marginTop: isMobile ? 4 : 8, fontSize: isMobile ? 13 : 18, fontWeight: 800 }}>{formatRefresh(feed?.fetchedAt ?? null).replace(/^Updated /, '')}</div>
-                </div>
-                </>
-                ) : null}
-                <button
-                  onClick={isAppAdmin ? handleToggleLineupLock : undefined}
-                  disabled={!isAppAdmin || commissionerBusy}
-                  style={{
-                    border: `1.5px solid ${locked ? '#e7a3a3' : '#a8d3ba'}`,
-                    borderRadius: isMobile ? 12 : 18,
-                    padding: isMobile ? 10 : 16,
-                    background: locked ? '#fbf1f1' : '#f1f8f4',
-                    textAlign: 'left',
-                    cursor: !isAppAdmin ? 'default' : commissionerBusy ? 'not-allowed' : 'pointer',
-                    color: 'inherit',
-                  }}
-                >
-                  <div style={{ fontSize: 11, textTransform: 'uppercase', fontWeight: 800, color: '#5b6b79' }}>
-                    Lineup lock
-                  </div>
-                  <div style={{ marginTop: isMobile ? 4 : 8, fontSize: isMobile ? 14 : 18, fontWeight: 800, color: locked ? '#c0271f' : '#1f7a46', display: 'flex', alignItems: 'center', gap: 7 }}>
-                    <span style={{ width: isMobile ? 8 : 9, height: isMobile ? 8 : 9, borderRadius: '50%', background: locked ? '#dc2626' : '#2d7a4f', flexShrink: 0 }} />
-                    {locked ? 'Locked' : 'Unlocked'}
-                  </div>
-                  <div style={{ marginTop: isMobile ? 4 : 8, fontSize: isMobile ? 11 : 13, color: '#5b6b79' }}>
-                    {!isAppAdmin
-                      ? (locked ? 'Picks are locked for this tournament' : 'Locks automatically at the first tee time')
-                      : locked ? 'Click to unlock roster editing' : 'Click to lock roster editing'}
-                  </div>
-                </button>
-                <button
-                  onClick={isAppAdmin ? handleTogglePicksOpen : undefined}
-                  disabled={!isAppAdmin || commissionerBusy}
-                  style={{
-                    border: `1.5px solid ${pool?.picksOpen?.[selectedTournament] ? '#a8d3ba' : '#e7a3a3'}`,
-                    borderRadius: isMobile ? 12 : 18,
-                    padding: isMobile ? 10 : 16,
-                    background: pool?.picksOpen?.[selectedTournament] ? '#f1f8f4' : '#fbf1f1',
-                    textAlign: 'left',
-                    cursor: !isAppAdmin ? 'default' : commissionerBusy ? 'not-allowed' : 'pointer',
-                    color: 'inherit',
-                  }}
-                >
-                  <div style={{ fontSize: 11, textTransform: 'uppercase', fontWeight: 800, color: '#5b6b79' }}>
-                    Player picks
-                  </div>
-                  <div style={{ marginTop: isMobile ? 4 : 8, fontSize: isMobile ? 14 : 18, fontWeight: 800, color: pool?.picksOpen?.[selectedTournament] ? '#1f7a46' : '#c0271f', display: 'flex', alignItems: 'center', gap: 7 }}>
-                    <span style={{ width: isMobile ? 8 : 9, height: isMobile ? 8 : 9, borderRadius: '50%', background: pool?.picksOpen?.[selectedTournament] ? '#2d7a4f' : '#dc2626', flexShrink: 0 }} />
-                    {pool?.picksOpen?.[selectedTournament] ? 'Open' : 'Closed'}
-                  </div>
-                  <div style={{ marginTop: isMobile ? 4 : 8, fontSize: isMobile ? 11 : 13, color: '#5b6b79' }}>
-                    {!isAppAdmin
-                      ? (pool?.picksOpen?.[selectedTournament] ? 'Members can make picks now' : 'Opens once the field is set')
-                      : pool?.picksOpen?.[selectedTournament] ? 'Click to hide pick sheet' : 'Click to show pick sheet'}
-                  </div>
-                </button>
-              </div>
-              ) : null}
 
-              {isAppAdmin ? (
-              <>
-              {/* Standings view — an independent pre-tournament / results toggle for EACH tournament,
-                  since these aren't tied to the tab you're viewing. */}
-              <div style={{ marginTop: isMobile ? 14 : 20 }}>
-                <div style={{ fontSize: 11, textTransform: 'uppercase', fontWeight: 800, color: '#5b6b79', marginBottom: isMobile ? 8 : 10 }}>
-                  Standings view — per tournament
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(210px, 1fr))', gap: isMobile ? 8 : 12 }}>
-                  {(() => {
-                    void preTournamentTick; // re-read module maps when any override changes
-                    return TOURNAMENTS.map((t) => {
-                      const isPre = shouldShowPreTournamentView(t, new Date(nowTick));
-                      const busy = preTournamentBusy === t.id;
-                      const logo = TOURNAMENT_TAB_LOGOS[t.id];
-                      return (
-                        <button
-                          key={t.id}
-                          onClick={() => savePreTournamentOverride(t.id, !isPre)}
-                          disabled={!canManagePool || busy}
-                          style={{
-                            border: `1.5px solid ${isPre ? '#a9c2e0' : '#d9e2ea'}`,
-                            borderRadius: isMobile ? 11 : 14,
-                            padding: isMobile ? '8px 10px' : '9px 12px',
-                            background: isPre ? '#eef4fb' : '#f7f9fb',
-                            textAlign: 'left',
-                            cursor: !canManagePool || busy ? 'not-allowed' : 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 10,
-                          }}
-                        >
-                          <span style={{ width: isMobile ? 82 : 74, height: 46, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            {logo && <TournamentWordmark id={t.id} alt={t.name} width={isMobile ? 82 : 74} height={40} />}
-                          </span>
-                          <div style={{ minWidth: 0, flex: 1, fontSize: isMobile ? 13.5 : 13, fontWeight: 800, color: isPre ? '#234d80' : '#3a4a58', display: 'flex', alignItems: 'center', gap: isMobile ? 7 : 6, whiteSpace: 'nowrap' }}>
-                            <span style={{ width: isMobile ? 10 : 8, height: isMobile ? 10 : 8, borderRadius: '50%', background: isPre ? '#234d80' : '#94a3b8', flexShrink: 0 }} />
-                            {isPre ? 'Pre-tournament' : 'Results'}
-                          </div>
-                        </button>
-                      );
-                    });
-                  })()}
-                </div>
-              </div>
-              </>
-              ) : null}
-
-            </section>
-
-            {/* Pool data tools — the pick list (app admin) and member tools */}
-            <section
-              style={{
-                background: '#fff',
-                borderRadius: 24,
-                padding: isMobile ? 14 : 22,
-                boxShadow: '0 18px 40px rgba(9, 34, 51, 0.08)',
-              }}
-            >
-              <div style={{ fontSize: 13, fontWeight: 800, textTransform: 'uppercase', color: '#5b6b79', marginBottom: 14 }}>Pool Data Tools</div>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))', gap: isMobile ? 8 : 12 }}>
-                {isAppAdmin ? (
-                <a
-                  href="/commissioner-salary"
-                  style={{ textDecoration: 'none', border: '1px solid #cdd9e1', borderRadius: 12, padding: isMobile ? '12px 14px' : '14px 16px', background: '#fff', color: '#0f1720', display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 12 }}
-                >
-                  <div style={{ width: isMobile ? 34 : 40, height: isMobile ? 34 : 40, borderRadius: 10, background: '#0f7a3d', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden', position: 'relative' }}>
-                    <DollarSign size={isMobile ? 18 : 22} color="#fff" />
-                    <img
-                      src="/dollar-sign.png"
-                      alt="Salary pick list"
-                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: isMobile ? 14 : 15, fontWeight: 800, color: '#0f1720' }}>Full Field & Salary Pick List</div>
-                    <div style={{ marginTop: 2, fontSize: isMobile ? 11 : 12, color: '#5b6b79' }}>Upload full field + salaries + OWGRs</div>
-                  </div>
-                </a>
-                ) : null}
-                <button
-                  onClick={() => { setCommissionerRosterMemberId(null); setCommissionerMemberSearch(''); setShowAddMemberForm(false); setCommissionerConsoleView('members'); }}
-                  style={{ textAlign: 'left', border: '1px solid #cdd9e1', borderRadius: 12, padding: isMobile ? '12px 14px' : '14px 16px', background: '#fff', color: '#0f1720', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 12 }}
-                >
-                  <div style={{ width: isMobile ? 34 : 40, height: isMobile ? 34 : 40, borderRadius: 10, background: entriesTournamentBg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Users size={isMobile ? 18 : 22} />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: isMobile ? 14 : 15, fontWeight: 800, color: '#0f1720' }}>Member Management</div>
-                    <div style={{ marginTop: 2, fontSize: isMobile ? 11 : 12, color: '#5b6b79' }}>Full member listing &amp; participation</div>
-                  </div>
-                </button>
-                {isAppAdmin ? (
-                <button
-                  onClick={() => {
-                    const current = effectiveLockTime(lockTimeOverrides[entriesTournamentId], currentTournamentMeta(entriesTournamentId)?.lockAtUtc);
-                    setPoolLockInput(current ? utcToCentralInput(current) : '');
-                    setPoolLockMsg('');
-                    setPoolLockModalOpen(true);
-                  }}
-                  style={{ textAlign: 'left', border: '1px solid #cdd9e1', borderRadius: 12, padding: isMobile ? '12px 14px' : '14px 16px', background: '#fff', color: '#0f1720', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 12 }}
-                >
-                  <div style={{ width: isMobile ? 34 : 40, height: isMobile ? 34 : 40, borderRadius: 10, background: entriesTournamentSolid, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Lock size={isMobile ? 18 : 22} />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: isMobile ? 14 : 15, fontWeight: 800, color: '#0f1720' }}>Pool Lock Time</div>
-                    <div style={{ marginTop: 2, fontSize: isMobile ? 11 : 12, color: '#5b6b79' }}>Set Round 1 first tee time</div>
-                  </div>
-                </button>
-                ) : null}
-              </div>
-            </section>
 
             {/* ── Pool Lock Time modal ─────────────────────────────────────── */}
             {poolLockModalOpen && (
@@ -524,60 +294,30 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
               </div>
             )}
 
-            {/* Pool management tools — each opens a centered modal; actions confirm before applying */}
-            <section
-              style={{
-                background: '#fff',
-                borderRadius: 24,
-                padding: isMobile ? 14 : 22,
-                boxShadow: '0 18px 40px rgba(9, 34, 51, 0.08)',
-              }}
-            >
-              <div style={{ fontSize: 13, fontWeight: 800, textTransform: 'uppercase', color: '#5b6b79', marginBottom: 14 }}>Pool Management Tools</div>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))', gap: isMobile ? 10 : 14 }}>
-                {([
-                  { key: 'leagues', title: 'Leagues', sub: 'Switch, join, create or invite', Icon: Layers, open: () => setLeagueModalOpen(true), everyone: true },
-                  { key: 'allLeagues', title: 'All Leagues', sub: 'Every league, its commissioner and plan', Icon: Users, open: () => setAdminLeaguesOpen(true), adminOnly: true },
-                  { key: 'poolMessage', title: 'Message Your Pool', sub: `Tournament-week text for ${entriesTournament.name}`, Icon: MessageSquareText, open: () => setPoolMessageOpen(true) },
-                  { key: 'entryFees', title: pool?.venmoEnabled === false ? 'Entry Fees' : <span>Entry Fees &amp; <VenmoMark tone="blue" /></span>, sub: pool?.venmoEnabled === false ? 'Set fees and how members pay you' : pool?.venmo ? `Members pay ${formatVenmo(pool.venmo.handle)}` : 'Set fees and who collects them', Icon: DollarSign, open: () => setEntryFeesOpen(true) },
+            {/* League tools, grouped in the order a season runs. */}
+            {isCommissioner ? (
+              <>
+                {toolGroup('Members', [
+                  { key: 'members', title: 'Member Management', sub: 'Everyone in the league, their picks and payments', Icon: Users, open: openMembers },
+                  { key: 'invite', title: 'Invite & Leagues', sub: 'Your league code and link, or switch leagues', Icon: Layers, open: () => setLeagueModalOpen(true) },
+                  { key: 'message', title: 'Message Your Pool', sub: `Tournament-week text for ${entriesTournament.name}`, Icon: MessageSquareText, open: () => setPoolMessageOpen(true) },
+                ])}
+                {toolGroup('Money', [
+                  { key: 'entryFees', title: pool?.venmoEnabled === false ? 'Entry Fees' : <span>Entry Fees &amp; <VenmoMark tone="blue" /></span>, sub: pool?.venmoEnabled === false ? 'Fees and how members pay you' : pool?.venmo ? `Members pay ${formatVenmo(pool.venmo.handle)}` : 'Fees and who collects them', Icon: DollarSign, open: () => setEntryFeesOpen(true) },
                   { key: 'feeTracker', title: 'Entry Fee Tracker', sub: 'Who has paid, and reminders', Icon: CheckCircle2, open: () => setFeeTrackerOpen(true) },
-                  { key: 'payouts', title: 'Payouts', sub: pool?.payoutPlan ? 'Worked out from the pot automatically' : 'Set how the pot is split', Icon: Trophy, open: () => setPayoutPlanOpen(true) },
-                  { key: 'season', title: 'Season Pool', sub: seasonPool === undefined ? `Running one in ${pool?.poolSeason ?? ''}? Not set yet` : seasonPool.enabled && pool?.seasonFee ? `${pool?.poolSeason} buy-in ${'$'}${pool.seasonFee}` : `No season pool in ${pool?.poolSeason ?? ''}`, Icon: Award, open: () => setSeasonSettingsOpen(true) },
+                  { key: 'payouts', title: 'Payouts', sub: pool?.payoutPlan ? 'How the pot is split' : 'Set how the pot is split', Icon: Trophy, open: () => setPayoutPlanOpen(true) },
+                  { key: 'season', title: 'Season Pool', sub: seasonPoolNow === undefined ? `Running one in ${seasonNow ?? ''}? Not set yet` : seasonPoolNow.enabled && pool?.seasonFee ? `${seasonNow} buy-in ${'$'}${pool.seasonFee}` : `No season pool in ${seasonNow ?? ''}`, Icon: Award, open: () => setSeasonSettingsOpen(true) },
                   { key: 'payWinners', title: 'Pay Winners', sub: pool?.venmoEnabled === false ? 'Mark winners paid once final' : <>Send winnings on <VenmoMark tone="blue" /> once final</>, Icon: Send, open: () => setPayWinnersOpen(true) },
-                  { key: 'markStatus' as const, title: 'Mark WD / DQ / MDF', sub: "Override a player's status", Icon: AlertCircle },
-                  { key: 'roundLeader' as const, title: 'Round Leader Tools', sub: 'Clear a mis-captured round leader', Icon: RefreshCw },
-                  { key: 'tiebreak' as const, title: 'Tiebreak Score', sub: 'Enter / override total strokes', Icon: Save },
-                ] as { key: string; title: ReactNode; sub: ReactNode; Icon: typeof Trophy; open?: () => void; adminOnly?: boolean; everyone?: boolean }[])
-                  // League tools for every commissioner; the app-wide ones for the app admin. The Venmo
-                  // tools need a league the user commissions (the admin can be in other leagues).
-                  // League tools (payouts, tiebreak, Venmo) are for the league's commissioner; the
-                  // app-wide ones (All Leagues, WD/DQ, round leaders) for the app admin only.
-                  .filter((t) => t.everyone ? true : (t.adminOnly || t.key === 'markStatus' || t.key === 'roundLeader') ? isAppAdmin : pool?.role === 'commissioner')
-                  .map((t) => {
-                  const Icon = t.Icon;
-                  return (
-                  <button
-                    key={t.key}
-                    onClick={() => {
-                      if (t.open) { t.open(); return; }
-                      setPoolToolConfirm(null);
-                      setPoolToolModal(t.key as 'payouts' | 'tiebreak' | 'roundLeader' | 'markStatus');
-                    }}
-                    disabled={!canManagePool}
-                    style={{ textAlign: 'left', border: '1px solid #e6edf1', borderRadius: 16, padding: isMobile ? '12px 14px' : '16px 18px', background: 'linear-gradient(180deg, #ffffff 0%, #f7fafc 100%)', boxShadow: '0 6px 18px rgba(9, 34, 51, 0.06)', cursor: canManagePool ? 'pointer' : 'not-allowed', opacity: canManagePool ? 1 : 0.5, display: 'flex', alignItems: 'center', gap: isMobile ? 11 : 13 }}
-                  >
-                    <div style={{ width: isMobile ? 34 : 40, height: isMobile ? 34 : 40, borderRadius: 10, background: entriesTournamentBg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <Icon size={isMobile ? 18 : 22} />
-                    </div>
-                    <div>
-                      <div style={{ fontSize: isMobile ? 14 : 15, fontWeight: 800, color: '#0f1720' }}>{t.title}</div>
-                      <div style={{ marginTop: 2, fontSize: isMobile ? 11 : 12, color: '#5b6b79' }}>{t.sub}</div>
-                    </div>
-                  </button>
-                  );
-                })}
-              </div>
-            </section>
+                ])}
+                {toolGroup('Tournament week', [
+                  { key: 'tiebreak', title: 'Tiebreak Score', sub: 'Only if the winner’s score didn’t fill in', Icon: Save, open: () => openPoolTool('tiebreak') },
+                ])}
+              </>
+            ) : (
+              toolGroup('Leagues', [
+                { key: 'invite', title: 'Leagues', sub: 'Switch, join, create or invite', Icon: Layers, open: () => setLeagueModalOpen(true) },
+              ])
+            )}
 
             {/* ── Tool modal (centered) ─────────────────────────────────── */}
             {poolToolModal !== null && (
@@ -947,6 +687,179 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                 </div>
               );
             })()}
+            {isAppAdmin ? (
+              <>
+                <div style={{ marginTop: isMobile ? 8 : 12, fontSize: 12, fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#8a99a6', textAlign: 'center' }}>App admin · only you see this</div>
+            <section
+              style={{
+                background: '#fff',
+                borderRadius: 24,
+                padding: isMobile ? '9px 14px' : '15px 22px',
+                boxShadow: '0 18px 40px rgba(9, 34, 51, 0.08)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: isAppAdmin ? (isMobile ? 6 : 14) : 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12, flexWrap: 'wrap' }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, textTransform: 'uppercase', color: '#5b6b79' }}>
+                    Pool Status
+                  </div>
+                  {TOURNAMENT_TAB_LOGOS[tournament.id] && (
+                    <TournamentWordmark id={tournament.id} alt={tournament.name} width={isMobile ? 172 : 240} height={isMobile ? 40 : 52} />
+                  )}
+                </div>
+              </div>
+              {/* Data source, last sync, lineup lock and picks open/closed are the app admin's to run, so
+                  only the app admin sees them. Commissioners read how picks and locking work in the guide. */}
+              {isAppAdmin ? (
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: isMobile ? 'repeat(2, minmax(0, 1fr))' : 'repeat(auto-fit, minmax(220px, 1fr))',
+                  gap: isMobile ? 8 : 14,
+                  gridAutoRows: '1fr', // equal-height rows so all four status boxes match
+                }}
+              >
+                {/* Where scores come from and when they last synced: the app admin's concern only. */}
+                {isAppAdmin ? (
+                <>
+                <div style={{ border: '1px solid #e6edf1', borderRadius: isMobile ? 12 : 18, padding: isMobile ? 10 : 16, background: '#f8fbfd', display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ fontSize: 11, textTransform: 'uppercase', fontWeight: 800, color: '#5b6b79' }}>
+                    Data source
+                  </div>
+                  <div style={{ marginTop: isMobile ? 4 : 8, flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: isMobile ? 12 : 16 }}>
+                    {/* ESPN then PGA Tour just to its right, PGA sized bigger (near-square badge vs wide ESPN).
+                        Heights kept modest so this box doesn't drive the equal-height grid taller. */}
+                    <img src="/espn-logo.png" alt="ESPN" style={{ height: isMobile ? 26 : 34, maxHeight: '100%', width: 'auto', objectFit: 'contain', display: 'block' }} />
+                    <img src="/pga-tour-logo.png" alt="PGA Tour" style={{ height: isMobile ? 38 : 46, maxHeight: '100%', width: 'auto', objectFit: 'contain', display: 'block' }} />
+                  </div>
+                </div>
+                <div style={{ border: '1px solid #e6edf1', borderRadius: isMobile ? 12 : 18, padding: isMobile ? 10 : 16, background: '#f8fbfd' }}>
+                  <div style={{ fontSize: 11, textTransform: 'uppercase', fontWeight: 800, color: '#5b6b79' }}>
+                    Last sync
+                  </div>
+                  <div style={{ marginTop: isMobile ? 4 : 8, fontSize: isMobile ? 13 : 18, fontWeight: 800 }}>{formatRefresh(feed?.fetchedAt ?? null).replace(/^Updated /, '')}</div>
+                </div>
+                </>
+                ) : null}
+                <button
+                  onClick={isAppAdmin ? handleToggleLineupLock : undefined}
+                  disabled={!isAppAdmin || commissionerBusy}
+                  style={{
+                    border: `1.5px solid ${locked ? '#e7a3a3' : '#a8d3ba'}`,
+                    borderRadius: isMobile ? 12 : 18,
+                    padding: isMobile ? 10 : 16,
+                    background: locked ? '#fbf1f1' : '#f1f8f4',
+                    textAlign: 'left',
+                    cursor: !isAppAdmin ? 'default' : commissionerBusy ? 'not-allowed' : 'pointer',
+                    color: 'inherit',
+                  }}
+                >
+                  <div style={{ fontSize: 11, textTransform: 'uppercase', fontWeight: 800, color: '#5b6b79' }}>
+                    Lineup lock
+                  </div>
+                  <div style={{ marginTop: isMobile ? 4 : 8, fontSize: isMobile ? 14 : 18, fontWeight: 800, color: locked ? '#c0271f' : '#1f7a46', display: 'flex', alignItems: 'center', gap: 7 }}>
+                    <span style={{ width: isMobile ? 8 : 9, height: isMobile ? 8 : 9, borderRadius: '50%', background: locked ? '#dc2626' : '#2d7a4f', flexShrink: 0 }} />
+                    {locked ? 'Locked' : 'Unlocked'}
+                  </div>
+                  <div style={{ marginTop: isMobile ? 4 : 8, fontSize: isMobile ? 11 : 13, color: '#5b6b79' }}>
+                    {!isAppAdmin
+                      ? (locked ? 'Picks are locked for this tournament' : 'Locks automatically at the first tee time')
+                      : locked ? 'Click to unlock roster editing' : 'Click to lock roster editing'}
+                  </div>
+                </button>
+                <button
+                  onClick={isAppAdmin ? handleTogglePicksOpen : undefined}
+                  disabled={!isAppAdmin || commissionerBusy}
+                  style={{
+                    border: `1.5px solid ${pool?.picksOpen?.[selectedTournament] ? '#a8d3ba' : '#e7a3a3'}`,
+                    borderRadius: isMobile ? 12 : 18,
+                    padding: isMobile ? 10 : 16,
+                    background: pool?.picksOpen?.[selectedTournament] ? '#f1f8f4' : '#fbf1f1',
+                    textAlign: 'left',
+                    cursor: !isAppAdmin ? 'default' : commissionerBusy ? 'not-allowed' : 'pointer',
+                    color: 'inherit',
+                  }}
+                >
+                  <div style={{ fontSize: 11, textTransform: 'uppercase', fontWeight: 800, color: '#5b6b79' }}>
+                    Player picks
+                  </div>
+                  <div style={{ marginTop: isMobile ? 4 : 8, fontSize: isMobile ? 14 : 18, fontWeight: 800, color: pool?.picksOpen?.[selectedTournament] ? '#1f7a46' : '#c0271f', display: 'flex', alignItems: 'center', gap: 7 }}>
+                    <span style={{ width: isMobile ? 8 : 9, height: isMobile ? 8 : 9, borderRadius: '50%', background: pool?.picksOpen?.[selectedTournament] ? '#2d7a4f' : '#dc2626', flexShrink: 0 }} />
+                    {pool?.picksOpen?.[selectedTournament] ? 'Open' : 'Closed'}
+                  </div>
+                  <div style={{ marginTop: isMobile ? 4 : 8, fontSize: isMobile ? 11 : 13, color: '#5b6b79' }}>
+                    {!isAppAdmin
+                      ? (pool?.picksOpen?.[selectedTournament] ? 'Members can make picks now' : 'Opens once the field is set')
+                      : pool?.picksOpen?.[selectedTournament] ? 'Click to hide pick sheet' : 'Click to show pick sheet'}
+                  </div>
+                </button>
+              </div>
+              ) : null}
+
+              {isAppAdmin ? (
+              <>
+              {/* Standings view — an independent pre-tournament / results toggle for EACH tournament,
+                  since these aren't tied to the tab you're viewing. */}
+              <div style={{ marginTop: isMobile ? 14 : 20 }}>
+                <div style={{ fontSize: 11, textTransform: 'uppercase', fontWeight: 800, color: '#5b6b79', marginBottom: isMobile ? 8 : 10 }}>
+                  Standings view — per tournament
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(210px, 1fr))', gap: isMobile ? 8 : 12 }}>
+                  {(() => {
+                    void preTournamentTick; // re-read module maps when any override changes
+                    return TOURNAMENTS.map((t) => {
+                      const isPre = shouldShowPreTournamentView(t, new Date(nowTick));
+                      const busy = preTournamentBusy === t.id;
+                      const logo = TOURNAMENT_TAB_LOGOS[t.id];
+                      return (
+                        <button
+                          key={t.id}
+                          onClick={() => savePreTournamentOverride(t.id, !isPre)}
+                          disabled={!canManagePool || busy}
+                          style={{
+                            border: `1.5px solid ${isPre ? '#a9c2e0' : '#d9e2ea'}`,
+                            borderRadius: isMobile ? 11 : 14,
+                            padding: isMobile ? '8px 10px' : '9px 12px',
+                            background: isPre ? '#eef4fb' : '#f7f9fb',
+                            textAlign: 'left',
+                            cursor: !canManagePool || busy ? 'not-allowed' : 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                          }}
+                        >
+                          <span style={{ width: isMobile ? 82 : 74, height: 46, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {logo && <TournamentWordmark id={t.id} alt={t.name} width={isMobile ? 82 : 74} height={40} />}
+                          </span>
+                          <div style={{ minWidth: 0, flex: 1, fontSize: isMobile ? 13.5 : 13, fontWeight: 800, color: isPre ? '#234d80' : '#3a4a58', display: 'flex', alignItems: 'center', gap: isMobile ? 7 : 6, whiteSpace: 'nowrap' }}>
+                            <span style={{ width: isMobile ? 10 : 8, height: isMobile ? 10 : 8, borderRadius: '50%', background: isPre ? '#234d80' : '#94a3b8', flexShrink: 0 }} />
+                            {isPre ? 'Pre-tournament' : 'Results'}
+                          </div>
+                        </button>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+              </>
+              ) : null}
+
+            </section>
+                {toolGroup('App admin tools', [
+                  { key: 'allLeagues', title: 'All Leagues', sub: 'Every league, its commissioner and plan', Icon: Users, open: () => setAdminLeaguesOpen(true) },
+                  { key: 'salary', title: 'Full Field & Salary Pick List', sub: 'Upload full field + salaries + OWGRs', Icon: DollarSign, open: () => {}, href: '/commissioner-salary' },
+                  { key: 'lock', title: 'Pool Lock Time', sub: 'Set Round 1 first tee time', Icon: Lock, open: openPoolLock },
+                  { key: 'markStatus', title: 'Mark WD / DQ / MDF', sub: "Override a player's status", Icon: AlertCircle, open: () => openPoolTool('markStatus') },
+                  { key: 'roundLeader', title: 'Round Leader Tools', sub: 'Clear a mis-captured round leader', Icon: RefreshCw, open: () => openPoolTool('roundLeader') },
+                  ...(isCommissioner ? [] : [{ key: 'members', title: 'Member Management', sub: 'Everyone in the league', Icon: Users, open: openMembers }]),
+                ])}
+              </>
+            ) : null}
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <button type="button" onClick={() => void handleLogout()} disabled={authBusy} style={{ background: 'none', border: 'none', padding: '6px 10px', color: '#8a99a6', fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}>
+                Sign out
+              </button>
+            </div>
               </>
             ) : commissionerConsoleView === 'members' ? (
             <section

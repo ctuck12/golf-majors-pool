@@ -1110,23 +1110,19 @@ export default function Page() {
         {guideOpen && pool && pool.role === 'commissioner' ? (
           <CommissionerGuide<PoolInfo>
             status={{
-              hasVenmo: !!sessionUser?.venmo,
               venmoEnabled: pool.venmoEnabled !== false,
-              hasPaymentNote: !!pool.paymentNote,
-              hasEntryFees: Object.keys(pool.entryFees ?? {}).length > 0,
-              hasPayoutPlan: !!pool.payoutPlan,
-              memberCount: pool.memberCount ?? 0,
+              seasonPool: pool.seasonPools?.[pool.poolSeason ?? 0]?.enabled ?? null,
+              season: pool.poolSeason ?? new Date().getFullYear(),
               nextTournamentLabel: TOURNAMENTS.find((t) => t.id === entriesTournamentId)?.name ?? 'Next tournament',
               nextPicksOpen: pool.picksOpen?.[entriesTournamentId] === true,
             }}
             tournaments={TOURNAMENTS.map((t) => t.id as TournamentId)}
             onPool={(next) => setPool((current) => (current ? { ...current, ...next } : next))}
             onClose={() => setGuideOpen(false)}
-            openVenmo={() => { setGuideOpen(false); setVenmoModalOpen(true); }}
             openEntryFees={() => { setGuideOpen(false); setEntryFeesOpen(true); }}
             openPayouts={() => { setGuideOpen(false); setPayoutPlanOpen(true); }}
-            openInvite={() => { setGuideOpen(false); setLeagueModalOpen(true); }}
             openMessage={() => { setGuideOpen(false); setPoolMessageOpen(true); }}
+            openSeasonPool={() => { setGuideOpen(false); setSeasonSettingsOpen(true); }}
           />
         ) : null}
 
@@ -1208,7 +1204,8 @@ export default function Page() {
         {sessionUser && pool && !needsEmailCode && !showVenmoSetup ? (
         <>
         {/* A league whose season pass lapsed: members can't join or make picks until it's renewed. */}
-        {pool.seasonExpired ? (
+        {/* On Admin, the commissioner's setup card carries the renewal (and Venmo) steps instead. */}
+        {pool.seasonExpired && !(mainTab === 'Commissioner Hub' && pool.role === 'commissioner') ? (
           <div style={{ marginTop: isMobile ? 10 : 16, borderRadius: 16, border: '1px solid #e7a3a3', background: '#fbf1f1', padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
             <div style={{ fontSize: 14, color: '#a61b1b', fontWeight: 700, lineHeight: 1.4 }}>
               {pool.name}&apos;s season pass has expired. {canManagePool ? 'Renew it to reopen picks and joining.' : 'Your commissioner can renew it in the app.'}
@@ -1223,7 +1220,8 @@ export default function Page() {
             ) : null}
           </div>
         ) : null}
-        {pool.venmoEnabled !== false ? (
+        {/* Commissioners add their Venmo from the setup checklist on Admin instead. */}
+        {pool.venmoEnabled !== false && pool.role !== 'commissioner' ? (
         <VenmoPrompt
           userId={sessionUser.id}
           hasVenmo={!!sessionUser.venmo || sessionUser.venmoDeclined === true}
