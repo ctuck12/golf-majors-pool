@@ -129,6 +129,7 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
     entriesWarningPalette,
     salaryColor,
     setPool,
+    setPaywallMode,
   } = p;
   // This season's season-long pool answer (undefined: the commissioner hasn't been asked yet).
   const seasonPool = pool?.poolSeason ? pool.seasonPools?.[pool.poolSeason] : undefined;
@@ -187,6 +188,16 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                   <div style={{ fontSize: 13, color: '#5c4310', lineHeight: 1.45 }}>
                     A separate buy-in and prize for the best total across all the majors. Season Standings show in Reports either way; this just decides whether there&apos;s money on them.
                   </div>
+                  {pool.seasonExpired ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fbf1f1', border: '1px solid #e7a3a3', borderRadius: 11, padding: '9px 11px' }}>
+                      <div style={{ flex: 1, fontSize: 13, color: '#a61b1b', fontWeight: 700, lineHeight: 1.4 }}>
+                        First, renew {pool.name} for {pool.poolSeason}. Members can&apos;t make picks or join until you do.
+                      </div>
+                      <button type="button" onClick={() => setPaywallMode({ kind: 'renew', leagueId: pool.id, leagueName: pool.name, memberCount: pool.memberCount ?? 0 })} style={{ border: 'none', borderRadius: 10, padding: '8px 12px', background: '#173b63', color: '#fff', fontWeight: 800, fontSize: 13.5, cursor: 'pointer', flexShrink: 0 }}>
+                        Renew
+                      </button>
+                    </div>
+                  ) : null}
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button type="button" onClick={() => setSeasonSettingsOpen(true)} style={{ flex: 1, border: 'none', borderRadius: 11, padding: '10px 8px', background: '#173b63', color: '#fff', fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>
                       Yes, set it up

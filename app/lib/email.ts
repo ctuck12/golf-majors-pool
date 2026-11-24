@@ -149,3 +149,42 @@ export async function sendReminderEmail(input: {
       </div>`,
   });
 }
+
+// A commissioner whose league hasn't been renewed for the new season: members can't make picks
+// or join until they do.
+export async function sendRenewalReminderEmail(input: {
+  to: string;
+  displayName: string;
+  leagueName: string;
+  season: number;
+  nextEventName: string | null;
+  nextLockText: string | null;
+  urgent: boolean;
+}) {
+  const first = input.displayName.split(' ')[0] || input.displayName;
+  const subject = input.urgent && input.nextEventName
+    ? `${input.leagueName} can't make ${input.nextEventName} picks yet`
+    : `Renew ${input.leagueName} for the ${input.season} season`;
+  const lines = [
+    `Hi ${first},`,
+    `${input.leagueName} needs its ${input.season} season pass. Until you renew it, your members can't make picks or join the league.`,
+    input.nextEventName && input.nextLockText
+      ? `${input.nextEventName} picks lock ${input.nextLockText}. Renewing takes a minute in the app: open the Admin tab and tap Renew.`
+      : 'Renewing takes a minute in the app: open the Admin tab and tap Renew.',
+    'One season pass covers every major left this season. Nothing renews automatically.',
+  ];
+  const link = appBaseUrl();
+  await sendEmail({
+    to: input.to,
+    subject,
+    text: [...lines, link].join('\n\n'),
+    html: `
+      <div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#0f1720">
+        ${emailHeader()}
+        ${lines.map((line) => `<p style="margin:0 0 14px;line-height:1.5">${escapeHtml(line)}</p>`).join('')}
+        <p style="margin:24px 0">
+          <a href="${link}" style="background:#315f95;color:#fff;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:12px;display:inline-block">Renew ${escapeHtml(input.leagueName)}</a>
+        </p>
+      </div>`,
+  });
+}

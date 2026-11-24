@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/backup-redis",
       "schedule": "23 9 * * *"
+    },
+    {
+      "path": "/api/cron/renewal-reminders",
+      "schedule": "41 15 * * *"
     }
   ]
 }
