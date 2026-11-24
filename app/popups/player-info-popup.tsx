@@ -1,7 +1,7 @@
 'use client';
 
 import { canonicalNameKey } from '@/app/lib/name-match';
-import { TOURNAMENTS, TOURNAMENT_CAREER_RESULTS_HEADER, canonicalName, getPlayerFlag, getFlagSrc, getCountryLabel, TOURNAMENT_TAB_LOGOS, fitPopupHeader, PGA_CLUB_PROFESSIONALS, pgaPhoto, formatCollege, majorTint, PGA_PHOTO_ONLY, playerPhotoSrc, photoOnError, readJson, ordinal } from '../pool-data';
+import { HeaderNameFlag, TOURNAMENTS, TOURNAMENT_CAREER_RESULTS_HEADER, canonicalName, getPlayerFlag, getFlagSrc, getCountryLabel, TOURNAMENT_TAB_LOGOS, fitPopupHeader, PGA_CLUB_PROFESSIONALS, pgaPhoto, formatCollege, majorTint, PGA_PHOTO_ONLY, playerPhotoSrc, photoOnError, readJson, ordinal } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
 import { TournamentWordmark } from '../tournament-wordmark';
 import { GmpBadge } from '../gmp-badge';
@@ -50,18 +50,18 @@ export function PlayerInfoPopup({ p }: { p: PoolPage }) {
               <div style={{ background: '#0f1720', borderRadius: '20px 20px 0 0', padding: '14px 16px 12px', display: 'flex', justifyContent: 'space-between', alignItems: hasBubbles ? 'flex-start' : 'center', gap: 12, flexShrink: 0 }}>
                 <div style={{ minWidth: 0, flex: 1 }}>
                   {/* Name + flag */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', marginBottom: stackAbbr ? 9 : 0 }}>
-                    <div style={{ fontSize: isMobile ? 17 : 20, fontWeight: 900, color: '#fff', lineHeight: 1.1 }}>{pickHistoryPlayerPopup.player.name}</div>
-                    {getPlayerFlag(pickHistoryPlayerPopup.player.name) && (
-                      // Flag + country code stay together (never split across wrapped lines). When the name is too long
-                      // to fit the code beside the flag, the code hangs directly under the flag instead.
-                      <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 7, flexShrink: 0 }}>
-                        <img src={getFlagSrc(pickHistoryPlayerPopup.player.name)} alt="" style={{ height: 16, borderRadius: 2, flexShrink: 0 }} />
-                        {stackAbbr
-                          ? <span style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: 2, color: 'rgba(255,255,255,0.65)', fontWeight: 700, fontSize: 10, lineHeight: 1 }}>{getCountryLabel(pickHistoryPlayerPopup.player.name)}</span>
-                          : <span style={{ color: 'rgba(255,255,255,0.65)', fontWeight: 700, fontSize: 12 }}>{getCountryLabel(pickHistoryPlayerPopup.player.name)}</span>}
-                      </span>
-                    )}
+                  {/* One line always: the name shrinks to fit beside the flag (and the GMP logo), and for very
+                      long names the country code moves under the flag. */}
+                  <div style={{ display: 'flex', alignItems: 'center', minWidth: 0, color: '#fff', fontWeight: 900, whiteSpace: 'nowrap', lineHeight: 1.1, marginBottom: stackAbbr ? 9 : 0 }}>
+                    <HeaderNameFlag
+                      name={pickHistoryPlayerPopup.player.name}
+                      flagSrc={getPlayerFlag(pickHistoryPlayerPopup.player.name) ? getFlagSrc(pickHistoryPlayerPopup.player.name) : null}
+                      abbr={popupCountry || null}
+                      base={isMobile ? 17 : 20}
+                      min={isMobile ? 12 : 15}
+                      allowStack={true}
+                      initialStacked={stackAbbr}
+                    />
                     {/* PGA club professionals (not touring pros): PGA seal directly right of the country code.
                         Flagged either by the static set or automatically from the commissioner's upload. */}
                     {(PGA_CLUB_PROFESSIONALS.has(pickHistoryPlayerPopup.player.name) || clubProKeys.has(canonicalNameKey(pickHistoryPlayerPopup.player.name))) && (
@@ -88,7 +88,8 @@ export function PlayerInfoPopup({ p }: { p: PoolPage }) {
                   </div>
                   )}
                 </div>
-                <GmpBadge height={36} />
+                {/* Very long names: a smaller logo leaves the name room to stay on one line. */}
+                <GmpBadge height={stackAbbr ? 28 : 36} />
                 <button
                   onClick={() => setPickHistoryPlayerPopup(null)}
                   style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 10, cursor: 'pointer', color: '#fff', width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0 }}
