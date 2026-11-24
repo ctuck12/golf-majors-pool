@@ -22,7 +22,13 @@ function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
 }
 
+// Made-up accounts (the Demo League's sample members use @example.com) never get real email.
+const isPlaceholderAddress = (address: string) => /@example\.(com|org|net)$/i.test(address.trim());
+
 async function sendEmail(input: { to: string; subject: string; html: string; text: string }) {
+  const to = input.to.split(',').map((a) => a.trim()).filter((a) => a && !isPlaceholderAddress(a));
+  if (to.length === 0) return;
+  input = { ...input, to: to.join(',') };
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {

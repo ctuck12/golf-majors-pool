@@ -92,10 +92,12 @@ export function AdminLeaguesModal({ open, onClose }: { open: boolean; onClose: (
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      const data = (await res.json()) as { members?: Member[]; error?: string };
+      const data = (await res.json()) as { members?: Member[]; error?: string; demo?: { teams: number; tournaments: string[]; skipped: string[] } };
       if (!res.ok) throw new Error(data.error ?? 'Something went wrong.');
       setMembers(data.members ?? []);
-      setNote(done);
+      setNote(data.demo
+        ? `${done} ${data.demo.teams} teams across ${data.demo.tournaments.length} majors.${data.demo.skipped.length ? ` No salary list for: ${data.demo.skipped.join(', ')}.` : ''} Open each tournament tab in this league once so its final standings are saved for Season Standings and Hall of Champions.`
+        : done);
       await load();
     } catch (err) {
       setError((err as Error).message);
@@ -157,7 +159,7 @@ export function AdminLeaguesModal({ open, onClose }: { open: boolean; onClose: (
                   <ChevronDown size={16} style={{ transform: expanded ? 'rotate(180deg)' : 'none', flexShrink: 0, color: '#5b6b79' }} />
                 </button>
                 {expanded ? (
-                  <div style={{ padding: '4px 14px 14px', display: 'grid', gap: 10 }}>
+                  <div style={{ padding: '4px 14px 14px', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 10, overflowWrap: 'anywhere' }}>
                     {league.commissioner ? (
                       <div style={small}>
                         Commissioner: <b style={{ color: '#0f1720' }}>{league.commissioner.name}</b> · {league.commissioner.email}
@@ -186,6 +188,23 @@ export function AdminLeaguesModal({ open, onClose }: { open: boolean; onClose: (
                         onClick={() => void update(league.id, { freeSeason: true }, `${league.name} has the ${season} season free.`)}>
                         Give the {season} season free
                       </button>
+                    ) : null}
+                    {/demo/i.test(league.name) && league.id !== 'golf-majors-pool' ? (
+                      <div style={{ borderTop: '1px solid #e4ebf2', paddingTop: 10, display: 'grid', gap: 8 }}>
+                        <div style={small}>
+                          <b style={{ color: '#0f1720' }}>Demo data</b> (for App Review): adds 12 made-up members and {`gives everyone a team in each ${season - 1} major, with fees and payments, so the standings and reports have a full season to show.`} Real members&apos; own picks are never changed.
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          <button type="button" disabled={busy} style={{ ...button(true), opacity: busy ? 0.5 : 1 }}
+                            onClick={() => void update(league.id, { demo: 'fill' }, 'Demo season filled in:')}>
+                            {busy ? 'Working…' : 'Fill with demo season'}
+                          </button>
+                          <button type="button" disabled={busy} style={{ ...button(), opacity: busy ? 0.5 : 1 }}
+                            onClick={() => { if (window.confirm('Remove the 12 made-up members and their teams?')) void update(league.id, { demo: 'clear' }, 'Made-up members removed.'); }}>
+                            Remove demo members
+                          </button>
+                        </div>
+                      </div>
                     ) : null}
                     {note ? <div style={{ fontSize: 13, color: '#1f7a4a' }}>{note}</div> : null}
                   </div>
