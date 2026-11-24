@@ -192,7 +192,7 @@ export function AdminLeaguesModal({ open, onClose }: { open: boolean; onClose: (
                     {/demo/i.test(league.name) && league.id !== 'golf-majors-pool' ? (
                       <div style={{ borderTop: '1px solid #e4ebf2', paddingTop: 10, display: 'grid', gap: 8 }}>
                         <div style={small}>
-                          <b style={{ color: '#0f1720' }}>Demo data</b> (for App Review): adds 12 made-up members and {`gives everyone a team in each ${season - 1} major, with fees and payments, so the standings and reports have a full season to show.`} Real members&apos; own picks are never changed.
+                          <b style={{ color: '#0f1720' }}>Demo data</b> (for App Review): adds 12 made-up members and {`gives everyone a team in each ${season - 1} major, with fees and payments, so the standings and reports have a full season to show.`} Running it again rebuilds the sample season; this season&apos;s picks are never touched.
                         </div>
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                           <button type="button" disabled={busy} style={{ ...button(true), opacity: busy ? 0.5 : 1 }}

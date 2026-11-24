@@ -20,7 +20,7 @@ import { getDynamicPlayers } from './dynamic-pool-store';
 //   Champions are complete, The Players included, without anyone opening each tab
 //
 // Only a league whose name contains "demo" can be filled, never the founder league. Running it
-// again rebuilds the made-up members' teams; real members' own picks are never changed.
+// again rebuilds every 2026 team; the current season's picks are never touched.
 
 export const DEMO_SEASON = 2026;
 const SALARY_CAP = 50000;
@@ -109,7 +109,14 @@ export async function fillDemoLeague(leagueId: string): Promise<DemoFillResult> 
     // No salary list was saved for that week (the early 2026 events predate per-event lists): build
     // the field from the event's final leaderboard instead, pricing players by world ranking so the
     // teams mix stars and value picks the same way.
-    if (field.length < TEAM_SIZE * 3) field = await fieldFromFinalLeaderboard(tid);
+    const finished = await fieldFromFinalLeaderboard(tid);
+    if (field.length < TEAM_SIZE * 3) field = finished;
+    // Only golfers who actually played that week (a salary list can include late withdrawals, who
+    // would leave a team one golfer short in the results).
+    else if (finished.length >= TEAM_SIZE * 3) {
+      const played = new Set(finished.map((p) => p.id));
+      field = field.filter((p) => played.has(p.id));
+    }
     if (field.length < TEAM_SIZE * 3) { skipped.push(tid); continue; }
     events.push({ tournamentId: tid, field, lockAt: meta.lockAtUtc });
   }
@@ -133,33 +140,23 @@ export async function fillDemoLeague(leagueId: string): Promise<DemoFillResult> 
     }
 
     const members = await tx<{ user_id: string }[]>`select user_id from league_members where league_id = ${league.id} order by joined_at, user_id`;
-    const demoIds = new Set(DEMO_NAMES.map((_, i) => demoUserId(league.id, i)));
 
     for (const event of events) {
       for (const member of members) {
-        const isDemo = demoIds.has(member.user_id);
         const demoIndex = DEMO_NAMES.findIndex((_, i) => demoUserId(league.id, i) === member.user_id);
         const golferIds = buildTeam(event.field, `${league.id}:${member.user_id}:${event.tournamentId}`);
         if (!golferIds) continue;
         const rand = seededRandom(`${member.user_id}:${event.tournamentId}:extras`);
         const tieBreak = 268 + Math.floor(rand() * 16);
         const submittedAt = new Date(Date.parse(event.lockAt) - (2 + rand() * 70) * 60 * 60 * 1000);
-        // Made-up members' teams are rebuilt each run; a real member's own picks are left alone.
-        const rows = isDemo
-          ? await tx`
-              insert into rosters (league_id, user_id, tournament_id, season, golfer_ids, tie_break, submitted_at, updated_at)
-              values (${league.id}, ${member.user_id}, ${event.tournamentId}, ${DEMO_SEASON}, ${golferIds}, ${tieBreak}, ${submittedAt}, ${submittedAt})
-              on conflict (league_id, user_id, tournament_id, season) do update
-                set golfer_ids = excluded.golfer_ids, tie_break = excluded.tie_break, submitted_at = excluded.submitted_at, updated_at = excluded.updated_at
-              returning 1`
-          : await tx`
-              insert into rosters (league_id, user_id, tournament_id, season, golfer_ids, tie_break, submitted_at, updated_at)
-              values (${league.id}, ${member.user_id}, ${event.tournamentId}, ${DEMO_SEASON}, ${golferIds}, ${tieBreak}, ${submittedAt}, ${submittedAt})
-              on conflict (league_id, user_id, tournament_id, season) do update
-                set golfer_ids = excluded.golfer_ids, tie_break = coalesce(rosters.tie_break, excluded.tie_break),
-                    submitted_at = coalesce(rosters.submitted_at, excluded.submitted_at), updated_at = excluded.updated_at
-                where rosters.golfer_ids is null or cardinality(rosters.golfer_ids) = 0
-              returning 1`;
+        // Every team in the sample season is rebuilt each run (it's a demo league, and the 2026
+        // teams are all ones this tool made).
+        const rows = await tx`
+          insert into rosters (league_id, user_id, tournament_id, season, golfer_ids, tie_break, submitted_at, updated_at)
+          values (${league.id}, ${member.user_id}, ${event.tournamentId}, ${DEMO_SEASON}, ${golferIds}, ${tieBreak}, ${submittedAt}, ${submittedAt})
+          on conflict (league_id, user_id, tournament_id, season) do update
+            set golfer_ids = excluded.golfer_ids, tie_break = excluded.tie_break, submitted_at = excluded.submitted_at, updated_at = excluded.updated_at
+          returning 1`;
         teams += rows.length;
 
         // Entry fees: nearly everyone paid; one member says they paid and is waiting on the
@@ -220,7 +217,9 @@ async function fieldFromFinalLeaderboard(tournamentId: string): Promise<{ id: nu
   const pool = [...PLAYER_POOL_WITH_PGA_IDS, ...dynamic] as { id: number; name: string; worldRank?: number }[];
   const byName = new Map(pool.map((p) => [canonicalNameKey(p.name), p]));
   const field = new Map<number, number>();
-  for (const row of players) {
+  // The feed also lists pool golfers who weren't in the field (with odds only): skip anyone without
+  // a finishing position.
+  for (const row of players.filter((r) => r.position && r.position !== '--' && r.scoreBreakdown)) {
     const p = byName.get(canonicalNameKey(row.canonicalName ?? ''));
     if (!p || field.has(p.id)) continue;
     const rank = p.worldRank && p.worldRank > 0 ? p.worldRank : 300;
