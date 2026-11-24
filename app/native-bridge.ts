@@ -6,7 +6,9 @@ import { Capacitor } from '@capacitor/core';
 // the live site instead, signed in with the session token the API hands the app at login (the
 // website's cookie doesn't reach the app). The token is kept on the device until sign-out.
 
-const API_ORIGIN = process.env.NEXT_PUBLIC_API_ORIGIN ?? 'https://www.golfmajorspool.com';
+// The site's main address (www. redirects here; the app can't follow a redirect on a cross-origin
+// API call, which shows up as "Load failed").
+const API_ORIGIN = process.env.NEXT_PUBLIC_API_ORIGIN ?? 'https://golfmajorspool.com';
 const TOKEN_KEY = 'gmp-native-session-token';
 
 export const isNativeApp = typeof window !== 'undefined' && Capacitor.isNativePlatform();

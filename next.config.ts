@@ -13,7 +13,7 @@ const nextConfig: NextConfig = isMobileBuild
       pageExtensions: ['tsx'],
       images: { unoptimized: true },
       env: {
-        NEXT_PUBLIC_API_ORIGIN: process.env.NEXT_PUBLIC_API_ORIGIN ?? 'https://www.golfmajorspool.com',
+        NEXT_PUBLIC_API_ORIGIN: process.env.NEXT_PUBLIC_API_ORIGIN ?? 'https://golfmajorspool.com',
       },
     }
   : {

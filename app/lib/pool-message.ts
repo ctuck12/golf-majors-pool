@@ -4,7 +4,7 @@ import { ordinal, type PayoutPlan, type PayoutRule } from './payout-plan';
 // The text a commissioner copies and sends to their pool the week of a tournament. Lines for an
 // entry fee, Venmo or payouts are left out when the league hasn't set them.
 
-export const PUBLIC_SITE = 'https://www.golfmajorspool.com';
+export const PUBLIC_SITE = 'https://golfmajorspool.com';
 
 // The store pages, once the app is live there. App Store: https://apps.apple.com/app/id<Apple ID>
 // (the number under App Store Connect → the app → App Information). Google Play:
