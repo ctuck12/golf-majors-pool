@@ -17,10 +17,13 @@ import { TournamentWordmark } from '../tournament-wordmark';
 export function SeasonStandingsReport({ p }: { p: PoolPage }) {
   const { pool, poolEntries, isMobile, setVenmoFallbackUrl } = p;
   const { events, error } = useLeagueHistory(pool?.id);
-  const seasons = events ? seasonsIn(events) : [];
+  // Every season with results, plus this season (so it's always there to pick, even before its
+  // first major); opens on the latest one with results.
+  const withResults = events ? seasonsIn(events) : [];
+  const seasons = [...new Set([...withResults, ...(pool?.poolSeason ? [pool.poolSeason] : [])])].sort((a, b) => b - a);
   const [chosen, setChosen] = useState<number | null>(null);
   const [openKey, setOpenKey] = useState<string | null>(null);
-  const season = chosen ?? seasons[0] ?? new Date().getFullYear();
+  const season = chosen ?? withResults[0] ?? seasons[0] ?? new Date().getFullYear();
 
   if (error) return <div style={{ fontSize: 14, color: '#a61b1b' }}>{error}</div>;
   if (!events) return <div style={{ fontSize: 14, color: '#5b6b79' }}>Loading…</div>;
@@ -53,7 +56,7 @@ export function SeasonStandingsReport({ p }: { p: PoolPage }) {
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div>
           <div style={{ fontSize: isMobile ? 20 : 26, fontWeight: 900, color: '#0f1720' }}>Season Standings</div>
-          <div style={{ fontSize: 13, color: '#5b6b79', marginTop: 2 }}>Points from every major added up. Updated when each major goes final.</div>
+          <div style={{ fontSize: 13, color: '#5b6b79', marginTop: 2 }}>Points from every major added up. Updated after each major.</div>
         </div>
         {payouts ? (
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -64,8 +67,8 @@ export function SeasonStandingsReport({ p }: { p: PoolPage }) {
             ))}
           </div>
         ) : null}
-        {seasons.length > 1 ? (
-          <select value={season} onChange={(e) => setChosen(Number(e.target.value))} style={{ border: '1px solid #cdd9e5', borderRadius: 10, padding: '9px 12px', fontSize: 14, fontWeight: 700, background: '#fff', color: '#0f1720' }}>
+        {seasons.length > 0 ? (
+          <select aria-label="Season" value={season} onChange={(e) => setChosen(Number(e.target.value))} style={{ border: '1px solid #cdd9e5', borderRadius: 10, padding: '9px 12px', fontSize: 14, fontWeight: 700, background: '#fff', color: '#0f1720' }}>
             {seasons.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         ) : null}
