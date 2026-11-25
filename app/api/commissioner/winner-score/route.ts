@@ -21,9 +21,9 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'Sign in to manage pool settings.' }, { status: 401 });
   }
 
-  // League tools: only a commissioner of the user's current league.
-  if (session.pool?.role !== 'commissioner') {
-    return NextResponse.json({ error: 'You do not have access to commissioner tools.' }, { status: 403 });
+  // The tiebreak override is an app admin tool: it sets the winner's score for every league.
+  if (!session.isAppAdmin || !session.pool) {
+    return NextResponse.json({ error: 'Only the app admin can set the winner’s score.' }, { status: 403 });
   }
 
   try {

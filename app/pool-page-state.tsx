@@ -1329,7 +1329,7 @@ export function usePoolPage() {
         body: JSON.stringify({ tournamentId: entriesTournamentId, score }),
       });
       setPool((current) => (current ? { ...current, ...payload.pool } : payload.pool));
-      setCommissionerSuccess(`${commissionerTournamentLabel} winner's score saved.`);
+      setCommissionerSuccess(`${commissionerTournamentLabel} winner's score saved for every league.`);
     } catch (err) {
       setCommissionerError(err instanceof Error ? err.message : 'Unable to save winner score.');
     } finally {

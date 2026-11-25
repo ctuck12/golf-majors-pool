@@ -1045,11 +1045,27 @@ export async function setLeaguePayoutPlan(requestingUserId: string, plan: Payout
   });
 }
 
+// App admin only (the route checks): the winner's total strokes for this season's event, set for
+// every league at once (the demo league keeps its own made-up results).
 export async function updatePoolWinnerScore(requestingUserId: string, tournamentId: TournamentId, score: number) {
-  return updateLeagueTournament(requestingUserId, tournamentId, (sql, leagueId) => sql`
-    update league_tournaments set winner_score = ${score}
-    where league_id = ${leagueId} and tournament_id = ${tournamentId}
-  `);
+  return updateLeagueTournament(requestingUserId, tournamentId, async (sql) => {
+    const season = picksSeason(tournamentId);
+    await sql`
+      insert into league_tournaments (league_id, tournament_id, state_season)
+      select id, ${tournamentId}, ${season} from leagues where coalesce(is_demo, false) = false
+      on conflict do nothing
+    `;
+    await sql`
+      update league_tournaments set picks_open = null, lineup_locked = null, winner_score = null, state_season = ${season}
+      where tournament_id = ${tournamentId} and coalesce(state_season, 2026) <> ${season}
+        and league_id in (select id from leagues where coalesce(is_demo, false) = false)
+    `;
+    await sql`
+      update league_tournaments set winner_score = ${score}
+      where tournament_id = ${tournamentId}
+        and league_id in (select id from leagues where coalesce(is_demo, false) = false)
+    `;
+  });
 }
 
 // League join codes: 6 characters with no look-alikes (0/O, 1/I/L), so they're easy to read out.

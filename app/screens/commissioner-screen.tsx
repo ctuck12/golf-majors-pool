@@ -4,7 +4,7 @@ import { type ReactNode } from 'react';
 import { VenmoMark } from '../venmo-mark';
 import { formatVenmo } from '@/app/lib/venmo';
 import { currentTournamentMeta, effectiveLockTime } from '@/app/lib/tournament-config';
-import { AlertCircle, ArrowLeft, Award, Layers, BookOpen, ChevronRight, Calendar, CircleUserRound, CheckCircle2, DollarSign, Eye, EyeOff, Lock, MessageSquareText, Pencil, RefreshCw, Save, Search, Send, Trophy, Users } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Award, Layers, BookOpen, ChevronRight, Calendar, CircleUserRound, CheckCircle2, DollarSign, Eye, EyeOff, Lock, LogOut, MessageSquareText, Pencil, RefreshCw, Save, Search, Send, Trophy, Users } from 'lucide-react';
 import { SALARY_CAP, REQUIRED_GOLFERS, totalParFor, TOURNAMENTS, getFlagSrc, getCountryLabel, TOURNAMENT_TAB_LOGOS, TOURNAMENT_EVENT_LOGOS, eventLogoStyle, pgaPhoto, playerPhotoSrc, photoOnError, MOBILE_TWO_LINE_NAMES, MOBILE_CUSTOM_SPLITS, utcToCentralInput, shouldShowPreTournamentView, formatRefresh, fieldStyle, FOUNDER_POOL_ID } from '../pool-data';
 import type { PoolPage } from '../pool-page-state';
 import { TournamentWordmark } from '../tournament-wordmark';
@@ -309,9 +309,6 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                   { key: 'season', title: 'Season Pool', sub: seasonPoolNow === undefined ? `Running one in ${seasonNow ?? ''}? Not set yet` : seasonPoolNow.enabled && pool?.seasonFee ? `${seasonNow} buy-in ${'$'}${pool.seasonFee}` : `No season pool in ${seasonNow ?? ''}`, Icon: Award, open: () => setSeasonSettingsOpen(true) },
                   { key: 'payWinners', title: 'Pay Winners', sub: pool?.venmoEnabled === false ? 'Mark winners paid once final' : <>Send winnings on <VenmoMark tone="blue" /> once final</>, Icon: Send, open: () => setPayWinnersOpen(true) },
                 ])}
-                {toolGroup('Tournament week', [
-                  { key: 'tiebreak', title: 'Tiebreak Score', sub: 'Only if the winner’s score didn’t fill in', Icon: Save, open: () => openPoolTool('tiebreak') },
-                ])}
               </>
             ) : (
               toolGroup('Leagues', [
@@ -341,7 +338,7 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
 
                     {poolToolModal === 'tiebreak' && (
                       <>
-                        <div style={{ fontSize: 13, color: '#5b6b79', lineHeight: 1.5 }}>Tiebreak resolves automatically once the tournament ends. Use this override only if the winner isn&apos;t in the player pool.</div>
+                        <div style={{ fontSize: 13, color: '#5b6b79', lineHeight: 1.5 }}>Tiebreak resolves automatically once the tournament ends. Use this override only if the winner isn&apos;t in the player pool. It applies to every league.</div>
                         {commissionerAutoDetected != null ? (
                           <div style={{ fontSize: 13, fontWeight: 700, color: '#166534', background: '#dcfce7', borderRadius: 8, padding: '8px 12px' }}>Auto-detected: {commissionerAutoDetected} strokes</div>
                         ) : commissionerTournamentWinnerScore != null ? (
@@ -355,7 +352,7 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                           onClick={() => {
                             const score = Number(winnerScoreInput);
                             if (!Number.isFinite(score) || score < 200 || score > 400) { setCommissionerError('Enter a valid total stroke count (200–400).'); return; }
-                            setPoolToolConfirm({ title: 'Save winner’s score?', message: `Set the ${commissionerTournamentLabel} tiebreak winner’s score to ${score} strokes?`, confirmLabel: 'Save score', onConfirm: () => { void handleSaveWinnerScore(); setPoolToolModal(null); setPoolToolConfirm(null); } });
+                            setPoolToolConfirm({ title: 'Save winner’s score?', message: `Set the ${commissionerTournamentLabel} tiebreak winner’s score to ${score} strokes for every league?`, confirmLabel: 'Save score', onConfirm: () => { void handleSaveWinnerScore(); setPoolToolModal(null); setPoolToolConfirm(null); } });
                           }}
                           disabled={!canManagePool || commissionerBusy || !winnerScoreInput.trim()}
                           style={{ border: 'none', borderRadius: 12, padding: '12px 16px', background: entriesTournamentSolid, color: '#fff', fontWeight: 900, cursor: (!canManagePool || commissionerBusy || !winnerScoreInput.trim()) ? 'not-allowed' : 'pointer', opacity: (!canManagePool || commissionerBusy || !winnerScoreInput.trim()) ? 0.5 : 1 }}
@@ -850,14 +847,20 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                   { key: 'salary', title: 'Full Field & Salary Pick List', sub: 'Upload full field + salaries + OWGRs', Icon: DollarSign, open: () => {}, href: '/commissioner-salary' },
                   { key: 'lock', title: 'Pool Lock Time', sub: 'Set Round 1 first tee time', Icon: Lock, open: openPoolLock },
                   { key: 'markStatus', title: 'Mark WD / DQ / MDF', sub: "Override a player's status", Icon: AlertCircle, open: () => openPoolTool('markStatus') },
+                  { key: 'tiebreak', title: 'Tiebreak Score', sub: 'All leagues · only if the winner’s score didn’t fill in', Icon: Save, open: () => openPoolTool('tiebreak') },
                   { key: 'roundLeader', title: 'Round Leader Tools', sub: 'Clear a mis-captured round leader', Icon: RefreshCw, open: () => openPoolTool('roundLeader') },
                   ...(isCommissioner ? [] : [{ key: 'members', title: 'Member Management', sub: 'Everyone in the league', Icon: Users, open: openMembers }]),
                 ])}
               </>
             ) : null}
             <div style={{ display: 'flex', justifyContent: 'center' }}>
-              <button type="button" onClick={() => void handleLogout()} disabled={authBusy} style={{ background: 'none', border: 'none', padding: '6px 10px', color: '#8a99a6', fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}>
-                Sign out
+              <button
+                type="button"
+                onClick={() => void handleLogout()}
+                disabled={authBusy}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', maxWidth: 320, border: '1px solid #d7e0e8', borderRadius: 14, padding: '12px 16px', background: '#fff', color: '#0f1720', fontWeight: 800, fontSize: 15, cursor: authBusy ? 'wait' : 'pointer', opacity: authBusy ? 0.6 : 1, boxShadow: '0 6px 16px rgba(9, 34, 51, 0.06)' }}
+              >
+                <LogOut size={17} /> Sign out
               </button>
             </div>
               </>
