@@ -1,6 +1,7 @@
 'use client';
 
 // Inside the iPhone app, sends this page's /api calls to the live site (no-op on the web).
+import { useEffect } from 'react';
 import { settleViewAfterKeyboard } from './native-bridge';
 import { LeagueGate, LeagueModal } from './league-panel';
 import { PaywallModal } from './paywall';
@@ -206,6 +207,30 @@ export default function Page() {
     headerTabActiveColor,
   } = p;
 
+  // The pre-tournament card fits the screen (the art shrinks to keep "Powered by" in view), so the
+  // page doesn't need to scroll: lock it while that card is up, as long as everything really fits
+  // (a short phone with taller content still scrolls).
+  const preCardShowing = !!sessionUser && mainTab === 'Standings' && p.showFutureTournamentView;
+  useEffect(() => {
+    const root = document.documentElement;
+    if (!preCardShowing) { root.classList.remove('no-page-scroll'); return; }
+    let frame = 0;
+    const check = () => {
+      frame = 0;
+      root.classList.remove('no-page-scroll');
+      const extra = root.scrollHeight - window.innerHeight;
+      if (extra <= 48) { window.scrollTo(0, 0); root.classList.add('no-page-scroll'); }
+    };
+    const schedule = () => { if (!frame) frame = requestAnimationFrame(check); };
+    const timer = window.setTimeout(schedule, 300);
+    window.addEventListener('resize', schedule);
+    return () => {
+      window.clearTimeout(timer);
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener('resize', schedule);
+      root.classList.remove('no-page-scroll');
+    };
+  }, [preCardShowing, selectedTournament]);
 
   if (sessionLoading && !sessionUser) {
     return (

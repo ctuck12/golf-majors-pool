@@ -213,3 +213,10 @@ body {
   -webkit-user-select: none;
   user-select: none;
 }
+
+/* The pre-tournament card fills the screen exactly; nothing to scroll to (set by app/page.tsx). */
+html.no-page-scroll,
+html.no-page-scroll body {
+  overflow: hidden;
+  height: 100%;
+}
