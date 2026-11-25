@@ -222,7 +222,10 @@ export default function Page() {
     || (p.selectedReport === 'Player Performance Summary' && !p.ppfTournament)
     || (p.selectedReport === 'Pool Standings History' && !p.pshTournament)
   );
-  const fillScreen = preCardShowing || reportAwaitingChoice;
+  // Signed out on a phone: the sign-in screen fills exactly one screen (header at the top, "Powered by"
+  // near the bottom), so nothing is cut off or needs scrolling.
+  const signedOutFill = isMobile && !sessionUser;
+  const fillScreen = preCardShowing || reportAwaitingChoice || signedOutFill;
   // Pages with the "Powered by" line at the bottom; the Standings leaderboard ends the page without one,
   // so on phones it stops just past the leaderboard box instead of leaving an empty band.
   const showFooter = !!sessionUser && (mainTab !== 'Standings' || p.showFutureTournamentView);
@@ -312,7 +315,7 @@ export default function Page() {
       {showHeaderCutInfo && <div onClick={() => setShowHeaderCutInfo(false)} style={{ position: 'fixed', inset: 0, zIndex: 9 }} />}
       {/* On the pre-tournament card the page is short: stretch it to the screen so the
           "Powered by" mark sits near the bottom instead of right under the card. */}
-      <div style={{ maxWidth: 1280, margin: '0 auto', padding: isMobile ? `2px 10px ${showFooter ? 32 : 6}px` : '32px 20px 40px', ...(fillScreen ? { display: 'flex', flexDirection: 'column', minHeight: 'calc(100dvh / var(--app-zoom, 1) - var(--app-pad-y, 0px))', boxSizing: 'border-box' as const, ...(isMobile ? { paddingBottom: 18 } : {}) } : {}) }}>
+      <div style={{ maxWidth: 1280, margin: '0 auto', padding: isMobile ? `2px 10px ${showFooter ? 32 : 6}px` : '32px 20px 40px', ...(fillScreen ? { display: 'flex', flexDirection: 'column', minHeight: 'calc(100dvh / var(--app-zoom, 1) - var(--app-pad-y, 0px))', boxSizing: 'border-box' as const, ...(isMobile ? { paddingBottom: signedOutFill ? 36 : 18 } : {}) } : {}) }}>
         <header
           style={{
             background: headerBg,
@@ -731,7 +734,9 @@ export default function Page() {
               // Fill the rest of the screen so the "Powered by" mark sits near the bottom: the header
               // above takes ~160px on phones (~255px on desktop) plus the page's bottom padding. Phones
               // shrink the app with CSS zoom, so the screen height is divided back by it.
-              minHeight: isMobile ? 'calc(100dvh / var(--app-zoom, 1) - 192px)' : 'calc(100vh - 300px)',
+              // On phones the page itself is a full-screen column (fillScreen), so this just takes the
+              // space left under the header.
+              ...(isMobile ? { flex: 1 } : { minHeight: 'calc(100vh - 300px)' }),
             }}
           >
             <div

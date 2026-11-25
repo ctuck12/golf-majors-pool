@@ -1101,6 +1101,9 @@ export function usePoolPage() {
       clearStoredMainTab();
       setMainTab('Standings');
       setSaveMessage('');
+      // Start the sign-in screen at the top (signing out from the bottom of a long page kept that scroll).
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: 'auto' }));
     } catch (err) {
       setAuthError(err instanceof Error ? err.message : 'Unable to sign out.');
     } finally {
