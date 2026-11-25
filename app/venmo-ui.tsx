@@ -5,6 +5,7 @@ import { Check, ExternalLink, X } from 'lucide-react';
 import { isNativeApp } from './native-bridge';
 import { VenmoMark } from './venmo-mark';
 import { GmpBadge } from './gmp-badge';
+import { FitTitle } from './fit-title';
 import type { PayoutSent, TournamentId } from './lib/pool-store-shared';
 import {
   formatMoney,
@@ -183,7 +184,7 @@ export function Modal({ title, onClose, children, zIndex = 1050, compact = false
         }}
       >
         <div style={{ background: navy, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ flex: 1, minWidth: 0, color: '#fff', fontSize: 17, fontWeight: 900, lineHeight: 1.2, display: 'flex', alignItems: 'center', gap: 6 }}><span>{title}</span></div>
+          <FitTitle>{title}</FitTitle>
           <GmpBadge height={34} style={{ margin: '-4px 0', marginLeft: 'auto' }} />
           <button
             type="button"

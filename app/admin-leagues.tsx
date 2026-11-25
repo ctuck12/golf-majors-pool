@@ -4,6 +4,7 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import { ChevronDown, X } from 'lucide-react';
 import { VenmoMark } from './venmo-mark';
 import { GmpBadge } from './gmp-badge';
+import { FitTitle } from './fit-title';
 
 // App admin only: every league in the app, its plan and commissioner, with the two fixes only the
 // admin can make (reassign a league's commissioner, give a paid league a free season).
@@ -117,7 +118,7 @@ export function AdminLeaguesModal({ open, onClose }: { open: boolean; onClose: (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(9,20,34,0.62)', backdropFilter: 'blur(7px)', WebkitBackdropFilter: 'blur(7px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(620px, calc(100vw - 32px))', maxHeight: 'calc(100svh - 32px - var(--safe-y))', overflowY: 'auto', background: '#fff', borderRadius: 20, boxShadow: '0 24px 60px rgba(9,34,51,0.3)' }}>
         <div style={{ background: navy, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 10, position: 'sticky', top: 0, zIndex: 1 }}>
-          <div style={{ flex: 1, minWidth: 0, color: '#fff', fontSize: 17, fontWeight: 900 }}>All Leagues{leagues ? ` (${leagues.length})` : ''}</div>
+          <FitTitle>All Leagues{leagues ? ` (${leagues.length})` : ''}</FitTitle>
           <GmpBadge height={34} style={{ margin: '-4px 0', marginLeft: 'auto' }} />
           <button type="button" onClick={onClose} aria-label="Close" style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: 8, width: 30, height: 30, cursor: 'pointer', display: 'grid', placeItems: 'center' }}>
             <X size={16} />

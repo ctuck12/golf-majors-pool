@@ -6,6 +6,7 @@ import { PUBLIC_SITE } from './lib/pool-message';
 import { tierForLimit, type LeagueTier } from './lib/league-passes';
 import type { PaywallMode } from './paywall';
 import { GmpBadge } from './gmp-badge';
+import { FitTitle } from './fit-title';
 
 // League screens: the gate shown to a signed-in user who isn't in a league yet, and the
 // "Leagues" panel (switch, join, create, invite, delete account). Both talk to the API and hand
@@ -419,7 +420,7 @@ export function LeagueModal<T extends SessionLike>({
         style={{ width: 'min(440px, calc(100vw - 32px))', maxHeight: 'calc(100svh - 32px - var(--safe-y))', overflowY: 'auto', background: '#fff', borderRadius: 20, boxShadow: '0 24px 60px rgba(9,34,51,0.3)' }}
       >
         <div style={{ background: navy, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ flex: 1, minWidth: 0, color: '#fff', fontSize: 17, fontWeight: 900 }}>Leagues</div>
+          <FitTitle>Leagues</FitTitle>
           <GmpBadge height={34} style={{ margin: '-4px 0', marginLeft: 'auto' }} />
           <button type="button" onClick={onClose} aria-label="Close" style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', borderRadius: 8, width: 30, height: 30, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <X size={16} />
