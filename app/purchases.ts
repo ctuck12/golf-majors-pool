@@ -22,7 +22,10 @@ export function withTimeout<T>(step: string, ms: number, work: Promise<T>): Prom
   return Promise.race([work, timeout]).finally(() => clearTimeout(timer));
 }
 
-async function purchases(userId: string) {
+// Returns the plugin wrapped in an object. A Capacitor plugin answers every property, `then`
+// included, so returning it bare from an async function makes the promise treat it as a thenable
+// and wait on a native "then" call that never answers: every purchase hung on "Processing…".
+async function purchases(userId: string): Promise<{ Purchases: typeof import('@revenuecat/purchases-capacitor').Purchases }> {
   const { Purchases, LOG_LEVEL } = await import('@revenuecat/purchases-capacitor');
   if (configuredFor === null) {
     // Detailed RevenueCat messages in Xcode's console, for diagnosing purchases.
@@ -33,12 +36,12 @@ async function purchases(userId: string) {
     await Purchases.logIn({ appUserID: userId });
     configuredFor = userId;
   }
-  return Purchases;
+  return { Purchases };
 }
 
 // Localized App Store prices for these products (missing ones aren't set up in App Store Connect yet).
 export async function loadProducts(userId: string, productIds: string[]): Promise<Map<string, StoreProduct>> {
-  const Purchases = await purchases(userId);
+  const { Purchases } = await purchases(userId);
   const { products } = await Purchases.getProducts({ productIdentifiers: productIds });
   return new Map(products.map((product) => [product.identifier, { identifier: product.identifier, priceString: product.priceString }]));
 }
@@ -46,7 +49,7 @@ export async function loadProducts(userId: string, productIds: string[]): Promis
 // Opens Apple's payment sheet. Resolves true when paid, false when the user cancelled.
 export async function buyProduct(userId: string, productId: string): Promise<boolean> {
   console.log('[GMP purchase] starting', productId);
-  const Purchases = await withTimeout('Connecting to the App Store', 20_000, purchases(userId));
+  const { Purchases } = await withTimeout('Connecting to the App Store', 20_000, purchases(userId));
   console.log('[GMP purchase] connected, loading product');
   const { products } = await withTimeout('Loading the pass from the App Store', 20_000, Purchases.getProducts({ productIdentifiers: [productId] }));
   console.log('[GMP purchase] product loaded:', products.length, 'opening payment sheet');
@@ -80,6 +83,6 @@ export async function buyProduct(userId: string, productId: string): Promise<boo
 // Opens Apple's sheet for redeeming an App Store offer code (the promo codes made in App Store
 // Connect). A redeemed code shows up as a purchase, which the paywall then offers as an unused pass.
 export async function redeemPromoCode(userId: string): Promise<void> {
-  const Purchases = await purchases(userId);
+  const { Purchases } = await purchases(userId);
   await Purchases.presentCodeRedemptionSheet();
 }
