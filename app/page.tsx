@@ -211,6 +211,18 @@ export default function Page() {
   // page doesn't need to scroll: lock it while that card is up, as long as everything really fits
   // (a short phone with taller content still scrolls).
   const preCardShowing = !!sessionUser && mainTab === 'Standings' && p.showFutureTournamentView;
+  // A report waiting on its first choice (tournament, member…) is just its controls: the page then
+  // fills the screen so "Powered by" sits at the bottom. Once it shows results, the line follows
+  // right under the report.
+  const reportAwaitingChoice = !!sessionUser && mainTab === 'Reports' && (
+    !p.selectedReport
+    || (p.selectedReport === 'Player Pick Summary' && (!p.ppsTournament || (p.ppsTournament !== 'all' && !p.ppsSortBy)))
+    || (p.selectedReport === 'Pool Member Pick History' && !p.pmphEntryId)
+    || (p.selectedReport === 'Pool Member Pick Summary' && !p.pmpsEntryId)
+    || (p.selectedReport === 'Player Performance Summary' && !p.ppfTournament)
+    || (p.selectedReport === 'Pool Standings History' && !p.pshTournament)
+  );
+  const fillScreen = preCardShowing || reportAwaitingChoice;
   useEffect(() => {
     const root = document.documentElement;
     if (!preCardShowing) { root.classList.remove('no-page-scroll'); return; }
@@ -297,7 +309,7 @@ export default function Page() {
       {showHeaderCutInfo && <div onClick={() => setShowHeaderCutInfo(false)} style={{ position: 'fixed', inset: 0, zIndex: 9 }} />}
       {/* On the pre-tournament card the page is short: stretch it to the screen so the
           "Powered by" mark sits near the bottom instead of right under the card. */}
-      <div style={{ maxWidth: 1280, margin: '0 auto', padding: isMobile ? '2px 10px 32px' : '32px 20px 40px', ...(sessionUser && mainTab === 'Standings' && p.showFutureTournamentView ? { display: 'flex', flexDirection: 'column', minHeight: 'calc(100dvh / var(--app-zoom, 1) - var(--app-pad-y, 0px))', boxSizing: 'border-box' as const, ...(isMobile ? { paddingBottom: 18 } : {}) } : {}) }}>
+      <div style={{ maxWidth: 1280, margin: '0 auto', padding: isMobile ? '2px 10px 32px' : '32px 20px 40px', ...(fillScreen ? { display: 'flex', flexDirection: 'column', minHeight: 'calc(100dvh / var(--app-zoom, 1) - var(--app-pad-y, 0px))', boxSizing: 'border-box' as const, ...(isMobile ? { paddingBottom: 18 } : {}) } : {}) }}>
         <header
           style={{
             background: headerBg,
@@ -1368,7 +1380,7 @@ export default function Page() {
 
         {sessionUser && (mainTab !== 'Standings' || p.showFutureTournamentView) ? (
           // Extra room underneath on phones so the line clears the home bar at the end of every page.
-          <div style={{ marginTop: mainTab === 'Standings' ? 'auto' : (isMobile ? 26 : 36), paddingTop: mainTab === 'Standings' ? (isMobile ? 26 : 36) : 0, paddingBottom: isMobile ? 18 : 0 }}>
+          <div style={{ marginTop: fillScreen ? 'auto' : (isMobile ? 26 : 36), paddingTop: fillScreen ? (isMobile ? 26 : 36) : 0, paddingBottom: isMobile ? 18 : 0 }}>
             <PoweredBy size={isMobile ? 0.85 : 0.95} />
           </div>
         ) : null}

@@ -1849,10 +1849,20 @@ export function usePoolPage() {
   // snap back to the top of the report so the fresh results are shown from the beginning — even if
   // the user had scrolled down in the previous view. Also reset the Player Performance table's own
   // internal scroll region to the top.
+  // Opening a report starts at the very top of the page, header included; a new choice inside a
+  // report only scrolls back up if the report's top has gone off screen.
+  const lastReportOpened = useRef<string | null>(null);
   useEffect(() => {
-    if (mainTab !== 'Reports' || !selectedReport) return;
-    reportTopRef.current?.scrollIntoView({ block: 'start', behavior: 'auto' });
+    if (mainTab !== 'Reports' || !selectedReport) { lastReportOpened.current = null; return; }
     if (ppfScrollRef.current) ppfScrollRef.current.scrollTop = 0;
+    if (lastReportOpened.current !== selectedReport) {
+      lastReportOpened.current = selectedReport;
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: 'auto' }));
+      return;
+    }
+    const top = reportTopRef.current?.getBoundingClientRect().top;
+    if (top !== undefined && top < 0) reportTopRef.current?.scrollIntoView({ block: 'start', behavior: 'auto' });
   }, [selectedReport, mainTab, ppsTournament, ppsSortBy, ppfTournament, pmphEntryId, pmpsEntryId, pshTournament, reportYear, pshYear]);
 
   // Year/season picker shown to the right of every report header; defaults to the current season.
