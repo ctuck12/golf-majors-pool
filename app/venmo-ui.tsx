@@ -4,6 +4,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { Check, ExternalLink, X } from 'lucide-react';
 import { isNativeApp } from './native-bridge';
 import { VenmoMark } from './venmo-mark';
+import { GmpBadge } from './gmp-badge';
 import type { PayoutSent, TournamentId } from './lib/pool-store-shared';
 import {
   formatMoney,
@@ -181,8 +182,9 @@ export function Modal({ title, onClose, children, zIndex = 1050, compact = false
           boxShadow: '0 24px 60px rgba(9,34,51,0.3)',
         }}
       >
-        <div style={{ background: navy, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <div style={{ color: '#fff', fontSize: 17, fontWeight: 900, display: 'flex', alignItems: 'center', gap: 6 }}><span>{title}</span></div>
+        <div style={{ background: navy, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ flex: 1, minWidth: 0, color: '#fff', fontSize: 17, fontWeight: 900, lineHeight: 1.2, display: 'flex', alignItems: 'center', gap: 6 }}><span>{title}</span></div>
+          <GmpBadge height={34} style={{ margin: '-4px 0', marginLeft: 'auto' }} />
           <button
             type="button"
             onClick={onClose}
