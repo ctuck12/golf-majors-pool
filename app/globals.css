@@ -185,6 +185,9 @@ html.native-app body {
 }
 .native-app {
   --safe-y: calc(env(safe-area-inset-top) + env(safe-area-inset-bottom));
+  /* The app root's own top and bottom padding (below): screens sized to fill the screen subtract it,
+     so "Powered by" on a page with nothing below the fold sits on screen without scrolling. */
+  --app-pad-y: calc(env(safe-area-inset-top) + env(safe-area-inset-bottom) / 2);
 }
 .native-app [style*='position: fixed'][style*='inset: 0'],
 .native-app [style*='position: fixed'][style*='top: 0px'][style*='bottom: 0px'] {
