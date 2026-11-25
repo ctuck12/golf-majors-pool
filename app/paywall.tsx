@@ -11,7 +11,7 @@ import {
   type LeagueTier,
   type PassAction,
 } from './lib/league-passes';
-import { buyProduct, loadProducts, purchasesAvailable, redeemPromoCode, type StoreProduct } from './purchases';
+import { buyProduct, loadProducts, purchasesAvailable, redeemPromoCode, withTimeout, type StoreProduct } from './purchases';
 
 // The league pass paywall: create a league, upgrade its member limit, or renew it for a new
 // season. Order of events: the server checks the pass can be used, Apple's payment sheet takes
@@ -164,7 +164,7 @@ export function PaywallModal<T extends SessionLike>({
     setBusy(productId);
     setError('');
     try {
-      await postJson('/api/leagues/passes/check', { productId, action: action() });
+      await withTimeout('Checking the pass with our server', 20_000, postJson('/api/leagues/passes/check', { productId, action: action() }));
       const paid = await buyProduct(userId, productId);
       if (!paid) return;
       try {

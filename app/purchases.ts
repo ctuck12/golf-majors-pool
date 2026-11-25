@@ -13,6 +13,15 @@ export type StoreProduct = { identifier: string; priceString: string };
 
 let configuredFor: string | null = null;
 
+// Gives up on a step that never answers, naming the step, so a stuck purchase says where it stuck.
+export function withTimeout<T>(step: string, ms: number, work: Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${step} didn't respond after ${Math.round(ms / 1000)} seconds.`)), ms);
+  });
+  return Promise.race([work, timeout]).finally(() => clearTimeout(timer));
+}
+
 async function purchases(userId: string) {
   const { Purchases, LOG_LEVEL } = await import('@revenuecat/purchases-capacitor');
   if (configuredFor === null) {
@@ -36,8 +45,11 @@ export async function loadProducts(userId: string, productIds: string[]): Promis
 
 // Opens Apple's payment sheet. Resolves true when paid, false when the user cancelled.
 export async function buyProduct(userId: string, productId: string): Promise<boolean> {
-  const Purchases = await purchases(userId);
-  const { products } = await Purchases.getProducts({ productIdentifiers: [productId] });
+  console.log('[GMP purchase] starting', productId);
+  const Purchases = await withTimeout('Connecting to the App Store', 20_000, purchases(userId));
+  console.log('[GMP purchase] connected, loading product');
+  const { products } = await withTimeout('Loading the pass from the App Store', 20_000, Purchases.getProducts({ productIdentifiers: [productId] }));
+  console.log('[GMP purchase] product loaded:', products.length, 'opening payment sheet');
   const product = products[0];
   if (!product) {
     throw new Error('That pass is not available in the App Store yet.');
@@ -50,11 +62,13 @@ export async function buyProduct(userId: string, productId: string): Promise<boo
   });
   try {
     await Promise.race([Purchases.purchaseStoreProduct({ product }), timeout]);
+    console.log('[GMP purchase] paid');
     return true;
   } catch (error) {
     if ((error as { userCancelled?: boolean | null }).userCancelled) {
       return false;
     }
+    console.log('[GMP purchase] failed', JSON.stringify(error));
     const e = error as { message?: string; code?: string | number; underlyingErrorMessage?: string };
     const detail = [e.message, e.underlyingErrorMessage, e.code !== undefined ? `code ${e.code}` : ''].filter(Boolean).join(' · ');
     throw new Error(detail || 'The purchase did not go through.');
