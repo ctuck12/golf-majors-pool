@@ -14,8 +14,10 @@ export type StoreProduct = { identifier: string; priceString: string };
 let configuredFor: string | null = null;
 
 async function purchases(userId: string) {
-  const { Purchases } = await import('@revenuecat/purchases-capacitor');
+  const { Purchases, LOG_LEVEL } = await import('@revenuecat/purchases-capacitor');
   if (configuredFor === null) {
+    // Detailed RevenueCat messages in Xcode's console, for diagnosing purchases.
+    await Purchases.setLogLevel({ level: LOG_LEVEL.DEBUG }).catch(() => {});
     await Purchases.configure({ apiKey: REVENUECAT_IOS_KEY, appUserID: userId });
     configuredFor = userId;
   } else if (configuredFor !== userId) {
@@ -40,14 +42,24 @@ export async function buyProduct(userId: string, productId: string): Promise<boo
   if (!product) {
     throw new Error('That pass is not available in the App Store yet.');
   }
+  // If Apple's payment sheet never comes back (it didn't open, or StoreKit stalled), stop waiting
+  // after two minutes and say so, instead of leaving the button on "Processing…" forever.
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error("Apple's payment screen didn't respond. Close this, reopen the app and try again. If you paid, the pass appears here as unused.")), 120_000);
+  });
   try {
-    await Purchases.purchaseStoreProduct({ product });
+    await Promise.race([Purchases.purchaseStoreProduct({ product }), timeout]);
     return true;
   } catch (error) {
     if ((error as { userCancelled?: boolean | null }).userCancelled) {
       return false;
     }
-    throw new Error((error as { message?: string }).message || 'The purchase did not go through.');
+    const e = error as { message?: string; code?: string | number; underlyingErrorMessage?: string };
+    const detail = [e.message, e.underlyingErrorMessage, e.code !== undefined ? `code ${e.code}` : ''].filter(Boolean).join(' · ');
+    throw new Error(detail || 'The purchase did not go through.');
+  } finally {
+    clearTimeout(timer);
   }
 }
 
