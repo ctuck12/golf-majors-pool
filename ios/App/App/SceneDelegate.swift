@@ -8,7 +8,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let windowScene = scene as? UIWindowScene else { return }
 
         window = UIWindow(windowScene: windowScene)
-        window?.rootViewController = CAPBridgeViewController()
+        window?.rootViewController = AppViewController()
         window?.makeKeyAndVisible()
 
         SceneDelegateProxy.shared.scene(scene, willConnectTo: session, options: connectionOptions)
@@ -23,3 +23,11 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
 }
 
+// Capacitor turns off the web view's rubber-band bounce; turn it back on so the page bounces
+// gently at its top and bottom like any iPhone app.
+class AppViewController: CAPBridgeViewController {
+    override func capacitorDidLoad() {
+        super.capacitorDidLoad()
+        webView?.scrollView.bounces = true
+    }
+}
