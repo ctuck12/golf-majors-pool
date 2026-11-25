@@ -10,6 +10,7 @@ import type { PoolPage } from '../pool-page-state';
 import { TournamentWordmark } from '../tournament-wordmark';
 import { GmpBadge } from '../gmp-badge';
 import { AdminSetupCard } from '../admin-setup-card';
+import { isNativeApp } from '../native-bridge';
 
 // Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
 export function CommissionerScreen({ p }: { p: PoolPage }) {
@@ -844,7 +845,7 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
             </section>
                 {toolGroup('App admin tools', [
                   { key: 'allLeagues', title: 'All Leagues', sub: 'Every league, its commissioner and plan', Icon: Users, open: () => setAdminLeaguesOpen(true) },
-                  { key: 'salary', title: 'Full Field & Salary Pick List', sub: 'Upload full field + salaries + OWGRs', Icon: DollarSign, open: () => {}, href: '/commissioner-salary' },
+                  { key: 'salary', title: 'Full Field & Salary Pick List', sub: 'Upload full field + salaries + OWGRs', Icon: DollarSign, open: () => {}, href: isNativeApp ? '/commissioner-salary.html' : '/commissioner-salary' },
                   { key: 'lock', title: 'Pool Lock Time', sub: 'Set Round 1 first tee time', Icon: Lock, open: openPoolLock },
                   { key: 'markStatus', title: 'Mark WD / DQ / MDF', sub: "Override a player's status", Icon: AlertCircle, open: () => openPoolTool('markStatus') },
                   { key: 'tiebreak', title: 'Tiebreak Score', sub: 'All leagues · only if the winner’s score didn’t fill in', Icon: Save, open: () => openPoolTool('tiebreak') },

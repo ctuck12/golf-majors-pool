@@ -18,7 +18,7 @@ type SaveResp = {
   preview?: { id: number; name: string; salary: number; worldRank: number | null }[];
 };
 
-const wrap: React.CSSProperties = { minHeight: '100vh', background: '#eef2f6', padding: '24px 16px', fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif' };
+const wrap: React.CSSProperties = { minHeight: '100vh', background: '#eef2f6', padding: 'calc(24px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom))', fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif' };
 const card: React.CSSProperties = { maxWidth: 640, margin: '0 auto', background: '#fff', borderRadius: 16, border: '1px solid #e2e8ef', overflow: 'hidden', boxShadow: '0 8px 30px rgba(9,34,51,0.08)' };
 const header: React.CSSProperties = { background: '#0f1720', padding: '18px 20px' };
 const body: React.CSSProperties = { padding: 20, display: 'grid', gap: 16 };
