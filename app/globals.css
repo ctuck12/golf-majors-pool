@@ -170,13 +170,6 @@ body {
   padding-right: env(safe-area-inset-right);
 }
 
-/* No rubber-band bounce past the top or bottom of the page in the app (it pulled the page well past
-   its end and showed the empty background underneath). Lists that scroll inside a box still work. */
-html.native-app,
-html.native-app body {
-  overscroll-behavior-y: none;
-}
-
 /* Pop-ups in the app: keep every pop-up below the Dynamic Island. Pop-up backdrops are inline-styled
    full-screen layers (position: fixed; inset: 0), so this matches them by their style. Their cards cap
    their height with var(--safe-y) so a tall card can't grow back up under the island or the home bar. */
