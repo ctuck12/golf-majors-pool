@@ -223,6 +223,9 @@ export default function Page() {
     || (p.selectedReport === 'Pool Standings History' && !p.pshTournament)
   );
   const fillScreen = preCardShowing || reportAwaitingChoice;
+  // Pages with the "Powered by" line at the bottom; the Standings leaderboard ends the page without one,
+  // so on phones it stops just past the leaderboard box instead of leaving an empty band.
+  const showFooter = !!sessionUser && (mainTab !== 'Standings' || p.showFutureTournamentView);
   useEffect(() => {
     const root = document.documentElement;
     if (!preCardShowing) { root.classList.remove('no-page-scroll'); return; }
@@ -309,7 +312,7 @@ export default function Page() {
       {showHeaderCutInfo && <div onClick={() => setShowHeaderCutInfo(false)} style={{ position: 'fixed', inset: 0, zIndex: 9 }} />}
       {/* On the pre-tournament card the page is short: stretch it to the screen so the
           "Powered by" mark sits near the bottom instead of right under the card. */}
-      <div style={{ maxWidth: 1280, margin: '0 auto', padding: isMobile ? '2px 10px 32px' : '32px 20px 40px', ...(fillScreen ? { display: 'flex', flexDirection: 'column', minHeight: 'calc(100dvh / var(--app-zoom, 1) - var(--app-pad-y, 0px))', boxSizing: 'border-box' as const, ...(isMobile ? { paddingBottom: 18 } : {}) } : {}) }}>
+      <div style={{ maxWidth: 1280, margin: '0 auto', padding: isMobile ? `2px 10px ${showFooter ? 32 : 6}px` : '32px 20px 40px', ...(fillScreen ? { display: 'flex', flexDirection: 'column', minHeight: 'calc(100dvh / var(--app-zoom, 1) - var(--app-pad-y, 0px))', boxSizing: 'border-box' as const, ...(isMobile ? { paddingBottom: 18 } : {}) } : {}) }}>
         <header
           style={{
             background: headerBg,
@@ -1378,7 +1381,7 @@ export default function Page() {
 
         {mainTab === 'Commissioner Hub' && <CommissionerScreen p={p} />}
 
-        {sessionUser && (mainTab !== 'Standings' || p.showFutureTournamentView) ? (
+        {showFooter ? (
           // Extra room underneath on phones so the line clears the home bar at the end of every page.
           <div style={{ marginTop: fillScreen ? 'auto' : (isMobile ? 26 : 36), paddingTop: fillScreen ? (isMobile ? 26 : 36) : 0, paddingBottom: isMobile ? 18 : 0 }}>
             <PoweredBy size={isMobile ? 0.85 : 0.95} />
