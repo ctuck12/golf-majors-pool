@@ -615,6 +615,18 @@ export const photoOnError = (e: { currentTarget: HTMLImageElement }) => {
 // and, if even the minimum size cannot fit with the abbreviation inline, hangs the
 // abbreviation below the flag (where allowed) and re-grows the name. Decisions come from
 // real DOM measurements — no font/device estimate can cause truncation.
+// The width of `text` drawn in the element's own computed font (canvas, so it doesn't depend on
+// how the web view lays out hidden or clipped spans).
+let fitMeasureCtx: CanvasRenderingContext2D | null | undefined;
+function textWidthFor(el: HTMLElement, text: string) {
+  if (fitMeasureCtx === undefined) fitMeasureCtx = document.createElement('canvas').getContext('2d');
+  if (!fitMeasureCtx) return 0;
+  const cs = getComputedStyle(el);
+  fitMeasureCtx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  const spacing = parseFloat(cs.letterSpacing) || 0;
+  return fitMeasureCtx.measureText(text).width + spacing * text.length;
+}
+
 export function HeaderNameFlag({ name, flagSrc, abbr, base, min, allowStack, initialStacked }: { name: string; flagSrc: string | null; abbr: string | null; base: number; min: number; allowStack: boolean; initialStacked: boolean }) {
   const outerRef = useRef<HTMLSpanElement>(null);
   const measureRef = useRef<HTMLSpanElement>(null);
@@ -630,6 +642,8 @@ export function HeaderNameFlag({ name, flagSrc, abbr, base, min, allowStack, ini
     if (!outer || typeof ResizeObserver === 'undefined') return;
     const ro = new ResizeObserver(() => setMeasureTick((v) => v + 1));
     ro.observe(outer);
+    // The name's font can finish loading after the first fit; measure again when it does.
+    void document.fonts?.ready.then(() => setMeasureTick((v) => v + 1));
     return () => ro.disconnect();
   }, []);
   useLayoutEffect(() => {
@@ -637,10 +651,13 @@ export function HeaderNameFlag({ name, flagSrc, abbr, base, min, allowStack, ini
     const meas = measureRef.current;
     if (!outer || !meas) return;
     // WebKit can report scrollWidth === clientWidth on ellipsized text, so measure a
-    // hidden untruncated clone and compare it to the space the flex row actually gives.
-    const full = meas.offsetWidth;
+    // hidden untruncated clone and compare it to the space the flex row actually gives. The
+    // iPhone's web view can also under-report that clone, so take the wider of it and the text's
+    // width drawn with the span's own font: the name must never end in an ellipsis. (When the name
+    // fits, the span is exactly as wide as its text, so allow a pixel or two of rounding.)
+    const full = Math.max(meas.offsetWidth, textWidthFor(outer, name));
     const box = outer.clientWidth;
-    if (full <= box) return;
+    if (full <= box + 1.5) return;
     const floorSize = stacked || !allowStack ? Math.max(11, min - 2) : min;
     if (size > floorSize) {
       const next = Math.max(floorSize, Math.floor(size * (box / full) * 2) / 2);
@@ -650,6 +667,9 @@ export function HeaderNameFlag({ name, flagSrc, abbr, base, min, allowStack, ini
       // abbreviation under the flag, which frees its width, and let the name grow back.
       setStacked(true);
       setSize(base);
+    } else if (size > 9) {
+      // Last resort for a very long name: keep shrinking rather than cut it off.
+      setSize(size - 0.5);
     }
   });
   const flagH = size >= 17 ? 20 : size >= 15 ? 18 : 16;
@@ -657,7 +677,7 @@ export function HeaderNameFlag({ name, flagSrc, abbr, base, min, allowStack, ini
     <>
       <span ref={outerRef} style={{ overflow: 'hidden', textOverflow: 'ellipsis', fontSize: size, position: 'relative' }}>
         {name}
-        <span ref={measureRef} aria-hidden="true" style={{ position: 'absolute', left: 0, top: 0, visibility: 'hidden', whiteSpace: 'nowrap', pointerEvents: 'none' }}>{name}</span>
+        <span ref={measureRef} aria-hidden="true" style={{ position: 'absolute', left: 0, top: 0, width: 'max-content', visibility: 'hidden', whiteSpace: 'nowrap', pointerEvents: 'none' }}>{name}</span>
       </span>
       {flagSrc && (
         <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', marginLeft: 8, verticalAlign: 'middle', flexShrink: 0 }}>
