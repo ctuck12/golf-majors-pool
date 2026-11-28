@@ -149,6 +149,8 @@ export type MemberUpdates = {
   displayName?: string;
   email?: string;
   password?: string;
+  // The member's Venmo username (null or '' clears it). Set by the commissioner or the app admin.
+  venmo?: string | null;
   rosters?: Partial<Record<TournamentId, unknown>>;
   tieBreaks?: Partial<Record<TournamentId, number | null>>;
 };

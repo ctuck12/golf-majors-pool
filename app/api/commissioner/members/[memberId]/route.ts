@@ -65,6 +65,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ membe
       displayName?: string;
       email?: string;
       password?: string;
+      venmo?: string | null;
       rosters?: unknown;
       tieBreaks?: unknown;
       role?: LeagueRole;
@@ -81,6 +82,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ membe
       displayName: body.displayName,
       email: adminOnly ? body.email : undefined,
       password: adminOnly ? body.password : undefined,
+      venmo: body.venmo,
       rosters: parseRosters(body.rosters),
       tieBreaks: parseTieBreaks(body.tieBreaks),
     });

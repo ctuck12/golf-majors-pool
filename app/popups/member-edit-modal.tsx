@@ -2,6 +2,8 @@
 
 import { Mail } from 'lucide-react';
 import { fieldStyle } from '../pool-data';
+import { formatVenmo } from '../lib/venmo';
+import { VenmoMark } from '../venmo-mark';
 import type { PoolPage } from '../pool-page-state';
 
 // Moved out of app/page.tsx unchanged. `p` is the page's state (usePoolPage()).
@@ -25,7 +27,10 @@ export function MemberEditModal({ p }: { p: PoolPage }) {
     selectedCommissionerMember,
     entriesTournamentBg,
     commissionerMemberModalOpen,
+    commissionerError,
+    commissionerSuccess,
   } = p;
+  const venmoOn = pool?.venmoEnabled !== false;
   // Shown only when this is true (checked in app/page.tsx too).
   if (!(commissionerMemberModalOpen && selectedCommissionerMember)) return null;
   return (
@@ -96,6 +101,28 @@ export function MemberEditModal({ p }: { p: PoolPage }) {
                   >
                     Edit Display Name
                   </button>
+                  {venmoOn ? (
+                    <button
+                      onClick={() => setCommissionerMemberModalView('venmo')}
+                      style={{
+                        border: '1px solid #d7e0e8',
+                        borderRadius: 16,
+                        background: '#fff',
+                        padding: '16px 18px',
+                        textAlign: 'left',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                      }}
+                    >
+                      Edit <VenmoMark tone="blue" />
+                      <span style={{ marginLeft: 'auto', fontWeight: 600, color: '#607282', fontSize: 14 }}>
+                        {selectedCommissionerMember.venmo ? formatVenmo(selectedCommissionerMember.venmo) : 'Not set'}
+                      </span>
+                    </button>
+                  ) : null}
                   {/* A member's sign-in email is theirs; only the app admin can change it here. */}
                   {isAppAdmin ? (
                   <button
@@ -217,6 +244,50 @@ export function MemberEditModal({ p }: { p: PoolPage }) {
                       }}
                     >
                       Save Display Name
+                    </button>
+                  </div>
+                </div>
+              ) : commissionerMemberModalView === 'venmo' ? (
+                <div style={{ display: 'grid', gap: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, border: '1px solid #d7e0e8', borderRadius: 16, background: '#fff', padding: '0 14px' }}>
+                    <span style={{ color: '#607282', fontWeight: 800, fontSize: 16 }}>@</span>
+                    <input
+                      value={memberEditForm.venmo.replace(/^@+/, '')}
+                      onChange={(event) => setMemberEditForm({ ...memberEditForm, venmo: event.target.value })}
+                      placeholder="Venmo username"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      style={{ ...fieldStyle(), border: 'none', paddingLeft: 0, paddingRight: 0, fontSize: 16 }}
+                    />
+                  </div>
+                  <div style={{ fontSize: 13, color: '#607282', lineHeight: 1.45 }}>
+                    The @name on their Venmo profile, used for Pay Winners. Leave it blank to remove it.
+                  </div>
+                  {commissionerError || commissionerSuccess ? (
+                    <div style={{ fontSize: 13, fontWeight: 700, color: commissionerError ? '#dc2626' : '#16a34a' }}>{commissionerError || commissionerSuccess}</div>
+                  ) : null}
+                  <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                    <button
+                      onClick={() => setCommissionerMemberModalView('menu')}
+                      style={{ border: '1px solid #d7e0e8', borderRadius: 14, background: '#fff', padding: '12px 16px', fontWeight: 800, cursor: 'pointer' }}
+                    >
+                      Back
+                    </button>
+                    <button
+                      onClick={handleSaveCommissionerMember}
+                      disabled={commissionerBusy}
+                      style={{
+                        border: 'none',
+                        borderRadius: 14,
+                        padding: '12px 16px',
+                        background: entriesTournamentBg,
+                        color: '#fff',
+                        fontWeight: 900,
+                        cursor: commissionerBusy ? 'wait' : 'pointer',
+                      }}
+                    >
+                      Save Venmo
                     </button>
                   </div>
                 </div>

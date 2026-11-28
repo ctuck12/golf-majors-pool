@@ -106,6 +106,7 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
     handleMarkPlayerStatus,
     handleSaveWinnerScore,
     openCommissionerMemberModal,
+    setCommissionerMemberModalView,
     openCommissionerMemberPicks,
     toggleCommissionerRosterPlayer,
     handleSaveCommissionerRoster,
@@ -131,6 +132,13 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
     setPool,
     setPaywallMode,
   } = p;
+  // Member Management: a Venmo column between Email and # of tournaments, only when the league uses Venmo.
+  const memberVenmoOn = pool?.venmoEnabled !== false;
+  const memberGridColumns = isMobile
+    ? (memberVenmoOn ? '140px 190px 130px 100px 46px' : '140px 190px 100px 46px')
+    : (memberVenmoOn
+      ? 'minmax(200px, 1fr) minmax(230px, 1.15fr) minmax(170px, 0.85fr) minmax(150px, 0.7fr) 90px'
+      : 'minmax(220px, 1.1fr) minmax(260px, 1.25fr) minmax(180px, 0.8fr) 90px');
   const answerNoSeasonPool = async () => {
     const res = await fetch('/api/commissioner/season', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: false, fee: null, plan: null }) });
     const payload = (await res.json().catch(() => ({}))) as { pool?: NonNullable<typeof pool> };
@@ -1051,11 +1059,12 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                 </div>
               </div>
 
+              {/* Venmo column only when the league uses Venmo; tapping a handle opens its editor. */}
               <div style={{ border: '1px solid #e6edf1', borderRadius: isMobile ? 14 : 22, overflowX: isMobile ? 'auto' : 'hidden', overflowY: 'hidden', background: '#fff' }}>
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: isMobile ? '140px 190px 100px 46px' : 'minmax(220px, 1.1fr) minmax(260px, 1.25fr) minmax(180px, 0.8fr) 90px',
+                    gridTemplateColumns: memberGridColumns,
                     gap: isMobile ? 8 : 16,
                     padding: isMobile ? '8px 12px' : '18px 22px',
                     background: '#f8fbfd',
@@ -1089,6 +1098,11 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                       </button>
                     </div>
                   ))}
+                  {memberVenmoOn ? (
+                    <div style={{ display: 'flex', justifyContent: isMobile ? 'flex-start' : 'center', alignItems: 'center', fontSize: isMobile ? 12 : 15, textTransform: 'none' }}>
+                      <VenmoMark tone="blue" />
+                    </div>
+                  ) : null}
                   <div style={{ display: 'flex', justifyContent: 'center' }}>
                     <button
                       onClick={() => setCommissionerMemberSort((prev) => ({
@@ -1117,7 +1131,7 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                       key={member.id}
                       style={{
                         display: 'grid',
-                        gridTemplateColumns: isMobile ? '140px 190px 100px 46px' : 'minmax(220px, 1.1fr) minmax(260px, 1.25fr) minmax(180px, 0.8fr) 90px',
+                        gridTemplateColumns: memberGridColumns,
                         gap: isMobile ? 8 : 16,
                         padding: isMobile ? '10px 12px' : '20px 22px',
                         borderTop: '1px solid #e6edf1',
@@ -1131,6 +1145,16 @@ export function CommissionerScreen({ p }: { p: PoolPage }) {
                         )}
                       </div>
                       <div style={{ fontSize: isMobile ? 11 : 15, color: '#31424f', textAlign: isMobile ? 'left' : 'center' }}>{member.email}</div>
+                      {memberVenmoOn ? (
+                        <button
+                          type="button"
+                          onClick={() => { openCommissionerMemberModal(member.id); setCommissionerMemberModalView('venmo'); }}
+                          title="Edit Venmo"
+                          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: isMobile ? 'left' : 'center', fontSize: isMobile ? 11.5 : 15, fontWeight: member.venmo ? 700 : 600, color: member.venmo ? '#008CFF' : '#9aa8b4', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}
+                        >
+                          {member.venmo ? formatVenmo(member.venmo) : 'Not set'}
+                        </button>
+                      ) : null}
                       <div style={{ fontSize: isMobile ? 12 : 16, fontWeight: 700, color: '#0f1720', textAlign: 'center' }}>
                         {TOURNAMENTS.filter((event) => (member.rosters[event.id] ?? []).length > 0).length}
                       </div>

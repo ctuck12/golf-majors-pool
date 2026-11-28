@@ -373,7 +373,7 @@ export function usePoolPage() {
   const [submittedPicksSort, setSubmittedPicksSort] = useState<'alpha' | 'newest'>('alpha');
   const [commissionerPlayerSearch, setCommissionerPlayerSearch] = useState('');
   const [commissionerMemberModalOpen, setCommissionerMemberModalOpen] = useState(false);
-  const [commissionerMemberModalView, setCommissionerMemberModalView] = useState<'menu' | 'displayName' | 'email' | 'confirmDelete' | 'confirmClearPicks'>('menu');
+  const [commissionerMemberModalView, setCommissionerMemberModalView] = useState<'menu' | 'displayName' | 'email' | 'venmo' | 'confirmDelete' | 'confirmClearPicks'>('menu');
   const [commissionerRosterMemberId, setCommissionerRosterMemberId] = useState<string | null>(null);
   const [commissionerRosterSelection, setCommissionerRosterSelection] = useState<number[]>([]);
   const [commissionerTieBreakInput, setCommissionerTieBreakInput] = useState('');
@@ -417,6 +417,7 @@ export function usePoolPage() {
     displayName: '',
     email: '',
     password: '',
+    venmo: '',
     rosters: {
       players: '',
       masters: '',
@@ -957,6 +958,7 @@ export function usePoolPage() {
       displayName: member.displayName,
       email: member.email,
       password: '',
+      venmo: member.venmo ?? '',
       rosters: {
         players: formatRosterField(member.rosters.players),
         masters: formatRosterField(member.rosters.masters),
@@ -1389,6 +1391,8 @@ export function usePoolPage() {
             displayName: memberEditForm.displayName,
             email: memberEditForm.email,
             password: memberEditForm.password,
+            // Only from the Edit Venmo screen, so other edits never touch it.
+            ...(commissionerMemberModalView === 'venmo' ? { venmo: memberEditForm.venmo.trim() || null } : {}),
             rosters: {
               players: parseRosterField(memberEditForm.rosters.players),
               masters: parseRosterField(memberEditForm.rosters.masters),
@@ -1405,7 +1409,9 @@ export function usePoolPage() {
       );
       setPoolEntries((current) =>
         current.map((entry) =>
-          entry.id === payload.member.id ? { ...entry, name: payload.member.displayName, rosters: payload.member.rosters } : entry,
+          entry.id === payload.member.id
+            ? { ...entry, name: payload.member.displayName, rosters: payload.member.rosters, ...('venmo' in entry ? { venmo: payload.member.venmo ?? null } : {}) }
+            : entry,
         ),
       );
       setSessionUser((current) =>

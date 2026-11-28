@@ -813,6 +813,14 @@ export async function updatePoolMember(requestingUserId: string, memberId: strin
         await sql`update users set email = ${email} where id = ${memberId}`;
       }
 
+      if (updates.venmo !== undefined) {
+        const venmo = normalizeVenmoUsername(updates.venmo);
+        await sql`
+          update users set venmo = ${venmo}, venmo_declined = case when ${venmo}::text is null then venmo_declined else false end
+          where id = ${memberId}
+        `;
+      }
+
       if (typeof updates.password === 'string' && updates.password.trim().length > 0) {
         if (updates.password.length < 8) {
           throw new Error('Password must be at least 8 characters.');
