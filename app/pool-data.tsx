@@ -615,72 +615,59 @@ export const photoOnError = (e: { currentTarget: HTMLImageElement }) => {
 // and, if even the minimum size cannot fit with the abbreviation inline, hangs the
 // abbreviation below the flag (where allowed) and re-grows the name. Decisions come from
 // real DOM measurements — no font/device estimate can cause truncation.
-// The width of `text` drawn in the element's own computed font (canvas, so it doesn't depend on
-// how the web view lays out hidden or clipped spans).
-let fitMeasureCtx: CanvasRenderingContext2D | null | undefined;
-function textWidthFor(el: HTMLElement, text: string) {
-  if (fitMeasureCtx === undefined) fitMeasureCtx = document.createElement('canvas').getContext('2d');
-  if (!fitMeasureCtx) return 0;
-  const cs = getComputedStyle(el);
-  fitMeasureCtx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
-  const spacing = parseFloat(cs.letterSpacing) || 0;
-  return fitMeasureCtx.measureText(text).width + spacing * text.length;
-}
-
 export function HeaderNameFlag({ name, flagSrc, abbr, base, min, allowStack, initialStacked }: { name: string; flagSrc: string | null; abbr: string | null; base: number; min: number; allowStack: boolean; initialStacked: boolean }) {
   const outerRef = useRef<HTMLSpanElement>(null);
-  const measureRef = useRef<HTMLSpanElement>(null);
+  const flagRef = useRef<HTMLSpanElement>(null);
   const [size, setSize] = useState(base);
   const [stacked, setStacked] = useState(initialStacked);
   const [, setMeasureTick] = useState(0);
   // eslint-disable-next-line react-hooks/set-state-in-effect -- restarts the fit-to-width measurement when the name changes
   useLayoutEffect(() => { setSize(base); setStacked(initialStacked); }, [name, base, initialStacked]);
-  // The row's free space changes without a React render when the flag/logo images finish
-  // loading (they start at width 0) — observe the span's box so any squeeze re-fits.
+  // The row's width changes without a React render when the logo image finishes loading or the
+  // screen rotates, and the name's font can load after the first fit — measure again then.
   useLayoutEffect(() => {
-    const outer = outerRef.current;
-    if (!outer || typeof ResizeObserver === 'undefined') return;
+    const row = outerRef.current?.parentElement;
+    if (!row || typeof ResizeObserver === 'undefined') return;
     const ro = new ResizeObserver(() => setMeasureTick((v) => v + 1));
-    ro.observe(outer);
-    // The name's font can finish loading after the first fit; measure again when it does.
+    ro.observe(row);
     void document.fonts?.ready.then(() => setMeasureTick((v) => v + 1));
     return () => ro.disconnect();
   }, []);
+  // The name is laid out at its full width (it never shrinks or clips), so its real width can be
+  // read directly and compared with the row it sits in: no hidden clones or ellipsis detection,
+  // which the iPhone's web view mis-measured. The font steps down until name + flag fit.
+  const lastResort = size <= 9;
   useLayoutEffect(() => {
     const outer = outerRef.current;
-    const meas = measureRef.current;
-    if (!outer || !meas) return;
-    // WebKit can report scrollWidth === clientWidth on ellipsized text, so measure a
-    // hidden untruncated clone and compare it to the space the flex row actually gives. The
-    // iPhone's web view can also under-report that clone, so take the wider of it and the text's
-    // width drawn with the span's own font: the name must never end in an ellipsis. (When the name
-    // fits, the span is exactly as wide as its text, so allow a pixel or two of rounding.)
-    const full = Math.max(meas.offsetWidth, textWidthFor(outer, name));
-    const box = outer.clientWidth;
-    if (full <= box + 1.5) return;
+    const row = outer?.parentElement;
+    if (!outer || !row) return;
+    const flagW = flagRef.current ? flagRef.current.offsetWidth + 8 : 0;
+    const avail = row.clientWidth;
+    const need = outer.offsetWidth + flagW;
+    if (avail <= 0 || need <= avail + 0.5) return;
     const floorSize = stacked || !allowStack ? Math.max(11, min - 2) : min;
     if (size > floorSize) {
-      const next = Math.max(floorSize, Math.floor(size * (box / full) * 2) / 2);
+      const nameRoom = Math.max(1, avail - flagW);
+      const next = Math.max(floorSize, Math.floor(size * (nameRoom / outer.offsetWidth) * 2) / 2);
       setSize(next < size ? next : size - 0.5);
     } else if (allowStack && !stacked && abbr) {
-      // Even the floor size can't fit beside the inline abbreviation — hang the
+      // Even the floor size can't fit beside the inline abbreviation: hang the
       // abbreviation under the flag, which frees its width, and let the name grow back.
       setStacked(true);
       setSize(base);
     } else if (size > 9) {
-      // Last resort for a very long name: keep shrinking rather than cut it off.
+      // A very long name: keep shrinking rather than cut it off.
       setSize(size - 0.5);
     }
   });
   const flagH = size >= 17 ? 20 : size >= 15 ? 18 : 16;
   return (
     <>
-      <span ref={outerRef} style={{ overflow: 'hidden', textOverflow: 'ellipsis', fontSize: size, position: 'relative' }}>
+      <span ref={outerRef} style={{ fontSize: size, whiteSpace: 'nowrap', ...(lastResort ? { overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 } : { flexShrink: 0 }) }}>
         {name}
-        <span ref={measureRef} aria-hidden="true" style={{ position: 'absolute', left: 0, top: 0, width: 'max-content', visibility: 'hidden', whiteSpace: 'nowrap', pointerEvents: 'none' }}>{name}</span>
       </span>
       {flagSrc && (
-        <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', marginLeft: 8, verticalAlign: 'middle', flexShrink: 0 }}>
+        <span ref={flagRef} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', marginLeft: 8, verticalAlign: 'middle', flexShrink: 0 }}>
           <img src={flagSrc} alt="" style={{ height: flagH, display: 'block', borderRadius: 3 }} />
           {abbr && (stacked
             ? <span style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: 2, color: '#fff', fontWeight: 400, fontSize: 10, lineHeight: 1 }}>{abbr}</span>
